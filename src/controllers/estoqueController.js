@@ -3,6 +3,7 @@
 // REGRA: Operacional baixa, Administrativo controla, Financeiro vê impacto
 
 const estoqueService = require('../services/estoqueService');
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir dashboard de estoque
 // GET /estoque
@@ -43,7 +44,7 @@ const listItems = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar itens:', error);
-    res.status(500).send('Erro ao listar itens');
+    renderError(res, 500, 'Erro ao listar itens', error);
   }
 };
 
@@ -147,7 +148,7 @@ const updateItem = async (req, res) => {
     res.redirect(`/estoque/items/${id}?success=Item atualizado com sucesso`);
   } catch (error) {
     console.error('Erro ao atualizar item:', error);
-    res.status(500).send('Erro ao atualizar item: ' + error.message);
+    renderError(res, 500, 'Erro ao atualizar item: ' + error.message, error);
   }
 };
 
@@ -182,7 +183,7 @@ const createMovement = async (req, res) => {
     const { movementType, quantity, reason, cost, movementDate } = req.body;
 
     if (!movementType || !quantity) {
-      return res.status(400).send('Tipo e quantidade são obrigatórios');
+      return renderError(res, 400, 'Tipo e quantidade são obrigatórios');
     }
 
     await estoqueService.createMovement(
@@ -201,7 +202,7 @@ const createMovement = async (req, res) => {
     res.redirect(`/estoque/items/${id}?success=Movimentação registrada com sucesso`);
   } catch (error) {
     console.error('Erro ao criar movimentação:', error);
-    res.status(500).send('Erro ao criar movimentação: ' + error.message);
+    renderError(res, 500, 'Erro ao criar movimentação: ' + error.message, error);
   }
 };
 

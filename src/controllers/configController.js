@@ -3,6 +3,7 @@
 // REGRA: Síndico e Super Master podem alterar configurações
 
 const configService = require('../services/configService');
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir página de configurações
 // GET /config
@@ -26,7 +27,7 @@ const showConfig = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir configurações:', error);
-    res.status(500).send('Erro ao carregar configurações');
+    renderError(res, 500, 'Erro ao carregar configurações', error);
   }
 };
 

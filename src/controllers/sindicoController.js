@@ -3,6 +3,7 @@
 // Apenas usuários com perfil SINDICO ou SUBSINDICO podem acessar
 
 const sindicoService = require('../services/sindicoService'); // Service do módulo síndico
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir dashboard do síndico
 // GET /sindico/dashboard
@@ -10,7 +11,7 @@ const showDashboard = async (req, res) => {
   try {
     // Valida se usuário tem condomínio associado
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     // Busca estatísticas do condomínio
@@ -32,7 +33,7 @@ const showDashboard = async (req, res) => {
 const showAprovacoes = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const approvals = await sindicoService.listPendingApprovals(req.user.condominiumId);
@@ -44,7 +45,7 @@ const showAprovacoes = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar aprovações:', error);
-    res.status(500).send('Erro ao carregar aprovações');
+    renderError(res, 500, 'Erro ao carregar aprovações', error);
   }
 };
 
@@ -53,7 +54,7 @@ const showAprovacoes = async (req, res) => {
 const processAprovacao = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const { action, reason } = req.body;
@@ -88,7 +89,7 @@ const processAprovacao = async (req, res) => {
 const showAlertas = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const filters = {
@@ -115,7 +116,7 @@ const showAlertas = async (req, res) => {
 const resolverAlerta = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const alertId = req.params.id;
@@ -136,7 +137,7 @@ const resolverAlerta = async (req, res) => {
 const showLogs = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const filters = {
@@ -175,7 +176,7 @@ const showLogs = async (req, res) => {
 const showTarefas = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const filters = {
@@ -201,7 +202,7 @@ const showTarefas = async (req, res) => {
 const showTask = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const task = await sindicoService.getTaskById(req.params.id, req.user.condominiumId);
@@ -231,7 +232,7 @@ const showTask = async (req, res) => {
 const addTaskObservation = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const taskId = req.params.id;
@@ -264,7 +265,7 @@ const addTaskObservation = async (req, res) => {
 const showOcorrencias = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const filters = {
@@ -290,7 +291,7 @@ const showOcorrencias = async (req, res) => {
 const showOccurrence = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const occurrence = await sindicoService.getOccurrenceById(req.params.id, req.user.condominiumId);
@@ -320,7 +321,7 @@ const showOccurrence = async (req, res) => {
 const addOccurrenceObservation = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const occurrenceId = req.params.id;

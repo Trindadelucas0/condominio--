@@ -3,6 +3,7 @@
 // REGRA: Toda reabertura gera log especial
 
 const reaberturaService = require('../services/reaberturaService');
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para reabrir ocorrência
 // REGRA: Apenas Síndico pode reabrir ocorrências

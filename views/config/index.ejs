@@ -1,0 +1,43 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Configurações do Condomínio</h1>
+    <p class="text-gray-600 mt-2">Gerencie as configurações do sistema</p>
+  </div>
+
+  <div class="space-y-6">
+    <% Object.keys(settingsByCategory || {}).forEach(category => { %>
+      <div class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b">
+          <h2 class="text-xl font-bold text-gray-800"><%= category %></h2>
+        </div>
+        <div class="p-6">
+          <div class="space-y-4">
+            <% settingsByCategory[category].forEach(setting => { %>
+              <div class="flex justify-between items-center py-3 border-b">
+                <div>
+                  <p class="font-semibold text-gray-900"><%= setting.setting_key %></p>
+                  <p class="text-sm text-gray-600"><%= setting.description || '' %></p>
+                  <p class="text-sm text-gray-500 mt-1">Valor: <strong><%= setting.setting_value %></strong></p>
+                </div>
+                <a href="/config/<%= setting.setting_key %>/edit" class="text-blue-600 hover:text-blue-900">
+                  Editar
+                </a>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+
+    <% if (!settingsByCategory || Object.keys(settingsByCategory).length === 0) { %>
+      <div class="bg-white rounded-lg shadow p-8 text-center">
+        <p class="text-gray-500">Nenhuma configuração cadastrada</p>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

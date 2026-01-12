@@ -1,0 +1,43 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="flex justify-between items-start mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800"><%= occurrence.title %></h1>
+      <p class="text-gray-600 mt-2">Detalhes da ocorrência</p>
+    </div>
+    <div class="flex space-x-3">
+      <a href="/operacional/ocorrencias" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition">
+        Voltar
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div>
+        <p class="text-sm text-gray-500">Status</p>
+        <p class="font-semibold text-gray-900"><%= occurrence.status %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Data</p>
+        <p class="font-semibold text-gray-900"><%= new Date(occurrence.created_at).toLocaleDateString('pt-BR') %></p>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <p class="text-sm text-gray-500">Descrição</p>
+      <p class="text-gray-900"><%= occurrence.description || '-' %></p>
+    </div>
+
+    <% if (occurrence.location) { %>
+      <div class="mb-4">
+        <p class="text-sm text-gray-500">Localização</p>
+        <p class="text-gray-900"><%= occurrence.location %></p>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
