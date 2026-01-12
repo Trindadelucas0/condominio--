@@ -329,6 +329,98 @@ const createConsumption = async (req, res) => {
   }
 };
 
+// Função para exibir formulário de edição de entrada
+// GET /financeiro/entradas/:id/editar
+const showEditEntry = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId);
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+
+    res.render('administrativo/financeiro/entradas/form', {
+      title: 'Editar Entrada Financeira',
+      user: req.user,
+      entrada: entry,
+      costCenters,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de edição:', error);
+    renderError(res, 500, 'Erro ao carregar formulário', error);
+  }
+};
+
+// Função para atualizar entrada financeira
+// POST /financeiro/entradas/:id
+const updateEntry = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      description: req.body.description,
+      amount: req.body.amount,
+      entryDate: req.body.entryDate,
+      costCenterId: req.body.costCenterId || null,
+      category: req.body.category || 'TAXA',
+    };
+
+    await financeiroService.updateEntry(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      data,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/entradas-rejeitadas?success=updated');
+  } catch (error) {
+    console.error('Erro ao atualizar entrada:', error);
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+    const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId).catch(() => null);
+    res.render('administrativo/financeiro/entradas/form', {
+      title: 'Editar Entrada Financeira',
+      user: req.user,
+      entrada: entry || req.body,
+      costCenters,
+      error: error.message,
+    });
+  }
+};
+
+// Função para excluir entrada financeira
+// POST /financeiro/entradas/:id/excluir
+const deleteEntry = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await financeiroService.deleteEntry(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/entradas-rejeitadas?success=deleted');
+  } catch (error) {
+    console.error('Erro ao excluir entrada:', error);
+    res.redirect('/financeiro/entradas-rejeitadas?error=' + encodeURIComponent(error.message));
+  }
+};
+
 // Exporta funções para uso nas rotas
 module.exports = {
   showDashboard,

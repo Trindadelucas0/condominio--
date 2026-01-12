@@ -5,6 +5,22 @@
   <h1 class="text-3xl font-bold text-gray-800 mb-6">Entradas Rejeitadas</h1>
   <p class="text-gray-600 mb-6">Corrija as entradas rejeitadas pelo síndico e reenvie para análise</p>
 
+  <% if (typeof req !== 'undefined' && req.query.success === 'updated') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Entrada atualizada com sucesso! Foi reenviada para análise do síndico.
+    </div>
+  <% } %>
+  <% if (typeof req !== 'undefined' && req.query.success === 'deleted') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Entrada excluída com sucesso!
+    </div>
+  <% } %>
+  <% if (typeof req !== 'undefined' && req.query.error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= decodeURIComponent(req.query.error) %>
+    </div>
+  <% } %>
+
   <% if (entries && entries.length > 0) { %>
     <div class="space-y-4">
       <% entries.forEach(entry => { %>
