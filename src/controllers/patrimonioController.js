@@ -10,7 +10,7 @@ const { renderError } = require('../utils/errorHandler'); // Helper para tratame
 const showPatrimonioDashboard = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const stats = await patrimonioService.getDashboardStats(req.user.condominiumId);
@@ -31,7 +31,7 @@ const showPatrimonioDashboard = async (req, res) => {
 const showAtivos = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const filters = {
@@ -49,7 +49,7 @@ const showAtivos = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar ativos:', error);
-    res.status(500).send('Erro ao carregar ativos');
+    renderError(res, 500, 'Erro ao carregar ativos', error);
   }
 };
 
@@ -69,7 +69,7 @@ const showCreateAtivo = (req, res) => {
 const createAtivo = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -107,7 +107,7 @@ const createAtivo = async (req, res) => {
 const showAtivo = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const asset = await patrimonioService.getAssetById(req.params.id, req.user.condominiumId);
@@ -129,7 +129,7 @@ const showAtivo = async (req, res) => {
 const showEditAtivo = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const asset = await patrimonioService.getAssetById(req.params.id, req.user.condominiumId);
@@ -150,7 +150,7 @@ const showEditAtivo = async (req, res) => {
 const updateAtivo = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -195,7 +195,7 @@ const updateAtivo = async (req, res) => {
 const showCreateManutencao = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const asset = await patrimonioService.getAssetById(req.params.id, req.user.condominiumId);
@@ -218,7 +218,7 @@ const showCreateManutencao = async (req, res) => {
 const createManutencao = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -249,7 +249,7 @@ const createManutencao = async (req, res) => {
         error: error.message,
       });
     } catch (renderError) {
-      res.status(500).send('Erro ao processar criação de manutenção');
+      renderError(res, 500, 'Erro ao processar criação de manutenção', error);
     }
   }
 };
@@ -259,7 +259,7 @@ const createManutencao = async (req, res) => {
 const calculateDepreciation = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     await patrimonioService.calculateDepreciation(req.params.id, req.user.condominiumId);

@@ -2,6 +2,7 @@
 // Apenas SÍNDICO pode criar/editar modelos (regras de execução)
 
 const checklistModelService = require('../services/checklistModelService');
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para listar modelos
 // GET /sindico/checklist-modelos
@@ -187,7 +188,7 @@ const updateModel = async (req, res) => {
         error: error.message,
       });
     } catch (renderError) {
-      res.status(500).send('Erro ao processar atualização');
+      renderError(res, 500, 'Erro ao processar atualização', error);
     }
   }
 };

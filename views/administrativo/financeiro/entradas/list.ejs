@@ -1,0 +1,101 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Entradas Financeiras</h1>
+      <p class="text-gray-600 mt-2">Receitas e taxas do condomínio</p>
+    </div>
+    <a href="/financeiro/entradas/nova" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+      Nova Entrada
+    </a>
+  </div>
+
+  <!-- Mensagens -->
+  <% if (typeof query !== 'undefined' && query.success === 'created') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Entrada criada com sucesso!
+    </div>
+  <% } %>
+  <% if (typeof query !== 'undefined' && query.success === 'received') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Entrada marcada como recebida!
+    </div>
+  <% } %>
+
+  <!-- Lista de entradas -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Centro de Custo</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% if (entries.length === 0) { %>
+          <tr>
+            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+              Nenhuma entrada registrada.
+            </td>
+          </tr>
+        <% } else { %>
+          <% entries.forEach(entry => { %>
+            <tr>
+              <td class="px-6 py-4">
+                <div class="text-sm font-medium text-gray-900"><%= entry.description %></div>
+                <div class="text-sm text-gray-500"><%= entry.category %></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-bold text-green-600">
+                  R$ <%= parseFloat(entry.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= new Date(entry.entry_date).toLocaleDateString('pt-BR') %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= entry.cost_center_name || '-' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if (entry.received) { %>
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    Recebido
+                  </span>
+                <% } else { %>
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                    Pendente
+                  </span>
+                <% } %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <% if (!entry.received) { %>
+                  <a href="/financeiro/entradas/<%= entry.id %>/receber" class="text-green-600 hover:text-green-900">
+                    Marcar como Recebido
+                  </a>
+                <% } else { %>
+                  <div class="flex flex-col items-end">
+                    <span class="text-gray-400 text-xs">Recebido em <%= new Date(entry.received_at).toLocaleDateString('pt-BR') %></span>
+                    <% if (entry.receipt_pdf_path) { %>
+                      <a href="/financeiro/entradas/<%= entry.id %>/comprovante" target="_blank" class="text-blue-600 hover:text-blue-900 text-xs mt-1">
+                        Ver Comprovante
+                      </a>
+                    <% } %>
+                  </div>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

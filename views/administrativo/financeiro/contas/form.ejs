@@ -1,0 +1,128 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Nova Conta</h1>
+    <p class="text-gray-600 mt-2">Cadastre uma conta recorrente (água, luz, gás, etc)</p>
+  </div>
+
+  <!-- Mensagem de erro -->
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= error %>
+    </div>
+  <% } %>
+
+  <!-- Formulário -->
+  <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
+    <form method="POST" action="/financeiro/contas">
+      <!-- Nome -->
+      <div class="mb-4">
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+          Nome da Conta <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          value="<%= conta ? conta.name : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ex: Conta de Água"
+        />
+      </div>
+
+      <!-- Tipo -->
+      <div class="mb-4">
+        <label for="billType" class="block text-sm font-medium text-gray-700 mb-1">
+          Tipo <span class="text-red-500">*</span>
+        </label>
+        <select
+          id="billType"
+          name="billType"
+          required
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="AGUA" <%= !conta || conta.billType === 'AGUA' ? 'selected' : '' %>>Água</option>
+          <option value="LUZ" <%= conta && conta.billType === 'LUZ' ? 'selected' : '' %>>Luz</option>
+          <option value="GAS" <%= conta && conta.billType === 'GAS' ? 'selected' : '' %>>Gás</option>
+          <option value="TELEFONE" <%= conta && conta.billType === 'TELEFONE' ? 'selected' : '' %>>Telefone</option>
+          <option value="INTERNET" <%= conta && conta.billType === 'INTERNET' ? 'selected' : '' %>>Internet</option>
+          <option value="OUTRA" <%= conta && conta.billType === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+        </select>
+      </div>
+
+      <!-- Fornecedor -->
+      <div class="mb-4">
+        <label for="provider" class="block text-sm font-medium text-gray-700 mb-1">
+          Fornecedor
+        </label>
+        <input
+          type="text"
+          id="provider"
+          name="provider"
+          value="<%= conta ? conta.provider : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ex: Companhia de Água e Esgoto"
+        />
+      </div>
+
+      <!-- Número da Conta -->
+      <div class="mb-4">
+        <label for="accountNumber" class="block text-sm font-medium text-gray-700 mb-1">
+          Número da Conta/Cliente
+        </label>
+        <input
+          type="text"
+          id="accountNumber"
+          name="accountNumber"
+          value="<%= conta ? conta.accountNumber : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ex: 123456789"
+        />
+      </div>
+
+      <!-- Centro de Custo -->
+      <div class="mb-4">
+        <label for="costCenterId" class="block text-sm font-medium text-gray-700 mb-1">
+          Centro de Custo
+        </label>
+        <select
+          id="costCenterId"
+          name="costCenterId"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Sem centro de custo</option>
+          <% costCenters.forEach(cc => { %>
+            <option
+              value="<%= cc.id %>"
+              <%= conta && conta.costCenterId == cc.id ? 'selected' : '' %>
+            >
+              <%= cc.name %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a
+          href="/financeiro/contas"
+          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Criar Conta
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

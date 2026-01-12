@@ -20,7 +20,7 @@ const showDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard de estoque:', error);
-    res.status(500).send('Erro ao carregar estoque');
+    renderError(res, 500, 'Erro ao carregar estoque', error);
   }
 };
 
@@ -91,7 +91,7 @@ const showItem = async (req, res) => {
     const item = items.find((i) => i.id === parseInt(id));
 
     if (!item) {
-      return res.status(404).send('Item não encontrado');
+      return renderError(res, 404, 'Item não encontrado');
     }
 
     const movements = await estoqueService.listMovements(id, req.user.condominiumId);
@@ -117,7 +117,7 @@ const showEditItem = async (req, res) => {
     const item = items.find((i) => i.id === parseInt(id));
 
     if (!item) {
-      return res.status(404).send('Item não encontrado');
+      return renderError(res, 404, 'Item não encontrado');
     }
 
     res.render('estoque/items/form', {
@@ -127,7 +127,7 @@ const showEditItem = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir edição de item:', error);
-    res.status(500).send('Erro ao carregar item');
+    renderError(res, 500, 'Erro ao carregar item', error);
   }
 };
 
@@ -161,7 +161,7 @@ const showCreateMovement = async (req, res) => {
     const item = items.find((i) => i.id === parseInt(id));
 
     if (!item) {
-      return res.status(404).send('Item não encontrado');
+      return renderError(res, 404, 'Item não encontrado');
     }
 
     res.render('estoque/movements/form', {
@@ -171,7 +171,7 @@ const showCreateMovement = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de movimentação:', error);
-    res.status(500).send('Erro ao carregar formulário');
+    renderError(res, 500, 'Erro ao carregar formulário', error);
   }
 };
 

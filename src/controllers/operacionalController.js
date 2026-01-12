@@ -9,7 +9,7 @@ const { renderError } = require('../utils/errorHandler'); // Helper para tratame
 const showDashboard = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const stats = await operacionalService.getDashboardStats(req.user.id, req.user.condominiumId);
@@ -30,7 +30,7 @@ const showDashboard = async (req, res) => {
 const showChecklist = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const filters = {
@@ -57,7 +57,7 @@ const showTask = async (req, res) => {
     const task = await operacionalService.getTaskById(req.params.id, req.user.id);
 
     if (!task) {
-      return res.status(404).send('Tarefa não encontrada');
+      return renderError(res, 404, 'Tarefa não encontrada');
     }
 
     res.render('operacional/task', {
@@ -67,7 +67,7 @@ const showTask = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao buscar tarefa:', error);
-    res.status(500).send('Erro ao carregar tarefa');
+    renderError(res, 500, 'Erro ao carregar tarefa', error);
   }
 };
 
@@ -76,14 +76,14 @@ const showTask = async (req, res) => {
 const updateChecklistItem = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const { status, comment } = req.body;
     const checklistId = req.params.id;
 
     if (!status || (status !== 'DONE' && status !== 'NOT_DONE')) {
-      return res.status(400).send('Status inválido');
+      return renderError(res, 400, 'Status inválido');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -116,7 +116,7 @@ const showCompleteTask = async (req, res) => {
     const task = await operacionalService.getTaskById(req.params.id, req.user.id);
 
     if (!task) {
-      return res.status(404).send('Tarefa não encontrada');
+      return renderError(res, 404, 'Tarefa não encontrada');
     }
 
     if (task.status === 'COMPLETED') {
@@ -141,7 +141,7 @@ const showCompleteTask = async (req, res) => {
 const completeTask = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const taskId = req.params.id;
@@ -184,7 +184,7 @@ const completeTask = async (req, res) => {
 const showOcorrencias = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const filters = {
@@ -200,7 +200,7 @@ const showOcorrencias = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar ocorrências:', error);
-    res.status(500).send('Erro ao carregar ocorrências');
+    renderError(res, 500, 'Erro ao carregar ocorrências', error);
   }
 };
 
@@ -219,7 +219,7 @@ const showCreateOcorrencia = (req, res) => {
 const createOcorrencia = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -243,14 +243,14 @@ const createOcorrencia = async (req, res) => {
 const showOcorrencia = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
     const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
 
     if (!occurrence) {
-      return res.status(404).send('Ocorrência não encontrada');
+      return renderError(res, 404, 'Ocorrência não encontrada');
     }
 
     res.render('operacional/ocorrencia-detail', {
@@ -260,7 +260,7 @@ const showOcorrencia = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao buscar ocorrência:', error);
-    res.status(500).send('Erro ao carregar ocorrência');
+    renderError(res, 500, 'Erro ao carregar ocorrência', error);
   }
 };
 
@@ -269,14 +269,14 @@ const showOcorrencia = async (req, res) => {
 const showResolveOcorrencia = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
     const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
 
     if (!occurrence) {
-      return res.status(404).send('Ocorrência não encontrada');
+      return renderError(res, 404, 'Ocorrência não encontrada');
     }
 
     if (occurrence.status === 'RESOLVIDA' || occurrence.status === 'ENCERRADA') {
@@ -301,7 +301,7 @@ const showResolveOcorrencia = async (req, res) => {
 const resolveOcorrencia = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const occurrenceId = req.params.id;

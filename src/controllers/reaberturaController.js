@@ -29,7 +29,7 @@ const reopenOccurrence = async (req, res) => {
     res.redirect(`/sindico/ocorrencias?success=Ocorrência reaberta com sucesso`);
   } catch (error) {
     console.error('Erro ao reabrir ocorrência:', error);
-    res.status(500).send('Erro ao reabrir ocorrência: ' + error.message);
+    renderError(res, 500, 'Erro ao reabrir ocorrência: ' + error.message, error);
   }
 };
 
@@ -59,7 +59,7 @@ const reopenTask = async (req, res) => {
     res.redirect(`/${module}/tarefas?success=Tarefa reaberta com sucesso`);
   } catch (error) {
     console.error('Erro ao reabrir tarefa:', error);
-    res.status(500).send('Erro ao reabrir tarefa: ' + error.message);
+    renderError(res, 500, 'Erro ao reabrir tarefa: ' + error.message, error);
   }
 };
 
@@ -76,7 +76,7 @@ const showReopenExpense = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de reabertura:', error);
-    res.status(500).send('Erro ao carregar formulário');
+    renderError(res, 500, 'Erro ao carregar formulário de reabertura', error);
   }
 };
 
@@ -105,7 +105,7 @@ const reopenExpense = async (req, res) => {
     res.redirect(`/financeiro/saidas/${newExpense.id}?success=Nova despesa criada a partir da rejeitada`);
   } catch (error) {
     console.error('Erro ao reabrir despesa:', error);
-    res.status(500).send('Erro ao reabrir despesa: ' + error.message);
+    renderError(res, 500, 'Erro ao reabrir despesa: ' + error.message, error);
   }
 };
 

@@ -23,10 +23,7 @@ const showDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard financeiro:', error);
-    res.status(500).render('error', {
-      message: 'Erro ao carregar dashboard financeiro',
-      error: process.env.NODE_ENV === 'development' ? error : {}
-    });
+    renderError(res, 500, 'Erro ao carregar dashboard financeiro', error);
   }
 };
 

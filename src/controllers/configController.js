@@ -27,7 +27,7 @@ const showConfig = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir configurações:', error);
-    renderError(res, 500, 'Erro ao carregar configurações', error);
+    res.status(500).send('Erro ao carregar configurações');
   }
 };
 
@@ -39,7 +39,7 @@ const showEditConfig = async (req, res) => {
     const setting = await configService.getSetting(req.user.condominiumId, key);
 
     if (!setting) {
-      return res.status(404).send('Configuração não encontrada');
+      return renderError(res, 404, 'Configuração não encontrada');
     }
 
     res.render('config/edit', {
@@ -61,7 +61,7 @@ const updateConfig = async (req, res) => {
     const { settingValue, settingType, description, category } = req.body;
 
     if (!settingValue || !settingType || !category) {
-      return res.status(400).send('Valor, tipo e categoria são obrigatórios');
+      return renderError(res, 400, 'Valor, tipo e categoria são obrigatórios');
     }
 
     await configService.setSetting(
@@ -79,7 +79,7 @@ const updateConfig = async (req, res) => {
     res.redirect('/config?success=Configuração atualizada com sucesso');
   } catch (error) {
     console.error('Erro ao atualizar configuração:', error);
-    res.status(500).send('Erro ao atualizar configuração: ' + error.message);
+    renderError(res, 500, 'Erro ao atualizar configuração: ' + error.message, error);
   }
 };
 
@@ -90,7 +90,7 @@ const createConfig = async (req, res) => {
     const { settingKey, settingValue, settingType, description, category } = req.body;
 
     if (!settingKey || !settingValue || !settingType || !category) {
-      return res.status(400).send('Chave, valor, tipo e categoria são obrigatórios');
+      return renderError(res, 400, 'Chave, valor, tipo e categoria são obrigatórios');
     }
 
     await configService.setSetting(
@@ -108,7 +108,7 @@ const createConfig = async (req, res) => {
     res.redirect('/config?success=Configuração criada com sucesso');
   } catch (error) {
     console.error('Erro ao criar configuração:', error);
-    res.status(500).send('Erro ao criar configuração: ' + error.message);
+    renderError(res, 500, 'Erro ao criar configuração: ' + error.message, error);
   }
 };
 

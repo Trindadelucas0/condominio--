@@ -24,7 +24,7 @@ const showDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard síndico:', error);
-    res.status(500).send('Erro ao carregar dashboard');
+    renderError(res, 500, 'Erro ao carregar dashboard síndico', error);
   }
 };
 
@@ -61,7 +61,7 @@ const processAprovacao = async (req, res) => {
     const approvalId = req.params.id;
 
     if (!action || (action !== 'APPROVE' && action !== 'REJECT')) {
-      return res.status(400).send('Ação inválida');
+      return renderError(res, 400, 'Ação inválida');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -167,7 +167,7 @@ const showLogs = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar logs:', error);
-    res.status(500).send('Erro ao carregar logs');
+    renderError(res, 500, 'Erro ao carregar logs', error);
   }
 };
 
@@ -223,7 +223,7 @@ const showTask = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao buscar tarefa:', error);
-    res.status(500).send('Erro ao carregar tarefa');
+    renderError(res, 500, 'Erro ao carregar tarefa', error);
   }
 };
 
@@ -297,7 +297,7 @@ const showOccurrence = async (req, res) => {
     const occurrence = await sindicoService.getOccurrenceById(req.params.id, req.user.condominiumId);
 
     if (!occurrence) {
-      return res.status(404).send('Ocorrência não encontrada');
+      return renderError(res, 404, 'Ocorrência não encontrada');
     }
 
     // Verifica se há mensagem de sucesso na query string
@@ -312,7 +312,7 @@ const showOccurrence = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao buscar ocorrência:', error);
-    res.status(500).send('Erro ao carregar ocorrência');
+    renderError(res, 500, 'Erro ao carregar ocorrência', error);
   }
 };
 

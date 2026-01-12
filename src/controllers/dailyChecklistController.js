@@ -2,6 +2,7 @@
 // OPERACIONAL e LIMPEZA executam checklists
 
 const dailyChecklistService = require('../services/dailyChecklistService');
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para listar checklists do dia
 // GET /operacional/checklists-diarios
@@ -28,7 +29,7 @@ const showDailyChecklists = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar checklists:', error);
-    res.status(500).send('Erro ao carregar checklists');
+    renderError(res, 500, 'Erro ao carregar checklists', error);
   }
 };
 
@@ -47,7 +48,7 @@ const showChecklist = async (req, res) => {
     );
 
     if (!checklist) {
-      return res.status(404).send('Checklist não encontrado');
+      return renderError(res, 404, 'Checklist não encontrado');
     }
 
     res.render('operacional/checklists-diarios/execute', {
@@ -57,7 +58,7 @@ const showChecklist = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao carregar checklist:', error);
-    res.status(500).send('Erro ao carregar checklist');
+    renderError(res, 500, 'Erro ao carregar checklist', error);
   }
 };
 

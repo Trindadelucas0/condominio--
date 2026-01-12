@@ -115,7 +115,7 @@ const showOccurrence = async (req, res) => {
     const occurrence = occurrences.find((o) => o.id === parseInt(id));
 
     if (!occurrence) {
-      return res.status(404).send('Ocorrência não encontrada');
+      return renderError(res, 404, 'Ocorrência não encontrada');
     }
 
     // Verifica se foi convertida para zeladoria

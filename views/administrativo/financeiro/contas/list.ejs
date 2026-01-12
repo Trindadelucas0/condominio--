@@ -1,0 +1,70 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Contas (Água, Luz, Gás)</h1>
+      <p class="text-gray-600 mt-2">Gerenciar contas recorrentes</p>
+    </div>
+    <a href="/financeiro/contas/nova" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+      Nova Conta
+    </a>
+  </div>
+
+  <!-- Mensagens -->
+  <% if (typeof query !== 'undefined' && query.success === 'created') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Conta criada com sucesso!
+    </div>
+  <% } %>
+
+  <!-- Lista de contas -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fornecedor</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Número da Conta</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Centro de Custo</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% if (bills.length === 0) { %>
+          <tr>
+            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+              Nenhuma conta cadastrada.
+            </td>
+          </tr>
+        <% } else { %>
+          <% bills.forEach(bill => { %>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900"><%= bill.name %></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">
+                  <%= bill.bill_type %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= bill.provider || '-' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= bill.account_number || '-' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= bill.cost_center_name || '-' %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

@@ -22,10 +22,7 @@ const showDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard administrativo:', error);
-    res.status(500).render('error', {
-      message: 'Erro ao carregar dashboard administrativo',
-      error: process.env.NODE_ENV === 'development' ? error : {}
-    });
+    renderError(res, 500, 'Erro ao carregar dashboard administrativo', error);
   }
 };
 
