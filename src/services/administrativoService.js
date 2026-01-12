@@ -46,6 +46,17 @@ const getDashboardStats = async (condominiumId) => {
     );
     const untriagedOccurrences = parseInt(untriagedOccurrencesResult.rows[0].total);
 
+    // Conta saídas financeiras pendentes de aprovação (até limite do ADMINISTRATIVO)
+    const pendingFinancialApprovalsResult = await query(
+      `SELECT COUNT(*) as total FROM financial_exits 
+       WHERE condominium_id = $1 
+         AND payment_status = 'PENDING'
+         AND requires_approval = TRUE
+         AND amount <= COALESCE(approval_limit, 1000.00)`,
+      [condominiumId]
+    );
+    const pendingFinancialApprovals = parseInt(pendingFinancialApprovalsResult.rows[0].total);
+
     // Conta ocorrências abertas (todas)
     const openOccurrencesResult = await query(
       `SELECT COUNT(*) as total FROM occurrences 
