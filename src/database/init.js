@@ -496,6 +496,15 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/corrigir colunas de budget_requests da FASE 22:', error);
     }
 
+    // Correção: Garantir que colunas de occurrences da FASE 22 foram criadas
+    console.log('🔍 Verificando colunas de occurrences da FASE 22 (correção)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'fixPhase22OccurrencesColumns.sql'));
+      console.log('✅ Colunas de occurrences da FASE 22 verificadas/corrigidas');
+    } catch (error) {
+      console.error('Erro ao verificar/corrigir colunas de occurrences da FASE 22:', error);
+    }
+
     console.log('✅ Inicialização do banco de dados concluída!');
   } catch (error) {
     console.error('❌ Erro crítico na inicialização do banco de dados:', error);

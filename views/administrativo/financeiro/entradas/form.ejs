@@ -17,7 +17,7 @@
 
   <!-- Formulário -->
   <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form method="POST" action="/financeiro/entradas">
+    <form method="POST" action="<%= entrada && entrada.id ? '/financeiro/entradas/' + entrada.id : '/financeiro/entradas' %>">
       <!-- Descrição -->
       <div class="mb-4">
         <label for="description" class="block text-sm font-medium text-gray-700 mb-1">

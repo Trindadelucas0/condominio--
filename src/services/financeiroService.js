@@ -885,6 +885,228 @@ const createEntry = async (condominiumId, userId, data, ipAddress, userAgent) =>
   }
 };
 
+// Função para buscar entrada por ID
+// Recebe: entryId, condominiumId
+// Retorna: entrada encontrada
+const getEntryById = async (entryId, condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT fe.*, cc.name as cost_center_name, u.full_name as created_by_name
+       FROM financial_entries fe
+       LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id AND cc.condominium_id = $2
+       LEFT JOIN users u ON fe.created_by = u.id
+       WHERE fe.id = $1 AND fe.condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao buscar entrada:', error);
+    throw error;
+  }
+};
+
+// Função para atualizar entrada financeira
+// Recebe: entryId, condominiumId, userId, data, ipAddress, userAgent
+// Retorna: entrada atualizada
+const updateEntry = async (entryId, condominiumId, userId, data, ipAddress, userAgent) => {
+  try {
+    // Busca entrada atual
+    const currentResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    // Só pode editar se estiver rejeitada ou pendente
+    if (current.review_status === 'APPROVED' && current.received) {
+      throw new Error('Não é possível editar uma entrada já aprovada e recebida');
+    }
+
+    const updateFields = [];
+    const updateValues = [];
+    let paramCount = 1;
+
+    if (data.description !== undefined) {
+      if (!data.description || !data.description.trim()) {
+        throw new Error('Descrição é obrigatória');
+      }
+      updateFields.push(`description = $${paramCount++}`);
+      updateValues.push(data.description.trim());
+    }
+
+    if (data.amount !== undefined) {
+      const amountValidation = validateFinancialAmount(data.amount, {
+        allowZero: false,
+        allowNegative: false,
+        maxValue: 10000000,
+        fieldName: 'Valor da entrada'
+      });
+
+      if (!amountValidation.valid) {
+        throw new Error(amountValidation.error);
+      }
+
+      updateFields.push(`amount = $${paramCount++}`);
+      updateValues.push(amountValidation.value);
+    }
+
+    if (data.entryDate !== undefined) {
+      const dateValidation = validateDate(data.entryDate, {
+        allowFuture: true,
+        maxFutureDays: 365,
+        allowPast: true,
+        fieldName: 'Data da entrada'
+      });
+
+      if (!dateValidation.valid) {
+        throw new Error(dateValidation.error);
+      }
+
+      updateFields.push(`entry_date = $${paramCount++}`);
+      updateValues.push(data.entryDate);
+    }
+
+    if (data.costCenterId !== undefined) {
+      updateFields.push(`cost_center_id = $${paramCount++}`);
+      updateValues.push(data.costCenterId || null);
+    }
+
+    if (data.category !== undefined) {
+      updateFields.push(`category = $${paramCount++}`);
+      updateValues.push(data.category);
+    }
+
+    // Se estava rejeitada, reseta para pendente
+    if (current.review_status === 'REJECTED') {
+      updateFields.push(`review_status = 'PENDING_REVIEW'`);
+      updateFields.push(`rejection_reason = NULL`);
+      updateFields.push(`reviewed_by = NULL`);
+      updateFields.push(`reviewed_at = NULL`);
+    }
+
+    if (updateFields.length === 0) {
+      throw new Error('Nenhum campo para atualizar');
+    }
+
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateValues.push(entryId, condominiumId);
+
+    const result = await query(
+      `UPDATE financial_entries 
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramCount++} AND condominium_id = $${paramCount++}
+       RETURNING *`,
+      updateValues
+    );
+
+    const updated = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'UPDATE',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    // Se estava rejeitada e foi atualizada, notifica síndico novamente
+    if (current.review_status === 'REJECTED') {
+      const notificationService = require('./notificationService');
+      await notificationService.createNotificationForRole(
+        'SINDICO',
+        condominiumId,
+        'Entrada Financeira Corrigida',
+        `Uma entrada financeira rejeitada foi corrigida e aguarda nova análise: ${updated.description}`,
+        'ENTRY_PENDING_REVIEW',
+        'financial_entries',
+        entryId
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao atualizar entrada:', error);
+    throw error;
+  }
+};
+
+// Função para excluir entrada financeira
+// Recebe: entryId, condominiumId, userId, ipAddress, userAgent
+// Retorna: void
+const deleteEntry = async (entryId, condominiumId, userId, ipAddress, userAgent) => {
+  try {
+    // Busca entrada atual
+    const currentResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    // Só pode excluir se estiver rejeitada ou pendente
+    if (current.review_status === 'APPROVED' && current.received) {
+      throw new Error('Não é possível excluir uma entrada já aprovada e recebida');
+    }
+
+    // Exclui a entrada
+    await query(
+      `DELETE FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'DELETE',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: current,
+      afterData: null,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Erro ao excluir entrada:', error);
+    throw error;
+  }
+};
+
 // Função para listar entradas financeiras
 // Recebe: condominiumId, filtros
 // Retorna: lista de entradas
@@ -1385,6 +1607,9 @@ module.exports = {
   listExits,
   getDashboardStats,
   createEntry,
+  getEntryById,
+  updateEntry,
+  deleteEntry,
   listEntries,
   approveEntry,
   rejectEntry,

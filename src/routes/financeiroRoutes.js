@@ -18,6 +18,9 @@ router.get('/dashboard', financeiroController.showDashboard);
 // Entradas
 router.get('/entradas/nova', financeiroController.showCreateEntry);
 router.post('/entradas', financeiroController.createEntry);
+router.get('/entradas/:id/editar', financeiroController.showEditEntry);
+router.post('/entradas/:id', financeiroController.updateEntry);
+router.post('/entradas/:id/excluir', financeiroController.deleteEntry);
 router.get('/entradas', financeiroController.listEntries);
 
 // Saídas

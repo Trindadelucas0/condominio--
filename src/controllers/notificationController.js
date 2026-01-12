@@ -36,6 +36,7 @@ const listNotifications = async (req, res) => {
       notifications: notifications,
       unreadCount: unreadCount,
       filters: { read },
+      req: req,
     });
   } catch (error) {
     console.error('Erro ao listar notificações:', error);
@@ -51,10 +52,19 @@ const markAsRead = async (req, res) => {
 
     await notificationService.markAsRead(notificationId, req.user.id);
 
-    res.json({ success: true });
+    // Se for requisição AJAX, retorna JSON; caso contrário, redireciona
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+      res.json({ success: true });
+    } else {
+      res.redirect('/notifications?read=false');
+    }
   } catch (error) {
     console.error('Erro ao marcar notificação como lida:', error);
-    res.status(500).json({ error: error.message });
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.redirect('/notifications?error=' + encodeURIComponent(error.message));
+    }
   }
 };
 
@@ -63,7 +73,10 @@ const markAsRead = async (req, res) => {
 const markAllAsRead = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).json({ error: 'Usuário não está associado a um condomínio' });
+      if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ error: 'Usuário não está associado a um condomínio' });
+      }
+      return res.redirect('/notifications?error=' + encodeURIComponent('Usuário não está associado a um condomínio'));
     }
 
     const count = await notificationService.markAllAsRead(
@@ -71,10 +84,19 @@ const markAllAsRead = async (req, res) => {
       req.user.condominiumId
     );
 
-    res.json({ success: true, count: count });
+    // Se for requisição AJAX, retorna JSON; caso contrário, redireciona
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+      res.json({ success: true, count: count });
+    } else {
+      res.redirect('/notifications?read=true&success=all_read');
+    }
   } catch (error) {
     console.error('Erro ao marcar todas as notificações como lidas:', error);
-    res.status(500).json({ error: error.message });
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.redirect('/notifications?error=' + encodeURIComponent(error.message));
+    }
   }
 };
 
