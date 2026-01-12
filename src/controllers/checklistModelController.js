@@ -9,7 +9,7 @@ const { renderError } = require('../utils/errorHandler'); // Helper para tratame
 const showModels = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const models = await checklistModelService.listModels(req.user.condominiumId);
@@ -22,7 +22,7 @@ const showModels = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar modelos:', error);
-    res.status(500).send('Erro ao carregar modelos');
+    renderError(res, 500, 'Erro ao carregar modelos', error);
   }
 };
 
@@ -41,7 +41,7 @@ const showCreateModel = (req, res) => {
 const createModel = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -101,13 +101,13 @@ const createModel = async (req, res) => {
 const showEditModel = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const model = await checklistModelService.getModelById(parseInt(req.params.id), req.user.condominiumId);
 
     if (!model) {
-      return res.status(404).send('Modelo não encontrado');
+      return renderError(res, 404, 'Modelo não encontrado');
     }
 
     res.render('sindico/checklist-modelos/form', {
@@ -117,7 +117,7 @@ const showEditModel = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao carregar modelo:', error);
-    res.status(500).send('Erro ao carregar modelo');
+    renderError(res, 500, 'Erro ao carregar modelo', error);
   }
 };
 
@@ -126,7 +126,7 @@ const showEditModel = async (req, res) => {
 const updateModel = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -198,7 +198,7 @@ const updateModel = async (req, res) => {
 const toggleModel = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;

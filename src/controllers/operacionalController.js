@@ -46,7 +46,7 @@ const showChecklist = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar checklist:', error);
-    res.status(500).send('Erro ao carregar checklist');
+    renderError(res, 500, 'Erro ao carregar checklist', error);
   }
 };
 
@@ -132,7 +132,7 @@ const showCompleteTask = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de conclusão:', error);
-    res.status(500).send('Erro ao carregar formulário');
+    renderError(res, 500, 'Erro ao carregar formulário', error);
   }
 };
 
@@ -292,7 +292,7 @@ const showResolveOcorrencia = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de resolução:', error);
-    res.status(500).send('Erro ao carregar formulário');
+    renderError(res, 500, 'Erro ao carregar formulário', error);
   }
 };
 

@@ -89,7 +89,7 @@ const reopenExpense = async (req, res) => {
     const { reason } = req.body;
 
     if (!reason || reason.trim() === '') {
-      return res.status(400).send('Motivo da reabertura é obrigatório');
+      return renderError(res, 400, 'Motivo da reabertura é obrigatório');
     }
 
     const newExpense = await reaberturaService.reopenRejectedExpense(

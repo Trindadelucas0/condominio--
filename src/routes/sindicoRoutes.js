@@ -11,13 +11,31 @@ const { authenticate, authorize } = require('../middlewares/auth');
 router.use(authenticate);
 
 // Todas as rotas exigem perfil SINDICO ou SUBSINDICO
-router.use(authorize(['SINDICO', 'SUBSINDICO']));
+router.use(authorize('SINDICO', 'SUBSINDICO'));
 
 // Dashboard
 router.get('/dashboard', sindicoController.showDashboard);
 
 // Aprovações
 router.get('/aprovacoes', sindicoController.showAprovacoes);
+router.post('/aprovacoes/:id/processar', sindicoController.processAprovacao);
+
+// Alertas
+router.get('/alertas', sindicoController.showAlertas);
+router.post('/alertas/:id/resolver', sindicoController.resolverAlerta);
+
+// Logs
+router.get('/logs', sindicoController.showLogs);
+
+// Tarefas
+router.get('/tarefas', sindicoController.showTarefas);
+router.get('/tarefas/:id', sindicoController.showTask);
+router.post('/tarefas/:id/observacao', sindicoController.addTaskObservation);
+
+// Ocorrências
+router.get('/ocorrencias', sindicoController.showOcorrencias);
+router.get('/ocorrencias/:id', sindicoController.showOccurrence);
+router.post('/ocorrencias/:id/observacao', sindicoController.addOccurrenceObservation);
 
 // Modelos de Checklist (Síndico cria regras)
 router.get('/checklist-modelos', checklistModelController.showModels);

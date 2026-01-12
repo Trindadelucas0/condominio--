@@ -104,7 +104,7 @@ const showItem = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir item:', error);
-    res.status(500).send('Erro ao carregar item');
+    renderError(res, 500, 'Erro ao carregar item', error);
   }
 };
 

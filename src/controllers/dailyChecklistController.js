@@ -9,7 +9,7 @@ const { renderError } = require('../utils/errorHandler'); // Helper para tratame
 const showDailyChecklists = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     // Data pode ser passada como query param ou usa hoje
@@ -38,7 +38,7 @@ const showDailyChecklists = async (req, res) => {
 const showChecklist = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const checklist = await dailyChecklistService.getChecklistById(
@@ -67,7 +67,7 @@ const showChecklist = async (req, res) => {
 const startChecklist = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -93,7 +93,7 @@ const startChecklist = async (req, res) => {
 const updateItem = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -121,7 +121,7 @@ const updateItem = async (req, res) => {
 const addEvidence = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     if (!req.file) {
@@ -156,7 +156,7 @@ const addEvidence = async (req, res) => {
 const completeChecklist = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;

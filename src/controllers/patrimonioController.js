@@ -185,7 +185,7 @@ const updateAtivo = async (req, res) => {
         error: error.message,
       });
     } catch (renderError) {
-      res.status(500).send('Erro ao processar atualização de ativo');
+      renderError(res, 500, 'Erro ao processar atualização de ativo', error);
     }
   }
 };

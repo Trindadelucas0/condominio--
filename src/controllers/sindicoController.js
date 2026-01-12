@@ -107,7 +107,7 @@ const showAlertas = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar alertas:', error);
-    res.status(500).send('Erro ao carregar alertas');
+    renderError(res, 500, 'Erro ao carregar alertas', error);
   }
 };
 
@@ -193,7 +193,7 @@ const showTarefas = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar tarefas:', error);
-    res.status(500).send('Erro ao carregar tarefas');
+    renderError(res, 500, 'Erro ao carregar tarefas', error);
   }
 };
 
@@ -208,7 +208,7 @@ const showTask = async (req, res) => {
     const task = await sindicoService.getTaskById(req.params.id, req.user.condominiumId);
 
     if (!task) {
-      return res.status(404).send('Tarefa não encontrada');
+      return renderError(res, 404, 'Tarefa não encontrada');
     }
 
     // Verifica se há mensagem de sucesso na query string
@@ -282,7 +282,7 @@ const showOcorrencias = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar ocorrências:', error);
-    res.status(500).send('Erro ao carregar ocorrências');
+    renderError(res, 500, 'Erro ao carregar ocorrências', error);
   }
 };
 

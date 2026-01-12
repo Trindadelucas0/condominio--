@@ -27,7 +27,7 @@ const showConfig = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir configurações:', error);
-    res.status(500).send('Erro ao carregar configurações');
+    renderError(res, 500, 'Erro ao carregar configurações', error);
   }
 };
 
@@ -49,7 +49,7 @@ const showEditConfig = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir edição de configuração:', error);
-    res.status(500).send('Erro ao carregar configuração');
+    renderError(res, 500, 'Erro ao carregar configuração', error);
   }
 };
 
