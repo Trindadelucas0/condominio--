@@ -33,14 +33,14 @@
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
-        <% if (bills.length === 0) { %>
+        <% if (!accounts || accounts.length === 0) { %>
           <tr>
             <td colspan="5" class="px-6 py-4 text-center text-gray-500">
               Nenhuma conta cadastrada.
             </td>
           </tr>
         <% } else { %>
-          <% bills.forEach(bill => { %>
+          <% accounts.forEach(bill => { %>
             <tr>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900"><%= bill.name %></div>

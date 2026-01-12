@@ -225,7 +225,14 @@ const createOcorrencia = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
-    await operacionalService.createOccurrence(req.body, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    const data = {
+      ...req.body,
+      requiresApproval: req.body.requiresApproval === 'true',
+      isInChecklist: req.body.isInChecklist === 'true',
+      isRoutineTask: req.body.isRoutineTask === 'true',
+    };
+
+    await operacionalService.createOccurrence(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
 
     res.redirect('/operacional/ocorrencias?success=created');
   } catch (error) {

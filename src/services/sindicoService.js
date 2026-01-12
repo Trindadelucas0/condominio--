@@ -92,6 +92,41 @@ const getDashboardStats = async (condominiumId) => {
     );
     const openOccurrences = parseInt(openOccurrencesResult.rows[0].total);
 
+    // Conta entradas pendentes de análise
+    const pendingEntriesResult = await query(
+      `SELECT COUNT(*) as total FROM financial_entries 
+       WHERE condominium_id = $1 AND review_status = 'PENDING_REVIEW'`,
+      [condominiumId]
+    );
+    const pendingEntries = parseInt(pendingEntriesResult.rows[0].total);
+
+    // Conta orçamentos aguardando aprovação
+    const pendingBudgetsResult = await query(
+      `SELECT COUNT(*) as total FROM budget_requests 
+       WHERE condominium_id = $1 AND status = 'PENDING_SINDICO'`,
+      [condominiumId]
+    );
+    const pendingBudgets = parseInt(pendingBudgetsResult.rows[0].total);
+
+    // Conta manutenções concluídas aguardando revisão
+    const completedMaintenancesResult = await query(
+      `SELECT COUNT(*) as total FROM maintenances 
+       WHERE condominium_id = $1 AND status = 'COMPLETED' AND created_by IN (
+         SELECT id FROM users WHERE condominium_id = $1
+       )`,
+      [condominiumId]
+    );
+    const completedMaintenances = parseInt(completedMaintenancesResult.rows[0].total);
+
+    // Conta ocorrências pendentes de aprovação
+    const pendingOccurrencesApprovalResult = await query(
+      `SELECT COUNT(*) as total FROM occurrences 
+       WHERE condominium_id = $1 AND requires_approval = TRUE AND approval_status = 'PENDING' 
+       AND (approval_required_from = 'SINDICO' OR approval_required_from = 'SUBSINDICO')`,
+      [condominiumId]
+    );
+    const pendingOccurrencesApproval = parseInt(pendingOccurrencesApprovalResult.rows[0].total);
+
     return {
       pendingApprovals,
       criticalAlerts,
@@ -103,6 +138,10 @@ const getDashboardStats = async (condominiumId) => {
       totalExitsPaid,
       overdueTasks,
       openOccurrences,
+      pendingEntries,
+      pendingBudgets,
+      completedMaintenances,
+      pendingOccurrencesApproval,
     };
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard síndico:', error);
@@ -706,6 +745,213 @@ const listObservations = async (entityType, entityId, condominiumId) => {
 };
 
 // Exporta funções
+// Função para aprovar ocorrência
+// Recebe: occurrenceId, userId, condominiumId
+// Retorna: ocorrência atualizada
+const approveOccurrence = async (occurrenceId, userId, condominiumId, ipAddress, userAgent) => {
+  try {
+    // Busca ocorrência
+    const occurrenceResult = await query(
+      `SELECT * FROM occurrences WHERE id = $1 AND condominium_id = $2`,
+      [occurrenceId, condominiumId]
+    );
+
+    if (occurrenceResult.rows.length === 0) {
+      throw new Error('Ocorrência não encontrada');
+    }
+
+    const occurrence = occurrenceResult.rows[0];
+
+    if (!occurrence.requires_approval) {
+      throw new Error('Esta ocorrência não requer aprovação');
+    }
+
+    if (occurrence.approval_status !== 'PENDING') {
+      throw new Error('Ocorrência já foi analisada');
+    }
+
+    // Atualiza ocorrência
+    const result = await query(
+      `UPDATE occurrences
+       SET approval_status = 'APPROVED',
+           approved_by = $1,
+           approved_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND condominium_id = $3
+       RETURNING *`,
+      [userId, occurrenceId, condominiumId]
+    );
+
+    const updated = result.rows[0];
+
+    // Registra no log
+    const { logAction } = require('../utils/logger');
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'APPROVE',
+      module: 'OCCURRENCE',
+      entityType: 'occurrences',
+      entityId: occurrenceId,
+      beforeData: occurrence,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    // Notifica operacional que criou
+    if (occurrence.reported_by) {
+      const notificationService = require('./notificationService');
+      await notificationService.createNotification(
+        occurrence.reported_by,
+        condominiumId,
+        'Ocorrência Aprovada',
+        `A ocorrência "${occurrence.title}" foi aprovada`,
+        'OCCURRENCE_APPROVED',
+        'occurrences',
+        occurrenceId
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao aprovar ocorrência:', error);
+    throw error;
+  }
+};
+
+// Função para rejeitar ocorrência
+// Recebe: occurrenceId, userId, condominiumId, rejectionReason
+// Retorna: ocorrência atualizada
+const rejectOccurrence = async (occurrenceId, userId, condominiumId, rejectionReason, ipAddress, userAgent) => {
+  try {
+    if (!rejectionReason || !rejectionReason.trim()) {
+      throw new Error('Motivo da rejeição é obrigatório');
+    }
+
+    // Busca ocorrência
+    const occurrenceResult = await query(
+      `SELECT * FROM occurrences WHERE id = $1 AND condominium_id = $2`,
+      [occurrenceId, condominiumId]
+    );
+
+    if (occurrenceResult.rows.length === 0) {
+      throw new Error('Ocorrência não encontrada');
+    }
+
+    const occurrence = occurrenceResult.rows[0];
+
+    if (!occurrence.requires_approval) {
+      throw new Error('Esta ocorrência não requer aprovação');
+    }
+
+    if (occurrence.approval_status !== 'PENDING') {
+      throw new Error('Ocorrência já foi analisada');
+    }
+
+    // Atualiza ocorrência
+    const result = await query(
+      `UPDATE occurrences
+       SET approval_status = 'REJECTED',
+           approved_by = $1,
+           approved_at = CURRENT_TIMESTAMP,
+           approval_rejection_reason = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND condominium_id = $4
+       RETURNING *`,
+      [userId, rejectionReason.trim(), occurrenceId, condominiumId]
+    );
+
+    const updated = result.rows[0];
+
+    // Registra no log
+    const { logAction } = require('../utils/logger');
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'REJECT',
+      module: 'OCCURRENCE',
+      entityType: 'occurrences',
+      entityId: occurrenceId,
+      beforeData: occurrence,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    // Notifica operacional que criou
+    if (occurrence.reported_by) {
+      const notificationService = require('./notificationService');
+      await notificationService.createNotification(
+        occurrence.reported_by,
+        condominiumId,
+        'Ocorrência Rejeitada',
+        `A ocorrência "${occurrence.title}" foi rejeitada. Motivo: ${rejectionReason.trim()}`,
+        'OCCURRENCE_REJECTED',
+        'occurrences',
+        occurrenceId
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao rejeitar ocorrência:', error);
+    throw error;
+  }
+};
+
+// Função para listar ocorrências pendentes de aprovação
+// Recebe: condominiumId, userId (opcional - filtra por role do usuário)
+// Retorna: lista de ocorrências pendentes
+const listPendingOccurrencesForApproval = async (condominiumId, userId = null) => {
+  try {
+    let sql = `
+      SELECT o.*, u.full_name as reported_by_name
+      FROM occurrences o
+      LEFT JOIN users u ON o.reported_by = u.id
+      WHERE o.condominium_id = $1 
+        AND o.requires_approval = TRUE 
+        AND o.approval_status = 'PENDING'
+    `;
+    const params = [condominiumId];
+    let paramCount = 2;
+
+    // Se userId fornecido, filtra por approval_required_from baseado nas roles do usuário
+    if (userId) {
+      const userRolesResult = await query(
+        `SELECT r.name
+         FROM users u
+         INNER JOIN user_roles ur ON u.id = ur.user_id
+         INNER JOIN roles r ON ur.role_id = r.id
+         WHERE u.id = $1`,
+        [userId]
+      );
+
+      const userRoles = userRolesResult.rows.map(row => row.name);
+      
+      // Filtra ocorrências que o usuário pode aprovar
+      if (userRoles.includes('SINDICO') || userRoles.includes('SUBSINDICO')) {
+        sql += ` AND (o.approval_required_from = 'SINDICO' OR o.approval_required_from = 'SUBSINDICO')`;
+      } else if (userRoles.includes('ADMINISTRATIVO')) {
+        sql += ` AND o.approval_required_from = 'ADMINISTRATIVO'`;
+      } else if (userRoles.includes('FINANCEIRO')) {
+        sql += ` AND o.approval_required_from = 'FINANCEIRO'`;
+      } else {
+        // Usuário não tem permissão para aprovar nenhuma ocorrência
+        return [];
+      }
+    }
+
+    sql += ` ORDER BY o.created_at ASC`;
+
+    const result = await query(sql, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar ocorrências pendentes de aprovação:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   getDashboardStats,
   listPendingApprovals,
@@ -720,4 +966,7 @@ module.exports = {
   getOccurrenceById,
   addObservation,
   listObservations,
+  approveOccurrence,
+  rejectOccurrence,
+  listPendingOccurrencesForApproval,
 };

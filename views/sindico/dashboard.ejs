@@ -197,6 +197,19 @@
       <a href="/sindico/logs" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
         Logs de Auditoria
       </a>
+      <% if (stats.pendingEntries !== undefined && stats.pendingEntries > 0) { %>
+      <a href="/sindico/entradas-pendentes" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition text-center">
+        Analisar Entradas (<%= stats.pendingEntries %>)
+      </a>
+      <% } %>
+      <% if (stats.pendingOccurrencesApproval !== undefined && stats.pendingOccurrencesApproval > 0) { %>
+      <a href="/sindico/ocorrencias-pendentes-aprovacao" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition text-center">
+        Aprovar Ocorrências (<%= stats.pendingOccurrencesApproval %>)
+      </a>
+      <% } %>
+      <a href="/sindico/manutencoes" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition text-center">
+        Manutenções
+      </a>
     </div>
   </div>
 </div>

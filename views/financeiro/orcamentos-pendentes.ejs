@@ -1,0 +1,66 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-gray-800 mb-6">Orçamentos Aguardando Análise</h1>
+  <p class="text-gray-600 mb-6">Preencha os campos obrigatórios e envie para o síndico aprovar</p>
+
+  <% if (typeof req !== 'undefined' && req.query.success === 'reviewed') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Orçamento revisado e enviado para o síndico!
+    </div>
+  <% } %>
+  <% if (typeof req !== 'undefined' && req.query.error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= decodeURIComponent(req.query.error) %>
+    </div>
+  <% } %>
+
+  <% if (budgets && budgets.length > 0) { %>
+    <div class="space-y-4">
+      <% budgets.forEach(budget => { %>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800"><%= budget.title %></h3>
+              <p class="text-gray-600 mt-2"><%= budget.description %></p>
+              <div class="mt-2 text-sm text-gray-500">
+                <p>Criado em: <%= new Date(budget.created_at).toLocaleString('pt-BR') %></p>
+                <p>Por: <%= budget.requested_by_name %></p>
+                <% if (budget.estimated_value) { %>
+                  <p>Valor estimado: <span class="font-semibold">R$ <%= parseFloat(budget.estimated_value).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></span></p>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <form method="POST" action="/financeiro/orcamentos/<%= budget.id %>/revisar" class="border-t pt-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-sm text-gray-700 mb-1">Observações do Financeiro *</label>
+                <textarea name="financeiroNotes" rows="3" required class="w-full border rounded px-3 py-2 text-sm"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Preencha informações relevantes sobre o orçamento</p>
+              </div>
+              <div>
+                <label class="block text-sm text-gray-700 mb-1">Centro de Custo (opcional)</label>
+                <select name="costCenterId" class="w-full border rounded px-3 py-2 text-sm">
+                  <option value="">Selecione...</option>
+                  <!-- Aqui você pode adicionar os centros de custo se necessário -->
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+              Revisar e Enviar para Síndico
+            </button>
+          </form>
+        </div>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+      <p class="text-gray-500 text-lg">Nenhum orçamento aguardando análise</p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>

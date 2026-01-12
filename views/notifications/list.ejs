@@ -1,0 +1,81 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6 flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Notificações</h1>
+      <p class="text-gray-600 mt-2">Suas notificações do sistema</p>
+    </div>
+    <% if (unreadCount > 0) { %>
+    <form method="POST" action="/notifications/read-all" class="inline">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+        Marcar todas como lidas
+      </button>
+    </form>
+    <% } %>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div class="flex space-x-4">
+      <a href="/notifications" class="px-4 py-2 rounded <%= !filters.read ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' %>">
+        Todas
+      </a>
+      <a href="/notifications?read=false" class="px-4 py-2 rounded <%= filters.read === false ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' %>">
+        Não lidas (<%= unreadCount %>)
+      </a>
+      <a href="/notifications?read=true" class="px-4 py-2 rounded <%= filters.read === true ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' %>">
+        Lidas
+      </a>
+    </div>
+  </div>
+
+  <!-- Lista de notificações -->
+  <div class="space-y-4">
+    <% if (notifications && notifications.length > 0) { %>
+      <% notifications.forEach(notification => { %>
+        <div class="bg-white rounded-lg shadow p-6 <%= !notification.read ? 'border-l-4 border-blue-500' : '' %>">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center space-x-2 mb-2">
+                <h3 class="text-lg font-semibold text-gray-800"><%= notification.title %></h3>
+                <% if (!notification.read) { %>
+                  <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">Nova</span>
+                <% } %>
+              </div>
+              <p class="text-gray-600 mb-2"><%= notification.message %></p>
+              <p class="text-xs text-gray-400">
+                <%= new Date(notification.created_at).toLocaleString('pt-BR') %>
+                <% if (notification.entity_type && notification.entity_id) { %>
+                  | <a href="/<%= notification.entity_type %>/<%= notification.entity_id %>" class="text-blue-600 hover:underline">Ver detalhes</a>
+                <% } %>
+              </p>
+            </div>
+            <div class="ml-4">
+              <% if (!notification.read) { %>
+                <form method="POST" action="/notifications/<%= notification.id %>/read" class="inline">
+                  <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm">
+                    Marcar como lida
+                  </button>
+                </form>
+              <% } else { %>
+                <span class="text-gray-400 text-sm">Lida</span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      <% }); %>
+    <% } else { %>
+      <div class="bg-white rounded-lg shadow p-12 text-center">
+        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+        </svg>
+        <p class="text-gray-500 text-lg">Nenhuma notificação encontrada</p>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

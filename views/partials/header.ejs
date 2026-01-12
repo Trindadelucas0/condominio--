@@ -6,5 +6,20 @@
   <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Sistema de Gestão Condominial</title>
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Buscar contador de notificações não lidas
+    <% if (typeof user !== 'undefined' && user.id) { %>
+    fetch('/notifications/unread-count')
+      .then(response => response.json())
+      .then(data => {
+        const badge = document.getElementById('notification-badge');
+        if (badge && data.count > 0) {
+          badge.textContent = data.count > 99 ? '99+' : data.count;
+          badge.classList.remove('hidden');
+        }
+      })
+      .catch(err => console.error('Erro ao buscar notificações:', err));
+    <% } %>
+  </script>
 </head>
 <body class="bg-gray-50">

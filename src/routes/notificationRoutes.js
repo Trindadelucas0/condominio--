@@ -16,10 +16,10 @@ router.get('/', notificationController.listNotifications);
 // Marcar notificação como lida
 router.post('/:id/read', notificationController.markAsRead);
 
-// Resolver notificação
-router.post('/:id/resolve', notificationController.resolveNotification);
+// Marcar todas as notificações como lidas
+router.post('/read-all', notificationController.markAllAsRead);
 
-// Justificar notificação
-router.post('/:id/justify', notificationController.justifyNotification);
+// Obter contador de notificações não lidas (API)
+router.get('/unread-count', notificationController.getUnreadCount);
 
 module.exports = router;

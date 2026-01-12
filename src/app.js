@@ -59,7 +59,7 @@ app.use('/estoque', estoqueRoutes);
 app.use('/patrimonio', patrimonioRoutes);
 app.use('/conselho', conselhoRoutes);
 app.use('/config', configRoutes);
-app.use('/notification', notificationRoutes);
+app.use('/notifications', notificationRoutes);
 app.use('/automation', automationRoutes);
 
 // Rota raiz - sempre redireciona para login

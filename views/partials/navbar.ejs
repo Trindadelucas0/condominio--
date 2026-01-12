@@ -31,6 +31,7 @@
                         <a href="/sindico/tarefas" class="hover:text-blue-200 px-3 py-2 rounded">Tarefas</a>
                         <a href="/sindico/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências</a>
                         <a href="/sindico/aprovacoes" class="hover:text-blue-200 px-3 py-2 rounded">Aprovações</a>
+                        <a href="/sindico/manutencoes" class="hover:text-blue-200 px-3 py-2 rounded">Manutenções</a>
                         <a href="/sindico/alertas" class="hover:text-blue-200 px-3 py-2 rounded">Alertas</a>
                         <a href="/sindico/logs" class="hover:text-blue-200 px-3 py-2 rounded">Logs</a>
                     <% }
@@ -41,6 +42,7 @@
                         <a href="/financeiro/entradas" class="hover:text-blue-200 px-3 py-2 rounded">Entradas</a>
                         <a href="/financeiro/saidas" class="hover:text-blue-200 px-3 py-2 rounded">Saídas</a>
                         <a href="/financeiro/contas" class="hover:text-blue-200 px-3 py-2 rounded">Contas</a>
+                        <a href="/financeiro/orcamentos-pendentes" class="hover:text-blue-200 px-3 py-2 rounded">Orçamentos</a>
                         <a href="/financeiro/centros-custo" class="hover:text-blue-200 px-3 py-2 rounded">Centros de Custo</a>
                     <% }
                     
@@ -62,6 +64,7 @@
                         <a href="/operacional/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Operacional - Dashboard</a>
                         <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
                         <a href="/operacional/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências</a>
+                        <a href="/operacional/manutencoes" class="hover:text-blue-200 px-3 py-2 rounded">Manutenções</a>
                     <% }
                     
                     // LIMPEZA (tem suas próprias rotas de ocorrências)
@@ -84,6 +87,18 @@
                     <% }
                 }
                 %>
+
+                <!-- Notificações -->
+                <% if (typeof user !== 'undefined' && user.id) { %>
+                    <div class="relative">
+                        <a href="/notifications" class="hover:text-blue-200 px-3 py-2 rounded relative">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                            </svg>
+                            <span id="notification-badge" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                        </a>
+                    </div>
+                <% } %>
 
                 <!-- Informações do usuário e logout -->
                 <% if (typeof user !== 'undefined') { %>

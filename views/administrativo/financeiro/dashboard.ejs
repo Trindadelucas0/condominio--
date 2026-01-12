@@ -100,6 +100,89 @@
     </div>
   </div>
 
+  <!-- Segunda linha - Novas funcionalidades -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Entradas Rejeitadas -->
+    <% if (typeof stats !== 'undefined' && stats.rejectedEntries !== undefined && stats.rejectedEntries > 0) { %>
+    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-red-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Entradas Rejeitadas</p>
+          <p class="text-3xl font-bold text-red-600 mt-2"><%= stats.rejectedEntries %></p>
+        </div>
+        <div class="bg-red-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </div>
+      </div>
+      <a href="/financeiro/entradas-rejeitadas" class="text-red-600 text-sm mt-4 inline-block hover:underline">
+        Corrigir →
+      </a>
+    </div>
+    <% } %>
+
+    <!-- Orçamentos Aguardando Análise -->
+    <% if (typeof stats !== 'undefined' && stats.pendingBudgetFinanceiro !== undefined && stats.pendingBudgetFinanceiro > 0) { %>
+    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-yellow-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Orçamentos Aguardando</p>
+          <p class="text-3xl font-bold text-yellow-600 mt-2"><%= stats.pendingBudgetFinanceiro %></p>
+        </div>
+        <div class="bg-yellow-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+      </div>
+      <a href="/financeiro/orcamentos-pendentes" class="text-yellow-600 text-sm mt-4 inline-block hover:underline">
+        Analisar →
+      </a>
+    </div>
+    <% } %>
+
+    <!-- Orçamentos Aprovados -->
+    <% if (typeof stats !== 'undefined' && stats.approvedBudgets !== undefined && stats.approvedBudgets > 0) { %>
+    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Orçamentos Aprovados</p>
+          <p class="text-3xl font-bold text-green-600 mt-2"><%= stats.approvedBudgets %></p>
+        </div>
+        <div class="bg-green-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <a href="/financeiro/orcamentos-aprovados" class="text-green-600 text-sm mt-4 inline-block hover:underline">
+        Liberar →
+      </a>
+    </div>
+    <% } %>
+
+    <!-- Orçamentos Rejeitados -->
+    <% if (typeof stats !== 'undefined' && stats.rejectedBudgets !== undefined && stats.rejectedBudgets > 0) { %>
+    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-orange-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Orçamentos Rejeitados</p>
+          <p class="text-3xl font-bold text-orange-600 mt-2"><%= stats.rejectedBudgets %></p>
+        </div>
+        <div class="bg-orange-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+      </div>
+      <a href="/administrativo/orcamentos?status=REJECTED" class="text-orange-600 text-sm mt-4 inline-block hover:underline">
+        Ajustar →
+      </a>
+    </div>
+    <% } %>
+  </div>
+
   <!-- Gráficos -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <!-- Gráfico de Evolução (Últimos 6 meses) -->
@@ -183,6 +266,21 @@
       <a href="/financeiro/consumo/novo" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition text-center font-medium">
         Registrar Consumo
       </a>
+      <% if (typeof stats !== 'undefined' && stats.rejectedEntries !== undefined && stats.rejectedEntries > 0) { %>
+      <a href="/financeiro/entradas-rejeitadas" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition text-center font-medium">
+        Corrigir Entradas (<%= stats.rejectedEntries %>)
+      </a>
+      <% } %>
+      <% if (typeof stats !== 'undefined' && stats.pendingBudgetFinanceiro !== undefined && stats.pendingBudgetFinanceiro > 0) { %>
+      <a href="/financeiro/orcamentos-pendentes" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition text-center font-medium">
+        Analisar Orçamentos (<%= stats.pendingBudgetFinanceiro %>)
+      </a>
+      <% } %>
+      <% if (typeof stats !== 'undefined' && stats.approvedBudgets !== undefined && stats.approvedBudgets > 0) { %>
+      <a href="/financeiro/orcamentos-aprovados" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center font-medium">
+        Liberar Orçamentos (<%= stats.approvedBudgets %>)
+      </a>
+      <% } %>
     </div>
   </div>
 </div>

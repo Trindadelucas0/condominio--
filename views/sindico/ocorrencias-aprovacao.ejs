@@ -1,0 +1,74 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-gray-800 mb-6">Ocorrências Aguardando Aprovação</h1>
+
+  <% if (typeof req !== 'undefined' && req.query.success === 'approved') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Ocorrência aprovada com sucesso!
+    </div>
+  <% } %>
+  <% if (typeof req !== 'undefined' && req.query.success === 'rejected') { %>
+    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+      Ocorrência rejeitada. O operacional foi notificado.
+    </div>
+  <% } %>
+  <% if (typeof req !== 'undefined' && req.query.error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= decodeURIComponent(req.query.error) %>
+    </div>
+  <% } %>
+
+  <% if (occurrences && occurrences.length > 0) { %>
+    <div class="space-y-4">
+      <% occurrences.forEach(occurrence => { %>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-gray-800"><%= occurrence.title %></h3>
+              <p class="text-gray-600 mt-2"><%= occurrence.description %></p>
+              <div class="mt-2 text-sm text-gray-500">
+                <p>Criada em: <%= new Date(occurrence.created_at).toLocaleString('pt-BR') %></p>
+                <p>Por: <%= occurrence.reported_by_name %></p>
+                <% if (occurrence.location) { %>
+                  <p>Localização: <%= occurrence.location %></p>
+                <% } %>
+                <p>Prioridade: <span class="font-semibold"><%= occurrence.priority %></span></p>
+                <p>Tipo: <span class="font-semibold"><%= occurrence.occurrence_type %></span></p>
+              </div>
+            </div>
+            <div>
+              <span class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                Aguardando Aprovação
+              </span>
+            </div>
+          </div>
+
+          <div class="border-t pt-4 flex space-x-4">
+            <form method="POST" action="/sindico/ocorrencias/<%= occurrence.id %>/aprovar" class="flex-1">
+              <button type="submit" class="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                Aprovar Ocorrência
+              </button>
+            </form>
+            <form method="POST" action="/sindico/ocorrencias/<%= occurrence.id %>/rejeitar" class="flex-1">
+              <div class="mb-2">
+                <label class="block text-sm text-gray-700 mb-1">Motivo da Rejeição *</label>
+                <textarea name="rejectionReason" rows="2" required class="w-full border rounded px-3 py-2 text-sm"></textarea>
+              </div>
+              <button type="submit" class="w-full bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                Rejeitar
+              </button>
+            </form>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+      <p class="text-gray-500 text-lg">Nenhuma ocorrência aguardando aprovação</p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>

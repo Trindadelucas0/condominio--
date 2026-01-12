@@ -4,6 +4,7 @@
 
 const limpezaService = require('../services/limpezaService');
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
+const { query } = require('../config/database'); // Conexão com banco
 
 // Função para exibir dashboard de limpeza
 // GET /limpeza/dashboard

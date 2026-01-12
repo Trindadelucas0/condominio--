@@ -1,0 +1,120 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Cabeçalho -->
+    <div class="mb-6 flex justify-between items-center">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800"><%= manutencao.title %></h1>
+        <p class="text-gray-600 mt-2">
+          <span class="px-2 py-1 text-xs font-semibold rounded-full <%= manutencao.maintenance_type === 'PREVENTIVA' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800' %>">
+            <%= manutencao.maintenance_type %>
+          </span>
+          <% 
+            let statusClass = 'bg-gray-100 text-gray-800';
+            if (manutencao.status === 'PENDING') statusClass = 'bg-yellow-100 text-yellow-800';
+            else if (manutencao.status === 'IN_PROGRESS') statusClass = 'bg-blue-100 text-blue-800';
+            else if (manutencao.status === 'COMPLETED') statusClass = 'bg-green-100 text-green-800';
+            else if (manutencao.status === 'CANCELLED') statusClass = 'bg-red-100 text-red-800';
+          %>
+          <span class="px-2 py-1 text-xs font-semibold rounded-full <%= statusClass %> ml-2">
+            <%= manutencao.status === 'PENDING' ? 'Pendente' : 
+                manutencao.status === 'IN_PROGRESS' ? 'Em Andamento' :
+                manutencao.status === 'COMPLETED' ? 'Concluída' : 'Cancelada' %>
+          </span>
+        </p>
+      </div>
+      <a href="/<%= user.roles && user.roles.includes('SINDICO') ? 'sindico' : 'operacional' %>/manutencoes" class="text-gray-600 hover:text-gray-800">
+        ← Voltar
+      </a>
+    </div>
+
+    <!-- Informações -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Informações</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <p class="text-sm text-gray-600">Descrição</p>
+          <p class="text-gray-800"><%= manutencao.description %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Localização</p>
+          <p class="text-gray-800"><%= manutencao.location || '-' %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Prioridade</p>
+          <p class="text-gray-800"><%= manutencao.priority %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Data Prevista</p>
+          <p class="text-gray-800"><%= manutencao.scheduled_date ? new Date(manutencao.scheduled_date).toLocaleDateString('pt-BR') : '-' %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Responsável</p>
+          <p class="text-gray-800"><%= manutencao.assigned_to_name || 'Não atribuído' %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Criado por</p>
+          <p class="text-gray-800"><%= manutencao.created_by_name || '-' %></p>
+        </div>
+        <% if (manutencao.asset_name) { %>
+        <div>
+          <p class="text-sm text-gray-600">Ativo Relacionado</p>
+          <p class="text-gray-800"><%= manutencao.asset_name %></p>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Conclusão (se concluída) -->
+    <% if (manutencao.status === 'COMPLETED') { %>
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Conclusão</h2>
+      <div class="space-y-2">
+        <div>
+          <p class="text-sm text-gray-600">Concluída em</p>
+          <p class="text-gray-800"><%= manutencao.completed_at ? new Date(manutencao.completed_at).toLocaleString('pt-BR') : '-' %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Concluída por</p>
+          <p class="text-gray-800"><%= manutencao.completed_by ? 'Operacional' : '-' %></p>
+        </div>
+        <% if (manutencao.completion_notes) { %>
+        <div>
+          <p class="text-sm text-gray-600">Notas de Conclusão</p>
+          <p class="text-gray-800"><%= manutencao.completion_notes %></p>
+        </div>
+        <% } %>
+        <% if (manutencao.cost) { %>
+        <div>
+          <p class="text-sm text-gray-600">Custo</p>
+          <p class="text-gray-800 font-bold">R$ <%= parseFloat(manutencao.cost).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+        </div>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Ações -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Ações</h2>
+      <div class="flex space-x-4">
+        <% if (user.roles && user.roles.includes('OPERACIONAL') && manutencao.status === 'PENDING' && manutencao.assigned_to === user.id) { %>
+          <form method="POST" action="/operacional/manutencoes/<%= manutencao.id %>/iniciar" class="inline">
+            <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700" onclick="return confirm('Deseja iniciar esta manutenção?')">
+              Iniciar Manutenção
+            </button>
+          </form>
+        <% } %>
+        <% if (user.roles && user.roles.includes('OPERACIONAL') && manutencao.status === 'IN_PROGRESS' && manutencao.assigned_to === user.id) { %>
+          <a href="/operacional/manutencoes/<%= manutencao.id %>/concluir" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+            Concluir Manutenção
+          </a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

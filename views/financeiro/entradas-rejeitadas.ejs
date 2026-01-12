@@ -1,0 +1,53 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-gray-800 mb-6">Entradas Rejeitadas</h1>
+  <p class="text-gray-600 mb-6">Corrija as entradas rejeitadas pelo síndico e reenvie para análise</p>
+
+  <% if (entries && entries.length > 0) { %>
+    <div class="space-y-4">
+      <% entries.forEach(entry => { %>
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800"><%= entry.description %></h3>
+              <p class="text-sm text-gray-500">
+                Criada em: <%= new Date(entry.created_at).toLocaleString('pt-BR') %>
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-bold text-red-600">
+                R$ <%= parseFloat(entry.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+              </p>
+            </div>
+          </div>
+
+          <% if (entry.rejection_reason) { %>
+            <div class="bg-red-50 border border-red-200 rounded p-4 mb-4">
+              <p class="text-sm font-semibold text-red-800 mb-1">Motivo da Rejeição:</p>
+              <p class="text-sm text-red-700"><%= entry.rejection_reason %></p>
+            </div>
+          <% } %>
+
+          <div class="flex space-x-4">
+            <a href="/financeiro/entradas/<%= entry.id %>/editar" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+              Editar
+            </a>
+            <form method="POST" action="/financeiro/entradas/<%= entry.id %>/excluir" class="inline" onsubmit="return confirm('Tem certeza que deseja excluir esta entrada?')">
+              <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                Excluir
+              </button>
+            </form>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+      <p class="text-gray-500 text-lg">Nenhuma entrada rejeitada</p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>

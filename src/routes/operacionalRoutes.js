@@ -13,18 +13,16 @@ const fs = require('fs');
 // Todas as rotas exigem autenticação
 router.use(authenticate);
 
-// Todas as rotas exigem perfil OPERACIONAL
-router.use(authorize('OPERACIONAL'));
-
-// Dashboard
-router.get('/dashboard', operacionalController.showDashboard);
+// Dashboard - apenas OPERACIONAL
+router.get('/dashboard', authorize('OPERACIONAL'), operacionalController.showDashboard);
 
 // Checklists diários (novos - baseados em regras)
-router.get('/checklists-diarios', dailyChecklistController.showDailyChecklists);
-router.get('/checklists-diarios/:id', dailyChecklistController.showChecklist);
-router.post('/checklists-diarios/:id/iniciar', dailyChecklistController.startChecklist);
-router.post('/checklists-diarios/:checklistId/items/:itemId', dailyChecklistController.updateItem);
-router.post('/checklists-diarios/:id/finalizar', dailyChecklistController.completeChecklist);
+// OPERACIONAL e LIMPEZA podem acessar checklists
+router.get('/checklists-diarios', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.showDailyChecklists);
+router.get('/checklists-diarios/:id', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.showChecklist);
+router.post('/checklists-diarios/:id/iniciar', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.startChecklist);
+router.post('/checklists-diarios/:checklistId/items/:itemId', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.updateItem);
+router.post('/checklists-diarios/:id/finalizar', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.completeChecklist);
 
 // Upload de evidências (fotos)
 const storageEvidence = multer.diskStorage({
@@ -53,17 +51,28 @@ const uploadEvidence = multer({
   }
 });
 
-router.post('/checklists-diarios/:id/evidencias', uploadEvidence.single('evidence'), dailyChecklistController.addEvidence);
+router.post('/checklists-diarios/:id/evidencias', authorize('OPERACIONAL', 'LIMPEZA'), uploadEvidence.single('evidence'), dailyChecklistController.addEvidence);
 
 // Tarefas antigas (mantidas para compatibilidade)
-router.get('/checklist', operacionalController.showChecklist);
-router.post('/checklist/:id/atualizar', operacionalController.updateChecklistItem);
-router.post('/checklist/:id/completar', operacionalController.completeTask);
+// OPERACIONAL e LIMPEZA podem acessar checklist antigo
+router.get('/checklist', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.showChecklist);
+router.post('/checklist/:id/atualizar', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.updateChecklistItem);
+router.post('/checklist/:id/completar', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.completeTask);
 
-// Ocorrências
-router.get('/ocorrencias', operacionalController.showOcorrencias);
-router.get('/ocorrencias/nova', operacionalController.showCreateOcorrencia);
-router.post('/ocorrencias', operacionalController.createOcorrencia);
-router.get('/ocorrencias/:id', operacionalController.showOcorrencia);
+// Ocorrências - apenas OPERACIONAL (LIMPEZA tem suas próprias rotas)
+router.get('/ocorrencias', authorize('OPERACIONAL'), operacionalController.showOcorrencias);
+router.get('/ocorrencias/nova', authorize('OPERACIONAL'), operacionalController.showCreateOcorrencia);
+router.post('/ocorrencias', authorize('OPERACIONAL'), operacionalController.createOcorrencia);
+router.get('/ocorrencias/:id', authorize('OPERACIONAL'), operacionalController.showOcorrencia);
+router.get('/ocorrencias/:id/resolver', authorize('OPERACIONAL'), operacionalController.showResolveOcorrencia);
+router.post('/ocorrencias/:id/resolver', authorize('OPERACIONAL'), operacionalController.resolveOcorrencia);
+
+// Manutenções - apenas OPERACIONAL
+const manutencaoController = require('../controllers/manutencaoController');
+router.get('/manutencoes', authorize('OPERACIONAL'), manutencaoController.listManutencoes);
+router.get('/manutencoes/:id', authorize('OPERACIONAL'), manutencaoController.showManutencao);
+router.post('/manutencoes/:id/iniciar', authorize('OPERACIONAL'), manutencaoController.startManutencao);
+router.get('/manutencoes/:id/concluir', authorize('OPERACIONAL'), manutencaoController.showCompleteManutencao);
+router.post('/manutencoes/:id/concluir', authorize('OPERACIONAL'), manutencaoController.completeManutencao);
 
 module.exports = router;

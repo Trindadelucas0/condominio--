@@ -62,6 +62,70 @@
     </div>
   </div>
 
+  <!-- Segunda linha - Manutenções e Orçamentos -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- Manutenções Pendentes -->
+    <% if (stats.pendingMaintenances !== undefined) { %>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm">Manutenções Pendentes</p>
+          <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.pendingMaintenances %></p>
+        </div>
+        <div class="bg-blue-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <a href="/operacional/manutencoes?status=PENDING" class="text-blue-600 text-sm mt-4 inline-block hover:underline">
+        Ver manutenções →
+      </a>
+    </div>
+    <% } %>
+
+    <!-- Manutenções em Andamento -->
+    <% if (stats.inProgressMaintenances !== undefined) { %>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm">Manutenções em Andamento</p>
+          <p class="text-3xl font-bold text-yellow-600 mt-2"><%= stats.inProgressMaintenances %></p>
+        </div>
+        <div class="bg-yellow-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <a href="/operacional/manutencoes?status=IN_PROGRESS" class="text-yellow-600 text-sm mt-4 inline-block hover:underline">
+        Ver manutenções →
+      </a>
+    </div>
+    <% } %>
+
+    <!-- Orçamentos Liberados -->
+    <% if (stats.releasedBudgets !== undefined) { %>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm">Orçamentos Liberados</p>
+          <p class="text-3xl font-bold text-green-600 mt-2"><%= stats.releasedBudgets %></p>
+        </div>
+        <div class="bg-green-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+      </div>
+      <a href="/administrativo/orcamentos?status=LIBERATED" class="text-green-600 text-sm mt-4 inline-block hover:underline">
+        Ver orçamentos →
+      </a>
+    </div>
+    <% } %>
+  </div>
+
   <!-- Ações rápidas -->
   <div class="bg-white rounded-lg shadow p-6">
     <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
@@ -72,6 +136,11 @@
       <a href="/operacional/ocorrencias/nova" class="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition text-center">
         Nova Ocorrência
       </a>
+      <% if (stats.pendingMaintenances !== undefined && stats.pendingMaintenances > 0) { %>
+      <a href="/operacional/manutencoes?status=PENDING" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition text-center">
+        Ver Manutenções (<%= stats.pendingMaintenances %>)
+      </a>
+      <% } %>
     </div>
   </div>
 </div>

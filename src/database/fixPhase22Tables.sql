@@ -1,0 +1,32 @@
+-- Script de correção - Cria tabelas faltantes da FASE 22
+-- Execute este script se as tabelas não foram criadas corretamente
+
+-- Criar tabela maintenances se não existir
+CREATE TABLE IF NOT EXISTS maintenances (
+  id SERIAL PRIMARY KEY,
+  condominium_id INTEGER NOT NULL REFERENCES condominiums(id) ON DELETE CASCADE,
+  maintenance_type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  location VARCHAR(255),
+  priority VARCHAR(20) DEFAULT 'NORMAL',
+  scheduled_date DATE,
+  assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  status VARCHAR(20) DEFAULT 'PENDING',
+  started_at TIMESTAMP NULL,
+  completed_at TIMESTAMP NULL,
+  completed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  completion_notes TEXT,
+  cost DECIMAL(15,2),
+  asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índices para manutenções
+CREATE INDEX IF NOT EXISTS idx_maintenances_condominium ON maintenances(condominium_id);
+CREATE INDEX IF NOT EXISTS idx_maintenances_assigned_to ON maintenances(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_maintenances_status ON maintenances(status);
+CREATE INDEX IF NOT EXISTS idx_maintenances_type ON maintenances(maintenance_type);
+CREATE INDEX IF NOT EXISTS idx_maintenances_scheduled_date ON maintenances(scheduled_date);

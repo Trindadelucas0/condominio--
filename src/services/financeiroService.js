@@ -540,10 +540,859 @@ const listExits = async (condominiumId, filters = {}) => {
   }
 };
 
+// Função para obter estatísticas do dashboard financeiro
+// Recebe: condominiumId
+// Retorna: estatísticas financeiras (KPIs, gráficos, etc)
+const getDashboardStats = async (condominiumId) => {
+  try {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+
+    // Saldo financeiro (entradas recebidas - saídas pagas - saídas aprovadas mas não pagas)
+    const entriesResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
+       WHERE condominium_id = $1 AND received = TRUE`,
+      [condominiumId]
+    );
+    const totalEntries = parseFloat(entriesResult.rows[0].total);
+
+    const exitsPaidResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 AND payment_status = 'PAID'`,
+      [condominiumId]
+    );
+    const totalExitsPaid = parseFloat(exitsPaidResult.rows[0].total);
+
+    const exitsApprovedResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 AND payment_status = 'APPROVED'`,
+      [condominiumId]
+    );
+    const totalExitsApproved = parseFloat(exitsApprovedResult.rows[0].total);
+
+    const balance = totalEntries - totalExitsPaid - totalExitsApproved;
+
+    // Entradas do mês atual
+    const currentMonthEntriesResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
+       WHERE condominium_id = $1 
+       AND EXTRACT(YEAR FROM entry_date) = $2 
+       AND EXTRACT(MONTH FROM entry_date) = $3
+       AND received = TRUE`,
+      [condominiumId, currentYear, currentMonth]
+    );
+    const currentMonthEntries = parseFloat(currentMonthEntriesResult.rows[0].total);
+
+    // Saídas do mês atual
+    const currentMonthExitsResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 
+       AND EXTRACT(YEAR FROM exit_date) = $2 
+       AND EXTRACT(MONTH FROM exit_date) = $3
+       AND payment_status IN ('PAID', 'APPROVED')`,
+      [condominiumId, currentYear, currentMonth]
+    );
+    const currentMonthExits = parseFloat(currentMonthExitsResult.rows[0].total);
+
+    // Mês anterior
+    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+    // Entradas do mês anterior
+    const prevMonthEntriesResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
+       WHERE condominium_id = $1 
+       AND EXTRACT(YEAR FROM entry_date) = $2 
+       AND EXTRACT(MONTH FROM entry_date) = $3
+       AND received = TRUE`,
+      [condominiumId, prevYear, prevMonth]
+    );
+    const prevMonthEntries = parseFloat(prevMonthEntriesResult.rows[0].total);
+
+    // Saídas do mês anterior
+    const prevMonthExitsResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 
+       AND EXTRACT(YEAR FROM exit_date) = $2 
+       AND EXTRACT(MONTH FROM exit_date) = $3
+       AND payment_status IN ('PAID', 'APPROVED')`,
+      [condominiumId, prevYear, prevMonth]
+    );
+    const prevMonthExits = parseFloat(prevMonthExitsResult.rows[0].total);
+
+    // Variações percentuais
+    const entriesVariation = prevMonthEntries > 0 
+      ? ((currentMonthEntries - prevMonthEntries) / prevMonthEntries) * 100 
+      : (currentMonthEntries > 0 ? 100 : 0);
+    const exitsVariation = prevMonthExits > 0 
+      ? ((currentMonthExits - prevMonthExits) / prevMonthExits) * 100 
+      : (currentMonthExits > 0 ? 100 : 0);
+
+    // Dados dos últimos 6 meses
+    const last6Months = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentYear, currentMonth - 1 - i, 1);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+
+      const monthEntriesResult = await query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
+         WHERE condominium_id = $1 
+         AND EXTRACT(YEAR FROM entry_date) = $2 
+         AND EXTRACT(MONTH FROM entry_date) = $3
+         AND received = TRUE`,
+        [condominiumId, year, month]
+      );
+      const monthEntries = parseFloat(monthEntriesResult.rows[0].total);
+
+      const monthExitsResult = await query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+         WHERE condominium_id = $1 
+         AND EXTRACT(YEAR FROM exit_date) = $2 
+         AND EXTRACT(MONTH FROM exit_date) = $3
+         AND payment_status IN ('PAID', 'APPROVED')`,
+        [condominiumId, year, month]
+      );
+      const monthExits = parseFloat(monthExitsResult.rows[0].total);
+
+      const monthBalance = monthEntries - monthExits;
+
+      last6Months.push({
+        period: `${year}-${String(month).padStart(2, '0')}`,
+        year,
+        month,
+        entries: monthEntries,
+        exits: monthExits,
+        balance: monthBalance
+      });
+    }
+
+    // Médias dos últimos 6 meses
+    const avgEntries = last6Months.reduce((sum, m) => sum + m.entries, 0) / 6;
+    const avgExits = last6Months.reduce((sum, m) => sum + m.exits, 0) / 6;
+
+    // Média de consumo por tipo de conta (últimos 6 meses)
+    const avgConsumptionResult = await query(
+      `SELECT 
+        b.bill_type,
+        AVG(mc.bill_amount) as avg_amount
+       FROM monthly_consumption mc
+       INNER JOIN bills b ON mc.bill_id = b.id
+       WHERE mc.condominium_id = $1
+       AND (mc.year * 100 + mc.month) >= ($2 * 100 + $3 - 600)
+       GROUP BY b.bill_type`,
+      [condominiumId, currentYear, currentMonth]
+    );
+    const avgConsumption = avgConsumptionResult.rows.map(row => ({
+      billType: row.bill_type,
+      avgAmount: parseFloat(row.avg_amount) || 0
+    }));
+
+    // Consumo mensal (últimos registros)
+    const consumptionResult = await query(
+      `SELECT 
+        mc.*,
+        b.name as bill_name,
+        b.bill_type
+       FROM monthly_consumption mc
+       INNER JOIN bills b ON mc.bill_id = b.id
+       WHERE mc.condominium_id = $1
+       ORDER BY mc.year DESC, mc.month DESC
+       LIMIT 10`,
+      [condominiumId]
+    );
+    const consumption = consumptionResult.rows.map(row => ({
+      id: row.id,
+      billId: row.bill_id,
+      billName: row.bill_name,
+      billType: row.bill_type,
+      month: row.month,
+      year: row.year,
+      consumptionValue: parseFloat(row.consumption_value) || null,
+      consumptionUnit: row.consumption_unit,
+      billAmount: parseFloat(row.bill_amount) || 0,
+      paid: row.paid
+    }));
+
+    // Conta entradas rejeitadas (para financeiro corrigir)
+    const rejectedEntriesResult = await query(
+      `SELECT COUNT(*) as total FROM financial_entries 
+       WHERE condominium_id = $1 AND review_status = 'REJECTED'`,
+      [condominiumId]
+    );
+    const rejectedEntries = parseInt(rejectedEntriesResult.rows[0].total);
+
+    // Conta orçamentos aguardando análise do financeiro
+    const pendingBudgetFinanceiroResult = await query(
+      `SELECT COUNT(*) as total FROM budget_requests 
+       WHERE condominium_id = $1 AND status = 'PENDING_FINANCEIRO'`,
+      [condominiumId]
+    );
+    const pendingBudgetFinanceiro = parseInt(pendingBudgetFinanceiroResult.rows[0].total);
+
+    // Conta orçamentos aprovados aguardando liberação
+    const approvedBudgetsResult = await query(
+      `SELECT COUNT(*) as total FROM budget_requests 
+       WHERE condominium_id = $1 AND status = 'APPROVED'`,
+      [condominiumId]
+    );
+    const approvedBudgets = parseInt(approvedBudgetsResult.rows[0].total);
+
+    // Conta orçamentos rejeitados (para ajustar)
+    const rejectedBudgetsResult = await query(
+      `SELECT COUNT(*) as total FROM budget_requests 
+       WHERE condominium_id = $1 AND status = 'REJECTED'`,
+      [condominiumId]
+    );
+    const rejectedBudgets = parseInt(rejectedBudgetsResult.rows[0].total);
+
+    return {
+      stats: {
+        saldo: balance,
+        balance: balance,
+        totalEntradas: totalEntries,
+        totalSaidas: totalExitsPaid + totalExitsApproved,
+        rejectedEntries,
+        pendingBudgetFinanceiro,
+        approvedBudgets,
+        rejectedBudgets,
+      },
+      kpis: {
+        currentMonth: {
+          entries: currentMonthEntries,
+          exits: currentMonthExits
+        },
+        variations: {
+          entries: entriesVariation,
+          exits: exitsVariation
+        },
+        averages: {
+          entries: avgEntries,
+          exits: avgExits
+        },
+        last6Months,
+        avgConsumption,
+        consumption
+      }
+    };
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas financeiras:', error);
+    throw error;
+  }
+};
+
+// Função para criar entrada financeira
+// Recebe: condominiumId, userId, dados da entrada
+// Retorna: entrada criada
+const createEntry = async (condominiumId, userId, data, ipAddress, userAgent) => {
+  try {
+    const { description, amount, entryDate, costCenterId, category, received } = data;
+
+    // Validações obrigatórias
+    if (!description || !description.trim()) {
+      throw new Error('Descrição é obrigatória');
+    }
+
+    if (!amount || !entryDate) {
+      throw new Error('Valor e data são obrigatórios');
+    }
+
+    // Valida valor financeiro
+    const amountValidation = validateFinancialAmount(amount, {
+      allowZero: false,
+      allowNegative: false,
+      maxValue: 10000000,
+      fieldName: 'Valor da entrada'
+    });
+
+    if (!amountValidation.valid) {
+      throw new Error(amountValidation.error);
+    }
+
+    const amountValue = amountValidation.value;
+
+    // Valida data
+    const dateValidation = validateDate(entryDate, {
+      allowFuture: true,
+      maxFutureDays: 365,
+      allowPast: true,
+      fieldName: 'Data da entrada'
+    });
+
+    if (!dateValidation.valid) {
+      throw new Error(dateValidation.error);
+    }
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    const result = await query(
+      `INSERT INTO financial_entries (condominium_id, description, amount, entry_date, cost_center_id, category, received, received_at, created_by, review_status, linked_to_id, linked_to_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PENDING_REVIEW', $10, $11)
+       RETURNING *`,
+      [
+        condominiumId,
+        description.trim(),
+        amountValue,
+        entryDate,
+        costCenterId || null,
+        category || 'TAXA',
+        received || false,
+        received ? new Date() : null,
+        userId,
+        data.linkedToId || null,
+        data.linkedToType || null
+      ]
+    );
+
+    const entry = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'CREATE',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entry.id,
+      beforeData: null,
+      afterData: entry,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    // Cria notificação para síndico
+    const notificationService = require('./notificationService');
+    await notificationService.createNotificationForRole(
+      'SINDICO',
+      condominiumId,
+      'Nova Entrada Financeira Aguardando Análise',
+      `Uma nova entrada financeira foi criada e aguarda sua análise: ${description.trim()}`,
+      'ENTRY_PENDING_REVIEW',
+      'financial_entries',
+      entry.id
+    );
+
+    return entry;
+  } catch (error) {
+    console.error('Erro ao criar entrada financeira:', error);
+    throw error;
+  }
+};
+
+// Função para listar entradas financeiras
+// Recebe: condominiumId, filtros
+// Retorna: lista de entradas
+const listEntries = async (condominiumId, filters = {}) => {
+  try {
+    let sql = `
+      SELECT fe.*, cc.name as cost_center_name, u.full_name as created_by_name
+      FROM financial_entries fe
+      LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id AND cc.condominium_id = $1
+      LEFT JOIN users u ON fe.created_by = u.id
+      WHERE fe.condominium_id = $1
+    `;
+    const params = [condominiumId];
+    let paramCount = 2;
+
+    if (filters.received !== undefined) {
+      sql += ` AND fe.received = $${paramCount++}`;
+      params.push(filters.received);
+    }
+
+    if (filters.category) {
+      sql += ` AND fe.category = $${paramCount++}`;
+      params.push(filters.category);
+    }
+
+    if (filters.startDate) {
+      sql += ` AND fe.entry_date >= $${paramCount++}`;
+      params.push(filters.startDate);
+    }
+
+    if (filters.endDate) {
+      sql += ` AND fe.entry_date <= $${paramCount++}`;
+      params.push(filters.endDate);
+    }
+
+    sql += ` ORDER BY fe.created_at DESC LIMIT $${paramCount}`;
+    params.push(filters.limit || 100);
+
+    const result = await query(sql, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar entradas financeiras:', error);
+    throw error;
+  }
+};
+
+// Função para criar conta recorrente
+// Recebe: condominiumId, userId, dados da conta
+// Retorna: conta criada
+const createAccount = async (condominiumId, userId, data, ipAddress, userAgent) => {
+  try {
+    const { name, billType, provider, accountNumber, costCenterId } = data;
+
+    // Validações obrigatórias
+    if (!name || !name.trim()) {
+      throw new Error('Nome da conta é obrigatório');
+    }
+
+    if (!billType) {
+      throw new Error('Tipo da conta é obrigatório');
+    }
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    const result = await query(
+      `INSERT INTO bills (condominium_id, name, bill_type, provider, account_number, cost_center_id, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        condominiumId,
+        name.trim(),
+        billType,
+        provider || null,
+        accountNumber || null,
+        costCenterId || null,
+        userId
+      ]
+    );
+
+    const account = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'CREATE',
+      module: 'FINANCIAL',
+      entityType: 'bills',
+      entityId: account.id,
+      beforeData: null,
+      afterData: account,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return account;
+  } catch (error) {
+    console.error('Erro ao criar conta:', error);
+    throw error;
+  }
+};
+
+// Função para listar contas recorrentes
+// Recebe: condominiumId, filtros
+// Retorna: lista de contas
+const listAccounts = async (condominiumId, filters = {}) => {
+  try {
+    let sql = `
+      SELECT b.*, cc.name as cost_center_name, u.full_name as created_by_name
+      FROM bills b
+      LEFT JOIN cost_centers cc ON b.cost_center_id = cc.id AND cc.condominium_id = $1
+      LEFT JOIN users u ON b.created_by = u.id
+      WHERE b.condominium_id = $1
+    `;
+    const params = [condominiumId];
+    let paramCount = 2;
+
+    if (filters.active !== undefined) {
+      sql += ` AND b.active = $${paramCount++}`;
+      params.push(filters.active);
+    }
+
+    if (filters.billType) {
+      sql += ` AND b.bill_type = $${paramCount++}`;
+      params.push(filters.billType);
+    }
+
+    sql += ` ORDER BY b.created_at DESC LIMIT $${paramCount}`;
+    params.push(filters.limit || 100);
+
+    const result = await query(sql, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar contas:', error);
+    throw error;
+  }
+};
+
+// Função para criar consumo mensal
+// Recebe: condominiumId, userId, dados do consumo
+// Retorna: consumo criado
+const createConsumption = async (condominiumId, userId, data, ipAddress, userAgent) => {
+  try {
+    const { billId, month, year, consumptionValue, consumptionUnit, billAmount, dueDate } = data;
+
+    // Validações obrigatórias
+    if (!billId) {
+      throw new Error('Conta é obrigatória');
+    }
+
+    if (!month || !year) {
+      throw new Error('Mês e ano são obrigatórios');
+    }
+
+    if (!billAmount) {
+      throw new Error('Valor da conta é obrigatório');
+    }
+
+    // Valida que a conta pertence ao condomínio
+    const billResult = await query(
+      `SELECT * FROM bills WHERE id = $1 AND condominium_id = $2`,
+      [billId, condominiumId]
+    );
+
+    if (billResult.rows.length === 0) {
+      throw new Error('Conta não encontrada ou não pertence a este condomínio');
+    }
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    // Valida valor financeiro
+    const amountValidation = validateFinancialAmount(billAmount, {
+      allowZero: false,
+      allowNegative: false,
+      maxValue: 10000000,
+      fieldName: 'Valor da conta'
+    });
+
+    if (!amountValidation.valid) {
+      throw new Error(amountValidation.error);
+    }
+
+    const amountValue = amountValidation.value;
+
+    // Verifica se já existe consumo para este período
+    const existingResult = await query(
+      `SELECT * FROM monthly_consumption 
+       WHERE condominium_id = $1 AND bill_id = $2 AND month = $3 AND year = $4`,
+      [condominiumId, billId, month, year]
+    );
+
+    if (existingResult.rows.length > 0) {
+      throw new Error('Já existe consumo registrado para esta conta neste período');
+    }
+
+    const result = await query(
+      `INSERT INTO monthly_consumption (condominium_id, bill_id, month, year, consumption_value, consumption_unit, bill_amount, due_date, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        condominiumId,
+        billId,
+        month,
+        year,
+        consumptionValue || null,
+        consumptionUnit || 'UNIDADE',
+        amountValue,
+        dueDate || null,
+        userId
+      ]
+    );
+
+    const consumption = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'CREATE',
+      module: 'FINANCIAL',
+      entityType: 'monthly_consumption',
+      entityId: consumption.id,
+      beforeData: null,
+      afterData: consumption,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return consumption;
+  } catch (error) {
+    console.error('Erro ao criar consumo:', error);
+    throw error;
+  }
+};
+
+// Função para listar consumo mensal
+// Recebe: condominiumId, filtros
+// Retorna: lista de consumo
+const listConsumption = async (condominiumId, filters = {}) => {
+  try {
+    let sql = `
+      SELECT mc.*, b.name as bill_name, b.bill_type, u.full_name as created_by_name
+      FROM monthly_consumption mc
+      INNER JOIN bills b ON mc.bill_id = b.id
+      LEFT JOIN users u ON mc.created_by = u.id
+      WHERE mc.condominium_id = $1
+    `;
+    const params = [condominiumId];
+    let paramCount = 2;
+
+    if (filters.billId) {
+      sql += ` AND mc.bill_id = $${paramCount++}`;
+      params.push(filters.billId);
+    }
+
+    if (filters.year) {
+      sql += ` AND mc.year = $${paramCount++}`;
+      params.push(filters.year);
+    }
+
+    if (filters.month) {
+      sql += ` AND mc.month = $${paramCount++}`;
+      params.push(filters.month);
+    }
+
+    sql += ` ORDER BY mc.year DESC, mc.month DESC LIMIT $${paramCount}`;
+    params.push(filters.limit || 100);
+
+    const result = await query(sql, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar consumo:', error);
+    throw error;
+  }
+};
+
+// Função para listar centros de custo
+// Recebe: condominiumId
+// Retorna: lista de centros de custo
+const listCostCenters = async (condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT * FROM cost_centers 
+       WHERE condominium_id = $1 AND active = TRUE 
+       ORDER BY name ASC`,
+      [condominiumId]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar centros de custo:', error);
+    throw error;
+  }
+};
+
+// Função para aprovar entrada financeira (Síndico)
+// Recebe: entryId, userId, condominiumId, reviewNotes (opcional)
+// Retorna: entrada atualizada
+const approveEntry = async (entryId, userId, condominiumId, reviewNotes, ipAddress, userAgent) => {
+  try {
+    // Busca entrada
+    const entryResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    if (entryResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    const entry = entryResult.rows[0];
+
+    if (entry.review_status !== 'PENDING_REVIEW') {
+      throw new Error('Entrada já foi analisada');
+    }
+
+    // Atualiza entrada
+    const result = await query(
+      `UPDATE financial_entries
+       SET review_status = 'APPROVED',
+           reviewed_by = $1,
+           reviewed_at = CURRENT_TIMESTAMP,
+           review_notes = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND condominium_id = $4
+       RETURNING *`,
+      [userId, reviewNotes || null, entryId, condominiumId]
+    );
+
+    const updated = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'APPROVE',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: entry,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    // Notifica financeiro
+    if (entry.created_by) {
+      const notificationService = require('./notificationService');
+      await notificationService.createNotification(
+        entry.created_by,
+        condominiumId,
+        'Entrada Financeira Aprovada',
+        `A entrada financeira "${entry.description}" foi aprovada${reviewNotes ? ' com observações' : ''}`,
+        'ENTRY_APPROVED',
+        'financial_entries',
+        entryId
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao aprovar entrada financeira:', error);
+    throw error;
+  }
+};
+
+// Função para rejeitar entrada financeira (Síndico)
+// Recebe: entryId, userId, condominiumId, rejectionReason
+// Retorna: entrada atualizada
+const rejectEntry = async (entryId, userId, condominiumId, rejectionReason, ipAddress, userAgent) => {
+  try {
+    if (!rejectionReason || !rejectionReason.trim()) {
+      throw new Error('Motivo da rejeição é obrigatório');
+    }
+
+    // Busca entrada
+    const entryResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    if (entryResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    const entry = entryResult.rows[0];
+
+    if (entry.review_status !== 'PENDING_REVIEW') {
+      throw new Error('Entrada já foi analisada');
+    }
+
+    // Atualiza entrada
+    const result = await query(
+      `UPDATE financial_entries
+       SET review_status = 'REJECTED',
+           reviewed_by = $1,
+           reviewed_at = CURRENT_TIMESTAMP,
+           rejection_reason = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND condominium_id = $4
+       RETURNING *`,
+      [userId, rejectionReason.trim(), entryId, condominiumId]
+    );
+
+    const updated = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'REJECT',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: entry,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    // Notifica financeiro
+    if (entry.created_by) {
+      const notificationService = require('./notificationService');
+      await notificationService.createNotification(
+        entry.created_by,
+        condominiumId,
+        'Entrada Financeira Rejeitada',
+        `A entrada financeira "${entry.description}" foi rejeitada. Motivo: ${rejectionReason.trim()}`,
+        'ENTRY_REJECTED',
+        'financial_entries',
+        entryId
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao rejeitar entrada financeira:', error);
+    throw error;
+  }
+};
+
+// Função para listar entradas pendentes de análise (Síndico)
+// Recebe: condominiumId
+// Retorna: lista de entradas pendentes
+const listPendingEntries = async (condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT fe.*, cc.name as cost_center_name, u.full_name as created_by_name
+       FROM financial_entries fe
+       LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id
+       LEFT JOIN users u ON fe.created_by = u.id
+       WHERE fe.condominium_id = $1 AND fe.review_status = 'PENDING_REVIEW'
+       ORDER BY fe.created_at ASC`,
+      [condominiumId]
+    );
+
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar entradas pendentes:', error);
+    throw error;
+  }
+};
+
+// Função para listar entradas rejeitadas (Financeiro)
+// Recebe: condominiumId
+// Retorna: lista de entradas rejeitadas
+const listRejectedEntries = async (condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT fe.*, cc.name as cost_center_name, u.full_name as reviewed_by_name
+       FROM financial_entries fe
+       LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id
+       LEFT JOIN users u ON fe.reviewed_by = u.id
+       WHERE fe.condominium_id = $1 AND fe.review_status = 'REJECTED'
+       ORDER BY fe.reviewed_at DESC`,
+      [condominiumId]
+    );
+
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar entradas rejeitadas:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   createExit,
   updateExit,
   approveExit,
   markExitAsPaid,
   listExits,
+  getDashboardStats,
+  createEntry,
+  listEntries,
+  approveEntry,
+  rejectEntry,
+  listPendingEntries,
+  listRejectedEntries,
+  createAccount,
+  listAccounts,
+  createConsumption,
+  listConsumption,
+  listCostCenters,
 };

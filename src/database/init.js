@@ -437,6 +437,65 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar tabela da FASE 21b:', error);
     }
 
+    // FASE 22: Notificações, Manutenções e Fluxos Completos
+    console.log('🔍 Verificando tabelas da FASE 22 (notificações, manutenções e fluxos)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'maintenances'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 22 não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase22.sql'));
+        console.log('✅ Tabelas da FASE 22 criadas com sucesso');
+      } else {
+        // Verifica se campos novos foram adicionados (executa mesmo se tabela existe)
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase22.sql'));
+        console.log('✅ Tabelas da FASE 22 atualizadas');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 22:', error);
+    }
+
+    // FASE 22b: Estados adicionais para State Machines
+    console.log('🔍 Verificando estados da FASE 22b (state machines)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase22b.sql'));
+      console.log('✅ Estados da FASE 22b atualizados');
+    } catch (error) {
+      console.error('Erro ao atualizar estados da FASE 22b:', error);
+    }
+
+    // Correção: Garantir que tabelas da FASE 22 foram criadas
+    console.log('🔍 Verificando tabelas da FASE 22 (correção)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'fixPhase22Tables.sql'));
+      console.log('✅ Tabelas da FASE 22 verificadas/criadas');
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 22:', error);
+    }
+
+    // Correção: Garantir que colunas da FASE 22 foram criadas
+    console.log('🔍 Verificando colunas da FASE 22 (correção)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'fixPhase22Columns.sql'));
+      console.log('✅ Colunas da FASE 22 verificadas/corrigidas');
+    } catch (error) {
+      console.error('Erro ao verificar/corrigir colunas da FASE 22:', error);
+    }
+
+    // Correção: Garantir que colunas de budget_requests da FASE 22 foram criadas
+    console.log('🔍 Verificando colunas de budget_requests da FASE 22 (correção)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'fixPhase22BudgetColumns.sql'));
+      console.log('✅ Colunas de budget_requests da FASE 22 verificadas/corrigidas');
+    } catch (error) {
+      console.error('Erro ao verificar/corrigir colunas de budget_requests da FASE 22:', error);
+    }
+
     console.log('✅ Inicialização do banco de dados concluída!');
   } catch (error) {
     console.error('❌ Erro crítico na inicialização do banco de dados:', error);

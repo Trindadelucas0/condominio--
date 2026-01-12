@@ -37,10 +37,37 @@ const getDashboardStats = async (userId, condominiumId) => {
     );
     const openOccurrences = parseInt(openOccurrencesResult.rows[0].total);
 
+    // Conta manutenções pendentes atribuídas ao usuário
+    const pendingMaintenancesResult = await query(
+      `SELECT COUNT(*) as total FROM maintenances 
+       WHERE assigned_to = $1 AND status = 'PENDING' AND condominium_id = $2`,
+      [userId, condominiumId]
+    );
+    const pendingMaintenances = parseInt(pendingMaintenancesResult.rows[0].total);
+
+    // Conta manutenções em andamento
+    const inProgressMaintenancesResult = await query(
+      `SELECT COUNT(*) as total FROM maintenances 
+       WHERE assigned_to = $1 AND status = 'IN_PROGRESS' AND condominium_id = $2`,
+      [userId, condominiumId]
+    );
+    const inProgressMaintenances = parseInt(inProgressMaintenancesResult.rows[0].total);
+
+    // Conta orçamentos liberados para o usuário
+    const releasedBudgetsResult = await query(
+      `SELECT COUNT(*) as total FROM budget_requests 
+       WHERE requested_by = $1 AND status = 'LIBERATED' AND condominium_id = $2`,
+      [userId, condominiumId]
+    );
+    const releasedBudgets = parseInt(releasedBudgetsResult.rows[0].total);
+
     return {
       pendingTasks,
       overdueTasks,
       openOccurrences,
+      pendingMaintenances,
+      inProgressMaintenances,
+      releasedBudgets,
     };
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard operacional:', error);
@@ -327,7 +354,7 @@ const completeTask = async (taskId, userId, condominiumId, completionData, ipAdd
 // Retorna: ocorrência criada
 const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgent) => {
   try {
-    const { title, description, location, priority } = data;
+    const { title, description, location, priority, occurrenceType, requiresApproval, approvalRequiredFrom, sentToUserId, sentToRole, isInChecklist, isRoutineTask } = data;
 
     // Validações
     if (!title || title.trim() === '') {
@@ -337,12 +364,47 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
       throw new Error('Descrição é obrigatória');
     }
 
-    // Insere ocorrência de ZELADORIA (OPERACIONAL cria ocorrências técnicas)
+    // Define tipo de ocorrência (padrão: NON_ROUTINE)
+    const finalOccurrenceType = occurrenceType || 'NON_ROUTINE';
+    
+    // Define se precisa aprovação baseado no tipo
+    let finalRequiresApproval = requiresApproval || false;
+    if (finalOccurrenceType === 'EMERGENCY') {
+      finalRequiresApproval = true; // Emergências sempre precisam aprovação
+    }
+
+    // Define quem deve aprovar
+    let finalApprovalRequiredFrom = approvalRequiredFrom || null;
+    if (finalRequiresApproval && !finalApprovalRequiredFrom) {
+      // Se precisa aprovação mas não especificou quem, usa SINDICO como padrão
+      finalApprovalRequiredFrom = 'SINDICO';
+    }
+
+    // Insere ocorrência
     const result = await query(
-      `INSERT INTO occurrences (condominium_id, reported_by, title, description, location, priority, status, occurrence_type)
-       VALUES ($1, $2, $3, $4, $5, $6, 'ABERTA', 'ZELADORIA')
+      `INSERT INTO occurrences (
+        condominium_id, reported_by, title, description, location, priority, status, 
+        occurrence_type, requires_approval, approval_required_from, approval_status,
+        sent_to_user_id, sent_to_role, is_in_checklist, is_routine_task
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, 'ABERTA', $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
-      [condominiumId, userId, title.trim(), description.trim(), location || null, priority || 'NORMAL']
+      [
+        condominiumId, 
+        userId, 
+        title.trim(), 
+        description.trim(), 
+        location || null, 
+        priority || 'NORMAL',
+        finalOccurrenceType,
+        finalRequiresApproval,
+        finalApprovalRequiredFrom,
+        finalRequiresApproval ? 'PENDING' : null,
+        sentToUserId || null,
+        sentToRole || null,
+        isInChecklist || false,
+        isRoutineTask || false
+      ]
     );
 
     const occurrence = result.rows[0];
@@ -359,6 +421,56 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
+
+    // Cria notificações se necessário
+    const notificationService = require('./notificationService');
+    
+    if (finalRequiresApproval) {
+      // Notifica destinatário específico ou role
+      if (sentToUserId) {
+        await notificationService.createNotification(
+          sentToUserId,
+          condominiumId,
+          'Ocorrência Aguardando Aprovação',
+          `Uma nova ocorrência foi criada e aguarda sua aprovação: ${title.trim()}`,
+          'OCCURRENCE_REQUIRES_APPROVAL',
+          'occurrences',
+          occurrence.id
+        );
+      } else if (sentToRole) {
+        await notificationService.createNotificationForRole(
+          sentToRole,
+          condominiumId,
+          'Ocorrência Aguardando Aprovação',
+          `Uma nova ocorrência foi criada e aguarda sua aprovação: ${title.trim()}`,
+          'OCCURRENCE_REQUIRES_APPROVAL',
+          'occurrences',
+          occurrence.id
+        );
+      } else if (finalApprovalRequiredFrom) {
+        // Notifica role baseado em approval_required_from
+        await notificationService.createNotificationForRole(
+          finalApprovalRequiredFrom,
+          condominiumId,
+          'Ocorrência Aguardando Aprovação',
+          `Uma nova ocorrência foi criada e aguarda sua aprovação: ${title.trim()}`,
+          'OCCURRENCE_REQUIRES_APPROVAL',
+          'occurrences',
+          occurrence.id
+        );
+      }
+    } else {
+      // Se não precisa aprovação, notifica administrativo para triagem normal
+      await notificationService.createNotificationForRole(
+        'ADMINISTRATIVO',
+        condominiumId,
+        'Nova Ocorrência Criada',
+        `Uma nova ocorrência foi criada: ${title.trim()}`,
+        'OCCURRENCE_CREATED',
+        'occurrences',
+        occurrence.id
+      );
+    }
 
     return occurrence;
   } catch (error) {
@@ -427,21 +539,21 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
     const updateValues = [];
     let paramCount = 1;
 
-      // Valida transição de estado
-      const stateValidator = require('../utils/stateValidator');
-      const transitionValidation = await stateValidator.validateAndTransition(
-        userId,
-        'occurrences',
-        occurrence.status,
-        'RESOLVIDA',
-        occurrenceId
-      );
+    // Valida transição de estado
+    const stateValidator = require('../utils/stateValidator');
+    const transitionValidation = await stateValidator.validateAndTransition(
+      userId,
+      'occurrences',
+      occurrence.status,
+      'RESOLVIDA',
+      occurrenceId
+    );
 
-      if (!transitionValidation.valid) {
-        throw new Error(transitionValidation.error || 'Transição de estado não permitida');
-      }
+    if (!transitionValidation.valid) {
+      throw new Error(transitionValidation.error || 'Transição de estado não permitida');
+    }
 
-      updateFields.push(`status = 'RESOLVIDA'`);
+    updateFields.push(`status = 'RESOLVIDA'`);
     updateFields.push(`resolved_at = CURRENT_TIMESTAMP`);
     updateFields.push(`resolved_by = $${paramCount++}`);
     updateValues.push(userId);

@@ -1,0 +1,110 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6"><%= manutencao ? 'Editar Manutenção' : 'Nova Manutenção' %></h1>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <form method="POST" action="<%= manutencao ? '/sindico/manutencoes/' + manutencao.id : '/sindico/manutencoes' %>" class="bg-white rounded-lg shadow-lg p-6">
+      <!-- Tipo de Manutenção -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Tipo de Manutenção *</label>
+        <select name="maintenanceType" required class="w-full border rounded px-4 py-2">
+          <option value="">Selecione...</option>
+          <option value="PREVENTIVA" <%= (manutencao && manutencao.maintenance_type === 'PREVENTIVA') || (typeof formData !== 'undefined' && formData.maintenanceType === 'PREVENTIVA') ? 'selected' : '' %>>Preventiva</option>
+          <option value="CORRETIVA" <%= (manutencao && manutencao.maintenance_type === 'CORRETIVA') || (typeof formData !== 'undefined' && formData.maintenanceType === 'CORRETIVA') ? 'selected' : '' %>>Corretiva</option>
+        </select>
+      </div>
+
+      <!-- Título -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Título *</label>
+        <input type="text" name="title" required 
+               value="<%= manutencao ? manutencao.title : (typeof formData !== 'undefined' ? formData.title : '') %>"
+               class="w-full border rounded px-4 py-2">
+      </div>
+
+      <!-- Descrição -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Descrição *</label>
+        <textarea name="description" required rows="4" 
+                  class="w-full border rounded px-4 py-2"><%= manutencao ? manutencao.description : (typeof formData !== 'undefined' ? formData.description : '') %></textarea>
+      </div>
+
+      <!-- Localização -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Localização</label>
+        <input type="text" name="location" 
+               value="<%= manutencao ? manutencao.location : (typeof formData !== 'undefined' ? formData.location : '') %>"
+               class="w-full border rounded px-4 py-2">
+      </div>
+
+      <!-- Prioridade -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Prioridade</label>
+        <select name="priority" class="w-full border rounded px-4 py-2">
+          <option value="BAIXA" <%= (manutencao && manutencao.priority === 'BAIXA') || (typeof formData !== 'undefined' && formData.priority === 'BAIXA') ? 'selected' : '' %>>Baixa</option>
+          <option value="NORMAL" <%= (manutencao && manutencao.priority === 'NORMAL') || (typeof formData !== 'undefined' && formData.priority === 'NORMAL') || (!manutencao && typeof formData === 'undefined') ? 'selected' : '' %>>Normal</option>
+          <option value="ALTA" <%= (manutencao && manutencao.priority === 'ALTA') || (typeof formData !== 'undefined' && formData.priority === 'ALTA') ? 'selected' : '' %>>Alta</option>
+          <option value="URGENTE" <%= (manutencao && manutencao.priority === 'URGENTE') || (typeof formData !== 'undefined' && formData.priority === 'URGENTE') ? 'selected' : '' %>>Urgente</option>
+        </select>
+      </div>
+
+      <!-- Data Prevista (para preventivas) -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Data Prevista</label>
+        <input type="date" name="scheduledDate" 
+               value="<%= manutencao && manutencao.scheduled_date ? new Date(manutencao.scheduled_date).toISOString().split('T')[0] : (typeof formData !== 'undefined' ? formData.scheduledDate : '') %>"
+               class="w-full border rounded px-4 py-2">
+      </div>
+
+      <!-- Operacional Responsável -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Operacional Responsável *</label>
+        <select name="assignedTo" required class="w-full border rounded px-4 py-2">
+          <option value="">Selecione...</option>
+          <% if (operacionais && operacionais.length > 0) { %>
+            <% operacionais.forEach(op => { %>
+              <option value="<%= op.id %>" <%= (manutencao && manutencao.assigned_to === op.id) || (typeof formData !== 'undefined' && formData.assignedTo == op.id) ? 'selected' : '' %>>
+                <%= op.full_name %>
+              </option>
+            <% }); %>
+          <% } %>
+        </select>
+      </div>
+
+      <!-- Ativo Relacionado (opcional) -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Ativo Relacionado (opcional)</label>
+        <select name="assetId" class="w-full border rounded px-4 py-2">
+          <option value="">Nenhum</option>
+          <% if (ativos && ativos.length > 0) { %>
+            <% ativos.forEach(ativo => { %>
+              <option value="<%= ativo.id %>" <%= (manutencao && manutencao.asset_id === ativo.id) || (typeof formData !== 'undefined' && formData.assetId == ativo.id) ? 'selected' : '' %>>
+                <%= ativo.name %>
+              </option>
+            <% }); %>
+          <% } %>
+        </select>
+      </div>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a href="/sindico/manutencoes" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">
+          Cancelar
+        </a>
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+          <%= manutencao ? 'Atualizar' : 'Criar' %> Manutenção
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

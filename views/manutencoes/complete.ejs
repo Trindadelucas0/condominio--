@@ -1,0 +1,51 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Concluir Manutenção</h1>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4"><%= manutencao.title %></h2>
+      <p class="text-gray-600"><%= manutencao.description %></p>
+    </div>
+
+    <form method="POST" action="/operacional/manutencoes/<%= manutencao.id %>/concluir" class="bg-white rounded-lg shadow-lg p-6">
+      <!-- Notas de Conclusão -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Notas de Conclusão</label>
+        <textarea name="completionNotes" rows="4" 
+                  class="w-full border rounded px-4 py-2"><%= typeof formData !== 'undefined' ? formData.completionNotes : '' %></textarea>
+        <p class="text-xs text-gray-500 mt-1">Descreva o que foi feito na manutenção</p>
+      </div>
+
+      <!-- Custo (opcional) -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Custo (opcional)</label>
+        <input type="number" step="0.01" name="cost" 
+               value="<%= typeof formData !== 'undefined' ? formData.cost : '' %>"
+               class="w-full border rounded px-4 py-2"
+               placeholder="0.00">
+        <p class="text-xs text-gray-500 mt-1">Informe o custo da manutenção, se houver</p>
+      </div>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a href="/operacional/manutencoes/<%= manutencao.id %>" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">
+          Cancelar
+        </a>
+        <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+          Concluir Manutenção
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

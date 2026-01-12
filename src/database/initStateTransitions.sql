@@ -47,6 +47,11 @@ INSERT INTO state_transitions (entity_type, from_state, to_state, required_permi
   ('occurrences', 'AGUARDANDO_TERCEIRO', 'EM_ATENDIMENTO', 'occurrences:update', 'Retomada do atendimento')
 ON CONFLICT (entity_type, from_state, to_state) DO NOTHING;
 
+-- ABERTA -> RESOLVIDA (operacional resolve sua própria ocorrência diretamente)
+INSERT INTO state_transitions (entity_type, from_state, to_state, required_permission, description) VALUES
+  ('occurrences', 'ABERTA', 'RESOLVIDA', 'occurrences:resolve', 'Ocorrência resolvida diretamente pelo operacional')
+ON CONFLICT (entity_type, from_state, to_state) DO NOTHING;
+
 -- EM_ATENDIMENTO/AGUARDANDO_TERCEIRO -> RESOLVIDA (operacional resolve)
 INSERT INTO state_transitions (entity_type, from_state, to_state, required_permission, description) VALUES
   ('occurrences', 'EM_ATENDIMENTO', 'RESOLVIDA', 'occurrences:resolve', 'Ocorrência resolvida')
