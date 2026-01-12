@@ -7,7 +7,7 @@ const { logAction } = require('../utils/logger'); // Para logs de auditoria
 
 // Função para obter estatísticas do condomínio do síndico
 // Recebe: condominiumId
-// Retorna: estatísticas (alertas críticos, aprovações pendentes, etc)
+// Retorna: estatísticas (alertas críticos, aprovações pendentes, financeiro, etc)
 const getDashboardStats = async (condominiumId) => {
   try {
     // Conta aprovações pendentes
@@ -42,11 +42,58 @@ const getDashboardStats = async (condominiumId) => {
     );
     const pendingExpenses = parseInt(pendingExpensesResult.rows[0].total);
 
+    // Valor total pendente de aprovação
+    const pendingAmountResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 AND payment_status = 'PENDING' AND requires_approval = TRUE`,
+      [condominiumId]
+    );
+    const pendingAmount = parseFloat(pendingAmountResult.rows[0].total);
+
+    // Saldo financeiro (entradas - saídas pagas)
+    const entriesResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
+       WHERE condominium_id = $1 AND received = TRUE`,
+      [condominiumId]
+    );
+    const totalEntries = parseFloat(entriesResult.rows[0].total);
+
+    const exitsPaidResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 AND payment_status = 'PAID'`,
+      [condominiumId]
+    );
+    const totalExitsPaid = parseFloat(exitsPaidResult.rows[0].total);
+    const balance = totalEntries - totalExitsPaid;
+
+    // Tarefas atrasadas
+    const overdueTasksResult = await query(
+      `SELECT COUNT(*) as total FROM tasks 
+       WHERE condominium_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') 
+       AND due_date < CURRENT_DATE`,
+      [condominiumId]
+    );
+    const overdueTasks = parseInt(overdueTasksResult.rows[0].total);
+
+    // Ocorrências abertas
+    const openOccurrencesResult = await query(
+      `SELECT COUNT(*) as total FROM occurrences 
+       WHERE condominium_id = $1 AND status IN ('ABERTA', 'EM_ATENDIMENTO')`,
+      [condominiumId]
+    );
+    const openOccurrences = parseInt(openOccurrencesResult.rows[0].total);
+
     return {
       pendingApprovals,
       criticalAlerts,
       warningAlerts,
       pendingExpenses,
+      pendingAmount,
+      balance,
+      totalEntries,
+      totalExitsPaid,
+      overdueTasks,
+      openOccurrences,
     };
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard síndico:', error);
@@ -224,7 +271,7 @@ const resolveAlert = async (alertId, userId, condominiumId, ipAddress, userAgent
 };
 
 // Função para listar logs de auditoria do condomínio
-// Recebe: condominiumId, filtros opcionais (module, userId, limit)
+// Recebe: condominiumId, filtros opcionais (module, userId, limit, startDate, endDate, action)
 // Retorna: lista de logs
 const listAuditLogs = async (condominiumId, filters = {}) => {
   try {
@@ -248,6 +295,21 @@ const listAuditLogs = async (condominiumId, filters = {}) => {
       params.push(filters.userId);
     }
 
+    if (filters.action) {
+      sql += ` AND al.action = $${paramCount++}`;
+      params.push(filters.action);
+    }
+
+    if (filters.startDate) {
+      sql += ` AND al.created_at >= $${paramCount++}`;
+      params.push(filters.startDate);
+    }
+
+    if (filters.endDate) {
+      sql += ` AND al.created_at <= $${paramCount++}`;
+      params.push(filters.endDate + ' 23:59:59');
+    }
+
     sql += ` ORDER BY al.created_at DESC LIMIT $${paramCount}`;
     params.push(filters.limit || 100);
 
@@ -255,6 +317,25 @@ const listAuditLogs = async (condominiumId, filters = {}) => {
     return result.rows;
   } catch (error) {
     console.error('Erro ao listar logs de auditoria:', error);
+    throw error;
+  }
+};
+
+// Função para listar usuários do condomínio (para filtros)
+// Recebe: condominiumId
+// Retorna: lista de usuários
+const listUsers = async (condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT u.id, u.full_name, u.username
+       FROM users u
+       WHERE u.condominium_id = $1 AND u.active = TRUE
+       ORDER BY u.full_name`,
+      [condominiumId]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar usuários:', error);
     throw error;
   }
 };
@@ -267,4 +348,5 @@ module.exports = {
   listAlerts,
   resolveAlert,
   listAuditLogs,
+  listUsers,
 };

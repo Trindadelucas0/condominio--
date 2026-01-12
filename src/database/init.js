@@ -64,6 +64,9 @@ const initTables = async () => {
   
   // Lista de tabelas da FASE 9 (patrimônio)
   const phase9Tables = ['assets', 'asset_maintenances', 'asset_depreciation'];
+  
+  // Lista de tabelas da FASE 10 (alertas e automações)
+  const phase10Tables = ['notifications', 'slas', 'escalation_rules'];
 
   // Verifica cada tabela base
   for (const table of requiredTables) {
@@ -147,6 +150,20 @@ const initTables = async () => {
   }
 
   console.log('✅ Tabelas da FASE 9 verificadas/criadas com sucesso');
+
+  // Verifica e cria tabelas da FASE 10 (alertas e automações)
+  console.log('🔍 Verificando tabelas da FASE 10 (alertas e automações)...');
+  for (const table of phase10Tables) {
+    const exists = await tableExists(table);
+    if (!exists) {
+      console.log(`⚠️  Tabela ${table} não encontrada. Criando...`);
+      // Se alguma tabela da FASE 10 não existe, executa script de extensão
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase10.sql'));
+      break; // Para o loop após criar (script cria todas de uma vez)
+    }
+  }
+
+  console.log('✅ Tabelas da FASE 10 verificadas/criadas com sucesso');
 };
 
 // Função para inicializar perfis (roles) padrão

@@ -1,0 +1,233 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800"><%= ativo ? 'Editar Ativo' : 'Novo Ativo' %></h1>
+    <p class="text-gray-600 mt-2"><%= ativo ? 'Atualize as informações do ativo' : 'Cadastre um novo ativo do patrimônio' %></p>
+  </div>
+
+  <!-- Mensagem de erro -->
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= error %>
+    </div>
+  <% } %>
+
+  <!-- Formulário -->
+  <div class="bg-white rounded-lg shadow p-6 max-w-3xl">
+    <form method="POST" action="<%= ativo ? '/administrativo/patrimonio/ativos/' + ativo.id : '/administrativo/patrimonio/ativos' %>">
+      <!-- Nome -->
+      <div class="mb-4">
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+          Nome <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          value="<%= ativo ? ativo.name : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+          placeholder="Ex: Elevador A, Bomba d'água 1"
+        />
+      </div>
+
+      <!-- Tipo -->
+      <div class="mb-4">
+        <label for="assetType" class="block text-sm font-medium text-gray-700 mb-1">
+          Tipo <span class="text-red-500">*</span>
+        </label>
+        <select
+          id="assetType"
+          name="assetType"
+          required
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          <option value="ELEVADOR" <%= ativo && ativo.asset_type === 'ELEVADOR' ? 'selected' : '' %>>Elevador</option>
+          <option value="BOMBA" <%= ativo && ativo.asset_type === 'BOMBA' ? 'selected' : '' %>>Bomba</option>
+          <option value="GERADOR" <%= ativo && ativo.asset_type === 'GERADOR' ? 'selected' : '' %>>Gerador</option>
+          <option value="PORTARIA" <%= ativo && ativo.asset_type === 'PORTARIA' ? 'selected' : '' %>>Portaria</option>
+          <option value="OUTRO" <%= ativo && ativo.asset_type === 'OUTRO' ? 'selected' : '' %>>Outro</option>
+        </select>
+      </div>
+
+      <!-- Descrição -->
+      <div class="mb-4">
+        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+          Descrição
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          rows="3"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+          placeholder="Descreva o ativo..."
+        ><%= ativo ? ativo.description || '' : '' %></textarea>
+      </div>
+
+      <!-- Fabricante e Modelo -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="manufacturer" class="block text-sm font-medium text-gray-700 mb-1">
+            Fabricante
+          </label>
+          <input
+            type="text"
+            id="manufacturer"
+            name="manufacturer"
+            value="<%= ativo ? ativo.manufacturer || '' : '' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Ex: ThyssenKrupp"
+          />
+        </div>
+        <div>
+          <label for="model" class="block text-sm font-medium text-gray-700 mb-1">
+            Modelo
+          </label>
+          <input
+            type="text"
+            id="model"
+            name="model"
+            value="<%= ativo ? ativo.model || '' : '' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Ex: MRL 630"
+          />
+        </div>
+      </div>
+
+      <!-- Número de Série e Localização -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="serialNumber" class="block text-sm font-medium text-gray-700 mb-1">
+            Número de Série
+          </label>
+          <input
+            type="text"
+            id="serialNumber"
+            name="serialNumber"
+            value="<%= ativo ? ativo.serial_number || '' : '' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Ex: SN123456"
+          />
+        </div>
+        <div>
+          <label for="location" class="block text-sm font-medium text-gray-700 mb-1">
+            Localização
+          </label>
+          <input
+            type="text"
+            id="location"
+            name="location"
+            value="<%= ativo ? ativo.location || '' : '' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Ex: Torre A, Subsolo"
+          />
+        </div>
+      </div>
+
+      <!-- Data de Aquisição e Valor -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="acquisitionDate" class="block text-sm font-medium text-gray-700 mb-1">
+            Data de Aquisição
+          </label>
+          <input
+            type="date"
+            id="acquisitionDate"
+            name="acquisitionDate"
+            value="<%= ativo && ativo.acquisition_date ? new Date(ativo.acquisition_date).toISOString().split('T')[0] : '' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+        <div>
+          <label for="acquisitionCost" class="block text-sm font-medium text-gray-700 mb-1">
+            Valor de Aquisição (R$)
+          </label>
+          <input
+            type="number"
+            id="acquisitionCost"
+            name="acquisitionCost"
+            step="0.01"
+            min="0"
+            value="<%= ativo && ativo.acquisition_cost ? ativo.acquisition_cost : '' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+
+      <!-- Taxa de Depreciação e Vida Útil -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="depreciationRate" class="block text-sm font-medium text-gray-700 mb-1">
+            Taxa de Depreciação Anual (%)
+          </label>
+          <input
+            type="number"
+            id="depreciationRate"
+            name="depreciationRate"
+            step="0.01"
+            min="0"
+            max="100"
+            value="<%= ativo ? ativo.depreciation_rate || '10.00' : '10.00' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="10.00"
+          />
+        </div>
+        <div>
+          <label for="usefulLifeYears" class="block text-sm font-medium text-gray-700 mb-1">
+            Vida Útil (anos)
+          </label>
+          <input
+            type="number"
+            id="usefulLifeYears"
+            name="usefulLifeYears"
+            min="1"
+            value="<%= ativo ? ativo.useful_life_years || '10' : '10' %>"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="10"
+          />
+        </div>
+      </div>
+
+      <!-- Status (apenas na edição) -->
+      <% if (ativo) { %>
+        <div class="mb-4">
+          <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
+            Status
+          </label>
+          <select
+            id="status"
+            name="status"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="ACTIVE" <%= ativo.status === 'ACTIVE' ? 'selected' : '' %>>Ativo</option>
+            <option value="INACTIVE" <%= ativo.status === 'INACTIVE' ? 'selected' : '' %>>Inativo</option>
+            <option value="MAINTENANCE" <%= ativo.status === 'MAINTENANCE' ? 'selected' : '' %>>Em Manutenção</option>
+            <option value="DECOMMISSIONED" <%= ativo.status === 'DECOMMISSIONED' ? 'selected' : '' %>>Descomissionado</option>
+          </select>
+        </div>
+      <% } %>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a
+          href="/administrativo/patrimonio/ativos"
+          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
+        >
+          <%= ativo ? 'Atualizar Ativo' : 'Criar Ativo' %>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

@@ -8,14 +8,17 @@
     <p class="text-gray-600 mt-2">Visão geral do sistema</p>
   </div>
 
-  <!-- Cards de estatísticas -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <!-- Cards de estatísticas principais -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Total de Condomínios -->
     <div class="bg-white rounded-lg shadow p-6">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Total de Condomínios</p>
+          <p class="text-gray-600 text-sm">Condomínios Ativos</p>
           <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.totalCondominios %></p>
+          <% if (stats.totalCondominiosInativos > 0) { %>
+            <p class="text-xs text-gray-500 mt-1"><%= stats.totalCondominiosInativos %> inativos</p>
+          <% } %>
         </div>
         <div class="bg-blue-100 rounded-full p-4">
           <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,7 +32,7 @@
     <div class="bg-white rounded-lg shadow p-6">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Total de Usuários</p>
+          <p class="text-gray-600 text-sm">Usuários Ativos</p>
           <p class="text-3xl font-bold text-green-600 mt-2"><%= stats.totalUsuarios %></p>
         </div>
         <div class="bg-green-100 rounded-full p-4">
@@ -46,11 +49,58 @@
         <div>
           <p class="text-gray-600 text-sm">Logs (24h)</p>
           <p class="text-3xl font-bold text-purple-600 mt-2"><%= stats.logs24h %></p>
+          <p class="text-xs text-gray-500 mt-1"><%= stats.logs7d %> nos últimos 7 dias</p>
         </div>
         <div class="bg-purple-100 rounded-full p-4">
           <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aprovações Pendentes -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm">Aprovações Pendentes</p>
+          <p class="text-3xl font-bold text-orange-600 mt-2"><%= stats.aprovaçõesPendentes %></p>
+        </div>
+        <div class="bg-orange-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Segunda linha de estatísticas -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Usuários por Perfil -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Usuários por Perfil</h2>
+      <div class="space-y-3">
+        <% if (stats.usuariosPorPerfil && stats.usuariosPorPerfil.length > 0) { %>
+          <% stats.usuariosPorPerfil.forEach(perfil => { %>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-700"><%= perfil.name %></span>
+              <span class="text-blue-600 font-bold text-lg"><%= perfil.total || 0 %></span>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <p class="text-gray-500 text-sm">Nenhum usuário cadastrado</p>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Alertas Críticos -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Alertas do Sistema</h2>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-700">Alertas Críticos</span>
+          <span class="text-red-600 font-bold text-lg"><%= stats.alertasCriticos %></span>
         </div>
       </div>
     </div>

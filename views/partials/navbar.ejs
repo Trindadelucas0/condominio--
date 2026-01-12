@@ -1,6 +1,7 @@
 <!-- Navbar principal do sistema -->
-<!-- Exibe menu conforme perfil do usuário -->
-<!-- Usa req.user que vem do middleware de autenticação -->
+<!-- NAVBAR DINÂMICA: Exibe menus automaticamente baseado nas roles do usuário -->
+<!-- Quando uma role é adicionada ao usuário, os menus aparecem automaticamente -->
+<!-- Usa req.user.roles (array) que vem do middleware de autenticação -->
 
 <nav class="bg-blue-600 text-white shadow-lg">
   <div class="container mx-auto px-4">
@@ -10,44 +11,71 @@
         <a href="/" class="text-xl font-bold">Gestão Condominial</a>
       </div>
 
-      <!-- Menu de navegação (conforme perfil) -->
+      <!-- Menu de navegação DINÂMICO (baseado em roles) -->
       <div class="flex items-center space-x-4">
-        <!-- Se for SUPER_MASTER -->
-        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('SUPER_MASTER')) { %>
-          <a href="/master/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
-          <a href="/master/condominios" class="hover:text-blue-200 px-3 py-2 rounded">Condomínios</a>
-          <a href="/master/usuarios" class="hover:text-blue-200 px-3 py-2 rounded">Usuários</a>
-          <a href="/master/logs" class="hover:text-blue-200 px-3 py-2 rounded">Logs</a>
-        <% } %>
-
-        <!-- Se for SINDICO ou SUBSINDICO -->
-        <% if (typeof user !== 'undefined' && user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) { %>
-          <a href="/sindico/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
-          <a href="/sindico/aprovacoes" class="hover:text-blue-200 px-3 py-2 rounded">Aprovações</a>
-          <a href="/sindico/alertas" class="hover:text-blue-200 px-3 py-2 rounded">Alertas</a>
-          <a href="/sindico/logs" class="hover:text-blue-200 px-3 py-2 rounded">Logs</a>
-        <% } %>
-
-        <!-- Se for ADMINISTRATIVO -->
-        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('ADMINISTRATIVO')) { %>
-          <a href="/administrativo/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
-          <a href="/administrativo/tarefas" class="hover:text-blue-200 px-3 py-2 rounded">Tarefas</a>
-          <a href="/administrativo/documentos" class="hover:text-blue-200 px-3 py-2 rounded">Documentos</a>
-          <a href="/administrativo/financeiro/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Financeiro</a>
-        <% } %>
-
-        <!-- Se for OPERACIONAL -->
-        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('OPERACIONAL')) { %>
-          <a href="/operacional/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
-          <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
-          <a href="/operacional/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências</a>
-        <% } %>
-
-        <!-- Se for CONSELHO -->
-        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('CONSELHO')) { %>
-          <a href="/conselho/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
-          <a href="/conselho/relatorios" class="hover:text-blue-200 px-3 py-2 rounded">Relatórios</a>
-        <% } %>
+        <% 
+          // Verifica se user existe e tem roles
+          if (typeof user !== 'undefined' && user.roles && Array.isArray(user.roles)) {
+            const roles = user.roles;
+            
+            // Mapeamento de roles para menus (permitindo múltiplas roles)
+            // SUPER_MASTER
+            if (roles.includes('SUPER_MASTER')) { %>
+              <a href="/master/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Master - Dashboard</a>
+              <a href="/master/condominios" class="hover:text-blue-200 px-3 py-2 rounded">Condomínios</a>
+              <a href="/master/usuarios" class="hover:text-blue-200 px-3 py-2 rounded">Usuários</a>
+            <% }
+            
+            // SINDICO / SUBSINDICO
+            if (roles.includes('SINDICO') || roles.includes('SUBSINDICO')) { %>
+              <a href="/sindico/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Síndico - Dashboard</a>
+              <a href="/sindico/aprovacoes" class="hover:text-blue-200 px-3 py-2 rounded">Aprovações</a>
+              <a href="/sindico/alertas" class="hover:text-blue-200 px-3 py-2 rounded">Alertas</a>
+              <a href="/sindico/logs" class="hover:text-blue-200 px-3 py-2 rounded">Logs</a>
+            <% }
+            
+            // FINANCEIRO (módulo separado)
+            if (roles.includes('FINANCEIRO')) { %>
+              <a href="/financeiro/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Financeiro - Dashboard</a>
+              <a href="/financeiro/entradas" class="hover:text-blue-200 px-3 py-2 rounded">Entradas</a>
+              <a href="/financeiro/saidas" class="hover:text-blue-200 px-3 py-2 rounded">Saídas</a>
+              <a href="/financeiro/contas" class="hover:text-blue-200 px-3 py-2 rounded">Contas</a>
+              <a href="/financeiro/centros-custo" class="hover:text-blue-200 px-3 py-2 rounded">Centros de Custo</a>
+            <% }
+            
+            // PATRIMONIO (módulo separado)
+            if (roles.includes('PATRIMONIO')) { %>
+              <a href="/patrimonio/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Patrimônio - Dashboard</a>
+              <a href="/patrimonio/ativos" class="hover:text-blue-200 px-3 py-2 rounded">Ativos</a>
+            <% }
+            
+            // ADMINISTRATIVO (NÃO tem mais acesso a financeiro/patrimonio)
+            if (roles.includes('ADMINISTRATIVO')) { %>
+              <a href="/administrativo/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Admin - Dashboard</a>
+              <a href="/administrativo/tarefas" class="hover:text-blue-200 px-3 py-2 rounded">Tarefas</a>
+              <a href="/administrativo/documentos" class="hover:text-blue-200 px-3 py-2 rounded">Documentos</a>
+            <% }
+            
+            // OPERACIONAL
+            if (roles.includes('OPERACIONAL')) { %>
+              <a href="/operacional/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Operacional - Dashboard</a>
+              <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
+              <a href="/operacional/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências</a>
+            <% }
+            
+            // LIMPEZA (compartilha rotas com OPERACIONAL, mas tem restrições)
+            if (roles.includes('LIMPEZA')) { %>
+              <a href="/operacional/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Limpeza - Dashboard</a>
+              <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
+              <!-- LIMPEZA NÃO pode criar ocorrências (bloqueado no middleware) -->
+            <% }
+            
+            // CONSELHO
+            if (roles.includes('CONSELHO')) { %>
+              <a href="/conselho/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Conselho - Dashboard</a>
+            <% }
+          }
+        %>
 
         <!-- Informações do usuário e logout -->
         <% if (typeof user !== 'undefined') { %>

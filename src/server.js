@@ -5,8 +5,11 @@ require('dotenv').config(); // Carrega variáveis de ambiente do arquivo .env (d
 const app = require('./app'); // Importa aplicação Express configurada
 const initializeDatabase = require('./database/init'); // Função de inicialização do banco
 
-// Porta do servidor (lê do .env ou usa 3000 como padrão)
+// Porta do servidor (lê do .env ou usa 3300 como padrão)
 const PORT = process.env.PORT || 3300;
+
+// Log da porta que será usada (para debug)
+console.log(`🔧 Porta configurada: ${PORT} (${process.env.PORT ? 'do .env' : 'padrão'})`);
 
 // Função assíncrona para iniciar servidor
 // Inicializa banco primeiro, depois inicia servidor HTTP

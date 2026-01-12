@@ -34,16 +34,22 @@ const authRoutes = require('./routes/authRoutes'); // Rotas de autenticação
 const masterRoutes = require('./routes/masterRoutes'); // Rotas do SUPER_MASTER
 const sindicoRoutes = require('./routes/sindicoRoutes'); // Rotas do SINDICO/SUBSINDICO
 const administrativoRoutes = require('./routes/administrativoRoutes'); // Rotas do ADMINISTRATIVO
+const financeiroRoutes = require('./routes/financeiroRoutes'); // Rotas do FINANCEIRO
+const patrimonioRoutes = require('./routes/patrimonioRoutes'); // Rotas do PATRIMONIO
 const operacionalRoutes = require('./routes/operacionalRoutes'); // Rotas do OPERACIONAL
 const conselhoRoutes = require('./routes/conselhoRoutes'); // Rotas do CONSELHO
+const automationRoutes = require('./routes/automationRoutes'); // Rotas de automações
 
 // Registra rotas na aplicação
 app.use('/auth', authRoutes); // Todas as rotas de /auth/*
 app.use('/master', masterRoutes); // Todas as rotas de /master/* (exige SUPER_MASTER)
 app.use('/sindico', sindicoRoutes); // Todas as rotas de /sindico/* (exige SINDICO ou SUBSINDICO)
 app.use('/administrativo', administrativoRoutes); // Todas as rotas de /administrativo/* (exige ADMINISTRATIVO)
-app.use('/operacional', operacionalRoutes); // Todas as rotas de /operacional/* (exige OPERACIONAL)
+app.use('/financeiro', financeiroRoutes); // Todas as rotas de /financeiro/* (exige FINANCEIRO)
+app.use('/patrimonio', patrimonioRoutes); // Todas as rotas de /patrimonio/* (exige PATRIMONIO)
+app.use('/operacional', operacionalRoutes); // Todas as rotas de /operacional/* (exige OPERACIONAL ou LIMPEZA)
 app.use('/conselho', conselhoRoutes); // Todas as rotas de /conselho/* (exige CONSELHO)
+app.use('/automation', automationRoutes); // Rotas de automações
 
 // Rota raiz (/) redireciona para login
 app.get('/', (req, res) => {

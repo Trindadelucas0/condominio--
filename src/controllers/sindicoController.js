@@ -142,16 +142,27 @@ const showLogs = async (req, res) => {
     const filters = {
       module: req.query.module || undefined,
       userId: req.query.userId ? parseInt(req.query.userId) : undefined,
+      action: req.query.action || undefined,
+      startDate: req.query.startDate || undefined,
+      endDate: req.query.endDate || undefined,
       limit: req.query.limit ? parseInt(req.query.limit) : 100,
     };
 
     const logs = await sindicoService.listAuditLogs(req.user.condominiumId, filters);
+    const users = await sindicoService.listUsers(req.user.condominiumId);
+
+    // Lista de módulos disponíveis (para filtro)
+    const modules = ['USER', 'FINANCIAL', 'TASK', 'OCCURRENCE', 'DOCUMENT', 'APPROVAL', 'PATRIMONY', 'AUTH'];
+    const actions = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'APPROVE', 'REJECT', 'COMPLETE'];
 
     res.render('sindico/logs', {
       title: 'Logs de Auditoria',
       user: req.user,
       logs: logs,
       filters: filters,
+      users: users,
+      modules: modules,
+      actions: actions,
     });
   } catch (error) {
     console.error('Erro ao listar logs:', error);

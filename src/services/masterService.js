@@ -16,11 +16,27 @@ const getDashboardStats = async () => {
     );
     const totalCondominios = parseInt(condominiosResult.rows[0].total);
 
+    // Conta total de condomínios inativos
+    const condominiosInativosResult = await query(
+      `SELECT COUNT(*) as total FROM condominiums WHERE active = FALSE`
+    );
+    const totalCondominiosInativos = parseInt(condominiosInativosResult.rows[0].total);
+
     // Conta total de usuários ativos
     const usuariosResult = await query(
       `SELECT COUNT(*) as total FROM users WHERE active = TRUE`
     );
     const totalUsuarios = parseInt(usuariosResult.rows[0].total);
+
+    // Conta usuários por perfil
+    const usuariosPorPerfilResult = await query(
+      `SELECT r.name, COUNT(DISTINCT ur.user_id) as total
+       FROM roles r
+       LEFT JOIN user_roles ur ON r.id = ur.role_id
+       LEFT JOIN users u ON ur.user_id = u.id AND u.active = TRUE
+       GROUP BY r.name
+       ORDER BY r.name`
+    );
 
     // Conta logs das últimas 24 horas
     const logsResult = await query(
@@ -28,11 +44,34 @@ const getDashboardStats = async () => {
     );
     const logs24h = parseInt(logsResult.rows[0].total);
 
+    // Conta logs dos últimos 7 dias
+    const logs7dResult = await query(
+      `SELECT COUNT(*) as total FROM audit_logs WHERE created_at >= NOW() - INTERVAL '7 days'`
+    );
+    const logs7d = parseInt(logs7dResult.rows[0].total);
+
+    // Conta aprovações pendentes em todos os condomínios
+    const aprovaçõesPendentesResult = await query(
+      `SELECT COUNT(*) as total FROM approvals WHERE status = 'PENDING'`
+    );
+    const aprovaçõesPendentes = parseInt(aprovaçõesPendentesResult.rows[0].total);
+
+    // Conta alertas críticos não resolvidos
+    const alertasCriticosResult = await query(
+      `SELECT COUNT(*) as total FROM alerts WHERE severity = 'CRITICAL' AND resolved = FALSE`
+    );
+    const alertasCriticos = parseInt(alertasCriticosResult.rows[0].total);
+
     // Retorna estatísticas
     return {
       totalCondominios,
+      totalCondominiosInativos,
       totalUsuarios,
+      usuariosPorPerfil: usuariosPorPerfilResult.rows,
       logs24h,
+      logs7d,
+      aprovaçõesPendentes,
+      alertasCriticos,
     };
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard:', error);

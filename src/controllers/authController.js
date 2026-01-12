@@ -57,16 +57,21 @@ const processLogin = async (req, res) => {
     });
 
     // Redireciona conforme perfil do usuário
-    // SUPER_MASTER vai para dashboard master
-    // Outros perfis vão para seus respectivos dashboards (serão criados depois)
+    // Prioridade: SUPER_MASTER > SINDICO/SUBSINDICO > outros
     if (user.roles.includes('SUPER_MASTER')) {
       return res.redirect('/master/dashboard');
     } else if (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO')) {
       return res.redirect('/sindico/dashboard');
+    } else if (user.roles.includes('FINANCEIRO')) {
+      return res.redirect('/financeiro/dashboard');
+    } else if (user.roles.includes('PATRIMONIO')) {
+      return res.redirect('/patrimonio/dashboard');
     } else if (user.roles.includes('ADMINISTRATIVO')) {
       return res.redirect('/administrativo/dashboard');
     } else if (user.roles.includes('OPERACIONAL')) {
       return res.redirect('/operacional/dashboard');
+    } else if (user.roles.includes('LIMPEZA')) {
+      return res.redirect('/operacional/dashboard'); // LIMPEZA usa dashboard do OPERACIONAL (subset)
     } else if (user.roles.includes('CONSELHO')) {
       return res.redirect('/conselho/dashboard');
     }

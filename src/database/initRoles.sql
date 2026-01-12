@@ -26,5 +26,17 @@ INSERT INTO roles (name, description) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO roles (name, description) VALUES
+  ('FINANCEIRO', 'Equipe financeira. Controla entradas e saídas. NÃO aprova valores altos (apenas SINDICO aprova).')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO roles (name, description) VALUES
+  ('PATRIMONIO', 'Controle patrimonial. Cadastra ativos e gerencia depreciação. NÃO cria despesas.')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO roles (name, description) VALUES
+  ('LIMPEZA', 'Equipe de limpeza (subset operacional). Executa checklists de limpeza. NÃO cria ocorrências. NÃO vê financeiro.')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO roles (name, description) VALUES
   ('CONSELHO', 'Membro do conselho. Apenas leitura. Não pode criar, editar ou aprovar nada.')
 ON CONFLICT (name) DO NOTHING;
