@@ -1,0 +1,175 @@
+🧠 PARTE 1 — RESUMO CLARO DE COMO O SISTEMA VAI SER E FUNCIONAR
+
+Vou explicar como se fosse pra uma criança, mas sem infantilizar.
+
+🏢 O QUE É O SISTEMA
+
+É um ecossistema interno de gestão condominial, não um app simples.
+
+Ele serve para:
+
+controlar pessoas
+
+controlar dinheiro
+
+controlar manutenção
+
+registrar tudo
+
+impedir erro humano
+
+👉 O sistema manda mais que as pessoas.
+
+🔑 A REGRA SUPREMA (QUE NUNCA QUEBRA)
+
+Quem executa não decide
+
+Quem decide não executa
+
+Quem governa o sistema não governa o condomínio
+
+Se quebrar isso, o sistema perde sentido.
+
+👥 HIERARQUIA (QUEM MANDA EM QUEM)
+🟢 Operacional (Zeladoria / Manutenção)
+
+Executa tarefas
+
+Preenche checklist
+
+Tira foto
+
+Registra ocorrência
+
+❌ Não vê dinheiro
+❌ Não aprova nada
+❌ Não apaga nada
+
+🟠 Administrativo / Financeiro
+
+Cria tarefas
+
+Organiza documentos
+
+Lança despesas
+
+Controla contratos
+
+Controla entradas e saídas
+
+⚠️ Aprova só até limite
+❌ Não executa checklist
+
+🔴 Síndico / Subsíndico (Master do Condomínio)
+
+Aprova gastos
+
+Vê dashboards
+
+Vê logs
+
+Toma decisão
+
+❌ Não executa tarefas
+❌ Não altera operação
+
+🟣 SUPER MASTER (Administrador do Sistema)
+
+Vê TODOS os condomínios
+
+Cria usuários
+
+Define limites
+
+Ativa/desativa módulos
+
+Vê métricas globais
+
+👉 Esse manda no software, não no condomínio.
+
+🔄 COMO AS COISAS ACONTECEM (RESUMO DO FLUXO)
+
+Exemplo real:
+
+Zelador registra problema
+
+Sistema cria ocorrência
+
+Sistema gera tarefa
+
+Administrativo planeja
+
+Síndico aprova custo
+
+Financeiro registra saída
+
+Patrimônio atualiza ativo
+
+Tudo vai para log
+
+Dashboard reflete
+
+📌 Ninguém “avisa ninguém”.
+📌 O sistema orquestra tudo.
+
+💰 FINANCEIRO (ENTRADAS E SAÍDAS)
+
+Entradas:
+
+taxas
+
+receitas
+
+Saídas:
+
+contas (água, luz, gás)
+
+manutenção
+
+contratos
+
+Regras:
+
+Conta paga não edita
+
+Conta aprovada não altera
+
+Toda saída precisa de centro de custo
+
+Toda manutenção gera impacto financeiro
+
+🛠️ MANUTENÇÃO
+Preventiva
+
+Agenda automática
+
+Checklist obrigatório
+
+Evidência obrigatória
+
+Gera histórico
+
+Corretiva
+
+Nasce de problema
+
+Gera custo
+
+Exige aprovação
+
+Alimenta a preventiva
+
+🛡️ AUDITORIA
+
+Tudo gera log:
+
+quem
+
+quando
+
+antes
+
+depois
+
+Nada é apagado.
+Só arquivado.

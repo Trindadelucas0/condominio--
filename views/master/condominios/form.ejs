@@ -1,0 +1,131 @@
+<%- include('../../partials/header', { title: title }) %>
+<%- include('../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800"><%= condominio ? 'Editar Condomínio' : 'Novo Condomínio' %></h1>
+    <p class="text-gray-600 mt-2"><%= condominio ? 'Atualize as informações do condomínio' : 'Preencha os dados para criar um novo condomínio' %></p>
+  </div>
+
+  <!-- Mensagem de erro -->
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= error %>
+    </div>
+  <% } %>
+
+  <!-- Formulário -->
+  <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
+    <form method="POST" action="<%= condominio ? '/master/condominios/' + condominio.id : '/master/condominios' %>">
+      <!-- Nome -->
+      <div class="mb-4">
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+          Nome do Condomínio <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          value="<%= condominio ? condominio.name : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ex: Residencial Jardim das Flores"
+        />
+      </div>
+
+      <!-- Endereço -->
+      <div class="mb-4">
+        <label for="address" class="block text-sm font-medium text-gray-700 mb-1">
+          Endereço
+        </label>
+        <textarea
+          id="address"
+          name="address"
+          rows="3"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Endereço completo do condomínio"
+        ><%= condominio ? condominio.address || '' : '' %></textarea>
+      </div>
+
+      <!-- CNPJ -->
+      <div class="mb-4">
+        <label for="cnpj" class="block text-sm font-medium text-gray-700 mb-1">
+          CNPJ
+        </label>
+        <input
+          type="text"
+          id="cnpj"
+          name="cnpj"
+          value="<%= condominio ? condominio.cnpj || '' : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="00.000.000/0000-00"
+        />
+      </div>
+
+      <!-- Telefone -->
+      <div class="mb-4">
+        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">
+          Telefone
+        </label>
+        <input
+          type="text"
+          id="phone"
+          name="phone"
+          value="<%= condominio ? condominio.phone || '' : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="(00) 0000-0000"
+        />
+      </div>
+
+      <!-- Email -->
+      <div class="mb-4">
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+          Email
+        </label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          value="<%= condominio ? condominio.email || '' : '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="contato@condominio.com"
+        />
+      </div>
+
+      <!-- Status (apenas na edição) -->
+      <% if (condominio) { %>
+        <div class="mb-4">
+          <label class="flex items-center">
+            <input
+              type="checkbox"
+              name="active"
+              value="true"
+              <%= condominio.active ? 'checked' : '' %>
+              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span class="ml-2 text-sm text-gray-700">Condomínio ativo</span>
+          </label>
+        </div>
+      <% } %>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a
+          href="/master/condominios"
+          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          <%= condominio ? 'Atualizar' : 'Criar' %>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>

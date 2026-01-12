@@ -1,0 +1,21 @@
+# Configuração do Banco de Dados PostgreSQL
+# Use variáveis separadas (recomendado) ou DATABASE_URL completa
+
+# Opção 1: Variáveis separadas (RECOMENDADO)
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=sua_senha_aqui
+DB_DATABASE=condominio_db
+
+# Opção 2: URL completa (alternativa)
+# DATABASE_URL=postgresql://postgres:senha@localhost:5432/condominio_db
+
+# Chave secreta para JWT (gerar uma chave forte em produção)
+JWT_SECRET=seu_jwt_secret_super_seguro_aqui_mude_em_producao
+
+# Porta do servidor
+PORT=3000
+
+# Ambiente (development, production)
+NODE_ENV=development

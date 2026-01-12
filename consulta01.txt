@@ -1,0 +1,105 @@
+�
+�
+Documentação Oficial: 
+Ecossistema de Gestão Condominial 
+Integrada
+1. Visão Executiva e Estratégica
+Este projeto não é apenas um software de tarefas ou uma planilha online; é um Ecossistema Interno de 
+Gestão Condominial. O objetivo central não é substituir pessoas, mas eliminar falhas humanas, a perda de 
+informações em canais informais (WhatsApp) e as decisões tomadas sem dados,.
+A filosofia central do sistema é a integração automática: um evento em um setor (ex: manutenção) gera 
+consequências imediatas, financeiras e administrativas em outros, sem depender que um funcionário lembre 
+de avisar o outro.
+As "Regras de Ouro" do Sistema
+Para garantir a ordem, o sistema segue três premissas inegociáveis,:
+1. Quem executa não decide. (O zelador faz, o síndico decide).
+2. Quem decide não executa. (O síndico aprova, mas não marca checklist).
+3. Quem governa o sistema não governa o condomínio. (A TI mantém o software, mas não mexe no 
+dinheiro do prédio).------------------------------------------------------------------------------------------------------------------------------------------------------------
+2. A Espinha Dorsal: Hierarquia e Acesso (RBAC)
+O sistema utiliza um controle rígido de acesso (RBAC). O nível de permissão define quais botões aparecem na 
+tela para cada usuário.
+🔴
+ Nível 1: Master (Síndico / Subsíndico)
+• Função: Decisão Estratégica.
+• Pode: Ver todos os dashboards, visualizar dados financeiros reais, aprovar despesas de alto valor, aprovar 
+contratos e manutenções críticas, ver logs de auditoria.
+• Não Pode: Executar checklists operacionais ou alterar dados históricos.
+🟠
+ Nível 2: Gestão (Administrativo / Financeiro)
+• Função: Organização e Controle (O Cérebro).
+• Pode: Lançar contas, criar tarefas, controlar contratos, aprovar despesas até um limite pré-configurado, 
+gerenciar documentos.
+• Não Pode: Aprovar valores acima do limite, fechar o mês financeiro sozinho ou apagar dados críticos.
+🟩
+ Nível 3: Operacional (Zeladoria / Manutenção)
+• Função: Execução Técnica.
+• Pode: Executar checklists, registrar leituras (água/luz), abrir ocorrências, anexar fotos de evidência.
+• Não Pode: Ver valores financeiros, aprovar compras ou editar itens já concluídos.
+🧹
+ Nível 3.1: Equipe de Limpeza (Novo Módulo)
+• Função: Rotina e Higiene.
+• Pode: Marcar checklists de áreas específicas (Hall, Elevadores, Lixeira) com status "Feito/Não Feito".
+• Diferença: Não realiza manutenção técnica. Se encontrar algo quebrado, abre uma ocorrência para a 
+Zeladoria,.
+🔵
+ Nível 4: Leitura (Conselho / Auditoria)
+• Função: Fiscalização.
+• Pode: Visualizar tudo (transparência total).
+• Não Pode: Criar, editar ou aprovar nada.------------------------------------------------------------------------------------------------------------------------------------------------------------
+3. Módulos e Funcionalidades
+🔧
+ Zeladoria e Manutenção (Foco em Prevenção)
+• Checklists Inteligentes: Rotinas diárias/semanais. Se um item crítico for marcado como "não feito", o 
+sistema exige justificativa obrigatória.
+• Evidência Obrigatória: Nenhuma tarefa ou manutenção é encerrada sem foto (antes/depois).
+• Estoque: O zelador informa o consumo. Se atingir o mínimo, o sistema alerta o Administrativo para comprar 
+(o zelador não compra).
+💰
+ Financeiro (Controle Real)
+• Dupla Aprovação: O Administrativo lança e aprova até um limite; acima disso, só o Síndico libera.
+• Rastreabilidade: Toda despesa deve estar vinculada a uma origem (um contrato, uma manutenção ou uma 
+compra aprovada). Nada "aparece do nada".
+• Consumo Inteligente: O sistema compara o consumo (água/luz/gás) com o mês anterior. Se a variação for 
+anormal, alerta sobre possível vazamento.
+🏷
+ Patrimônio (Ativos Auditáveis)
+• Ficha do Ativo: Histórico completo de cada equipamento (elevador, bomba, portão).
+• Depreciação Automática: Calcula o valor real do bem: valor_atual = valor_original - (depreciação × tempo).
+• Histórico Cruzado: Permite responder: "Quanto gastamos com este elevador nos últimos 6 meses?".
+🗂
+ Administrativo (Organização)
+• Gestão de Tarefas: Toda tarefa tem responsável, prioridade e prazo (SLA). Tarefa sem prazo não existe.
+• Documentos: Alertas automáticos para vencimento de contratos, seguros e manutenções obrigatórias (ex: 
+extintores).------------------------------------------------------------------------------------------------------------------------------------------------------------
+4. Fluxos Automáticos (O "Cérebro" do Sistema)
+O grande diferencial é que o sistema trabalha sozinho através de gatilhos.
+🔄
+ Fluxo 1: Da Ocorrência ao Pagamento
+1. Problema: Zelador identifica bomba quebrada e abre Ocorrência (com foto).
+2. Ação: Sistema gera automaticamente uma Tarefa Urgente para o Administrativo.
+3. Custo: Administrativo orça o reparo e lança a Despesa.
+4. Decisão: Síndico recebe notificação e Aprova o valor.
+5. Registro: Após o conserto, a despesa e o serviço ficam gravados no histórico do equipamento 
+(Patrimônio).
+6. Conclusão: Ocorrência encerrada apenas com foto da solução.
+🚨
+ Fluxo 2: Escalonamento (SLA)
+Se uma ocorrência ou tarefa for ignorada:
+1. Alerta 1: O sistema avisa o responsável que o prazo está estourando.
+2. Alerta 2 (Escalonamento): Se continuar parado, o sistema avisa o chefe imediato (Síndico) 
+automaticamente e gera um log de atraso.------------------------------------------------------------------------------------------------------------------------------------------------------------
+5. Governança, Segurança e Dados
+Regras de Auditoria (Logs)
+• Imutabilidade: O sistema grava quem fez, quando fez e o que mudou (ex: "Usuário X alterou valor de 
+R500paraR 600"). Isso nunca pode ser apagado,.
+• Exclusão Proibida: Dados críticos (contas, ocorrências, histórico) nunca são excluídos, apenas 
+arquivados/inativados. Isso protege o condomínio juridicamente,.
+• Bloqueio de Edição: Uma conta paga ou aprovada não pode ser editada livremente.
+Stack Tecnológica (Arquitetura)
+Para garantir segurança e escalabilidade, o sistema será desenvolvido com,:
+• Backend: Node.js com Express.
+• Banco de Dados: PostgreSQL (Relacional) com Prisma ORM.
+• Segurança: JWT para autenticação e bcrypt para senhas.
+• Frontend: EJS com Tailwind CSS (foco em leveza e rapidez).
+• E alguns outros frameworks ------------------------------------------------------------------------------------------------------------------------------------------------------------

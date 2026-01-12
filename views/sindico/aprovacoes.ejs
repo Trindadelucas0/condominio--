@@ -1,0 +1,123 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Aprovações Pendentes</h1>
+    <p class="text-gray-600 mt-2">Revisar e aprovar solicitações</p>
+  </div>
+
+  <!-- Mensagens -->
+  <% if (typeof query !== 'undefined' && query.success === 'processed') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Aprovação processada com sucesso!
+    </div>
+  <% } %>
+  <% if (typeof query !== 'undefined' && query.error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= decodeURIComponent(query.error) %>
+    </div>
+  <% } %>
+
+  <!-- Lista de aprovações -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <% if (approvals.length === 0) { %>
+      <div class="p-8 text-center text-gray-500">
+        <p>Nenhuma aprovação pendente no momento.</p>
+      </div>
+    <% } else { %>
+      <div class="divide-y divide-gray-200">
+        <% approvals.forEach(approval => { %>
+          <div class="p-6">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <div class="flex items-center space-x-3 mb-2">
+                  <span class="px-3 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800">
+                    <%= approval.approval_type %>
+                  </span>
+                  <% if (approval.requested_amount) { %>
+                    <span class="text-lg font-bold text-gray-900">
+                      R$ <%= parseFloat(approval.requested_amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                    </span>
+                  <% } %>
+                </div>
+                <p class="text-gray-700 mb-2"><%= approval.description %></p>
+                <p class="text-sm text-gray-500">
+                  Solicitado por: <strong><%= approval.requested_by_name || 'Sistema' %></strong> em 
+                  <%= new Date(approval.created_at).toLocaleString('pt-BR') %>
+                </p>
+              </div>
+              <div class="flex space-x-2 ml-4">
+                <form method="POST" action="/sindico/aprovacoes/<%= approval.id %>/processar" class="inline">
+                  <input type="hidden" name="action" value="APPROVE">
+                  <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                    Aprovar
+                  </button>
+                </form>
+                <button 
+                  onclick="showRejectModal(<%= approval.id %>)"
+                  class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                >
+                  Rejeitar
+                </button>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Modal de rejeição -->
+<div id="rejectModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+    <h3 class="text-xl font-bold mb-4">Rejeitar Aprovação</h3>
+    <form method="POST" id="rejectForm" action="">
+      <input type="hidden" name="action" value="REJECT">
+      <div class="mb-4">
+        <label for="reason" class="block text-sm font-medium text-gray-700 mb-1">
+          Motivo da rejeição
+        </label>
+        <textarea
+          id="reason"
+          name="reason"
+          rows="3"
+          required
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+          placeholder="Informe o motivo da rejeição..."
+        ></textarea>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button
+          type="button"
+          onclick="hideRejectModal()"
+          class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Rejeitar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showRejectModal(approvalId) {
+  document.getElementById('rejectForm').action = '/sindico/aprovacoes/' + approvalId + '/processar';
+  document.getElementById('rejectModal').classList.remove('hidden');
+}
+
+function hideRejectModal() {
+  document.getElementById('rejectModal').classList.add('hidden');
+  document.getElementById('reason').value = '';
+}
+</script>
+
+<%- include('../partials/footer') %>

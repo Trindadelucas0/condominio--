@@ -1,0 +1,64 @@
+<!-- Navbar principal do sistema -->
+<!-- Exibe menu conforme perfil do usuário -->
+<!-- Usa req.user que vem do middleware de autenticação -->
+
+<nav class="bg-blue-600 text-white shadow-lg">
+  <div class="container mx-auto px-4">
+    <div class="flex justify-between items-center py-4">
+      <!-- Logo/Título -->
+      <div class="flex items-center">
+        <a href="/" class="text-xl font-bold">Gestão Condominial</a>
+      </div>
+
+      <!-- Menu de navegação (conforme perfil) -->
+      <div class="flex items-center space-x-4">
+        <!-- Se for SUPER_MASTER -->
+        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('SUPER_MASTER')) { %>
+          <a href="/master/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
+          <a href="/master/condominios" class="hover:text-blue-200 px-3 py-2 rounded">Condomínios</a>
+          <a href="/master/usuarios" class="hover:text-blue-200 px-3 py-2 rounded">Usuários</a>
+          <a href="/master/logs" class="hover:text-blue-200 px-3 py-2 rounded">Logs</a>
+        <% } %>
+
+        <!-- Se for SINDICO ou SUBSINDICO -->
+        <% if (typeof user !== 'undefined' && user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) { %>
+          <a href="/sindico/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
+          <a href="/sindico/aprovacoes" class="hover:text-blue-200 px-3 py-2 rounded">Aprovações</a>
+          <a href="/sindico/alertas" class="hover:text-blue-200 px-3 py-2 rounded">Alertas</a>
+          <a href="/sindico/logs" class="hover:text-blue-200 px-3 py-2 rounded">Logs</a>
+        <% } %>
+
+        <!-- Se for ADMINISTRATIVO -->
+        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('ADMINISTRATIVO')) { %>
+          <a href="/administrativo/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
+          <a href="/administrativo/tarefas" class="hover:text-blue-200 px-3 py-2 rounded">Tarefas</a>
+          <a href="/administrativo/documentos" class="hover:text-blue-200 px-3 py-2 rounded">Documentos</a>
+          <a href="/administrativo/financeiro/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Financeiro</a>
+        <% } %>
+
+        <!-- Se for OPERACIONAL -->
+        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('OPERACIONAL')) { %>
+          <a href="/operacional/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
+          <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
+          <a href="/operacional/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências</a>
+        <% } %>
+
+        <!-- Se for CONSELHO -->
+        <% if (typeof user !== 'undefined' && user.roles && user.roles.includes('CONSELHO')) { %>
+          <a href="/conselho/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Dashboard</a>
+          <a href="/conselho/relatorios" class="hover:text-blue-200 px-3 py-2 rounded">Relatórios</a>
+        <% } %>
+
+        <!-- Informações do usuário e logout -->
+        <% if (typeof user !== 'undefined') { %>
+          <div class="flex items-center space-x-2 border-l pl-4 ml-4">
+            <span class="text-sm"><%= user.fullName %></span>
+            <form method="POST" action="/auth/logout" class="inline">
+              <button type="submit" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded text-sm">Sair</button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</nav>
