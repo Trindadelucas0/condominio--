@@ -35,4 +35,16 @@ router.get('/financeiro/centros-custo', administrativoController.showCentrosCust
 router.get('/financeiro/centros-custo/novo', administrativoController.showCreateCentroCusto);
 router.post('/financeiro/centros-custo', administrativoController.createCentroCusto);
 
+// Rotas Patrimoniais
+router.get('/patrimonio/dashboard', administrativoController.showPatrimonioDashboard);
+router.get('/patrimonio/ativos', administrativoController.showAtivos);
+router.get('/patrimonio/ativos/novo', administrativoController.showCreateAtivo);
+router.post('/patrimonio/ativos', administrativoController.createAtivo);
+router.get('/patrimonio/ativos/:id', administrativoController.showAtivo);
+router.get('/patrimonio/ativos/:id/editar', administrativoController.showEditAtivo);
+router.post('/patrimonio/ativos/:id', administrativoController.updateAtivo);
+router.get('/patrimonio/ativos/:id/manutencao/nova', administrativoController.showCreateManutencao);
+router.post('/patrimonio/ativos/:id/manutencao', administrativoController.createManutencao);
+router.post('/patrimonio/ativos/:id/calcular-depreciacao', administrativoController.calculateDepreciation);
+
 module.exports = router;
