@@ -61,17 +61,19 @@ const login = async (username, password, ipAddress = null, userAgent = null) => 
       [user.id]
     );
 
-    // Gera token JWT com dados do usuário
-    // Expira em 24 horas
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        username: user.username,
-        roles: roles,
-      },
-      process.env.JWT_SECRET, // Chave secreta do .env
-      { expiresIn: '24h' } // Token expira em 24 horas
-    );
+    // Gera tokens JWT (access token + refresh token)
+    const jwtHelper = require('../utils/jwtHelper');
+    
+    const accessToken = jwtHelper.generateAccessToken({
+      userId: user.id,
+      username: user.username,
+      roles: roles,
+    });
+
+    const refreshToken = jwtHelper.generateRefreshToken({
+      userId: user.id,
+      username: user.username,
+    });
 
     // Registra login no log de auditoria
     await logAction({
@@ -89,7 +91,7 @@ const login = async (username, password, ipAddress = null, userAgent = null) => 
       userAgent: userAgent,
     });
 
-    // Retorna dados do usuário (sem senha) e token
+    // Retorna dados do usuário (sem senha) e tokens
     return {
       user: {
         id: user.id,
@@ -99,7 +101,8 @@ const login = async (username, password, ipAddress = null, userAgent = null) => 
         condominiumId: user.condominium_id,
         roles: roles,
       },
-      token: token,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
     };
   } catch (error) {
     // Propaga erro para o controller
@@ -107,7 +110,66 @@ const login = async (username, password, ipAddress = null, userAgent = null) => 
   }
 };
 
+// Função para renovar access token usando refresh token
+// Recebe: refreshToken
+// Retorna: novo accessToken
+const refreshAccessToken = async (refreshToken) => {
+  try {
+    const jwtHelper = require('../utils/jwtHelper');
+    
+    // Verifica refresh token
+    const decoded = jwtHelper.verifyRefreshToken(refreshToken);
+    
+    // Busca usuário atualizado
+    const userResult = await query(
+      `SELECT u.id, u.username, u.email, u.full_name, u.condominium_id, u.active
+       FROM users u
+       WHERE u.id = $1 AND u.active = TRUE`,
+      [decoded.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new Error('Usuário não encontrado ou inativo');
+    }
+
+    const user = userResult.rows[0];
+
+    // Busca perfis atualizados
+    const rolesResult = await query(
+      `SELECT r.name
+       FROM roles r
+       INNER JOIN user_roles ur ON r.id = ur.role_id
+       WHERE ur.user_id = $1`,
+      [user.id]
+    );
+
+    const roles = rolesResult.rows.map((row) => row.name);
+
+    // Gera novo access token
+    const newAccessToken = jwtHelper.generateAccessToken({
+      userId: user.id,
+      username: user.username,
+      roles: roles,
+    });
+
+    return {
+      accessToken: newAccessToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.full_name,
+        condominiumId: user.condominium_id,
+        roles: roles,
+      },
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Exporta funções para uso nos controllers
 module.exports = {
   login,
+  refreshAccessToken,
 };

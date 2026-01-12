@@ -3,6 +3,7 @@
 // REGRA: LIMPEZA pode reportar, mas problemas técnicos viram ocorrências de ZELADORIA automaticamente
 
 const limpezaService = require('../services/limpezaService');
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir dashboard de limpeza
 // GET /limpeza/dashboard
@@ -21,7 +22,7 @@ const showDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard de limpeza:', error);
-    res.status(500).send('Erro ao carregar dashboard');
+    renderError(res, 500, 'Erro ao carregar dashboard de limpeza', error);
   }
 };
 
@@ -53,7 +54,7 @@ const showOccurrences = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar ocorrências de limpeza:', error);
-    res.status(500).send('Erro ao carregar ocorrências');
+    renderError(res, 500, 'Erro ao carregar ocorrências', error);
   }
 };
 
@@ -143,7 +144,7 @@ const showOccurrence = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir ocorrência:', error);
-    res.status(500).send('Erro ao carregar ocorrência');
+    renderError(res, 500, 'Erro ao carregar ocorrência', error);
   }
 };
 

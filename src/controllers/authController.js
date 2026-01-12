@@ -45,15 +45,33 @@ const processLogin = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
-    // Chama service para validar credenciais e gerar token
-    const { user, token } = await authService.login(username, password, ipAddress, userAgent);
+    // Chama service para validar credenciais e gerar tokens
+    const loginResult = await authService.login(username, password, ipAddress, userAgent);
+    const { user, accessToken, refreshToken } = loginResult;
 
-    // Define cookie HTTP-only com o token (mais seguro que localStorage)
-    res.cookie('token', token, {
-      httpOnly: true, // Cookie não acessível via JavaScript (proteção XSS)
-      secure: process.env.NODE_ENV === 'production', // HTTPS apenas em produção
-      maxAge: 24 * 60 * 60 * 1000, // Expira em 24 horas (mesmo tempo do JWT)
-      sameSite: 'strict', // Proteção CSRF
+    // Define cookies HTTP-only com os tokens (mais seguro que localStorage)
+    // Access token (15 minutos)
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 15 * 60 * 1000, // 15 minutos
+      sameSite: 'strict',
+    });
+
+    // Refresh token (7 dias)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
+      sameSite: 'strict',
+    });
+
+    // Mantém compatibilidade com código antigo (token)
+    res.cookie('token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 15 * 60 * 1000, // 15 minutos
+      sameSite: 'strict',
     });
 
     // Redireciona conforme perfil do usuário
@@ -92,8 +110,10 @@ const processLogin = async (req, res) => {
 // Função para processar logout
 // POST /auth/logout
 const processLogout = async (req, res) => {
-  // Remove cookie de autenticação
-  res.clearCookie('token');
+  // Remove todos os cookies de autenticação
+  res.clearCookie('accessToken');
+  res.clearCookie('refreshToken');
+  res.clearCookie('token'); // Compatibilidade
   
   // Redireciona para login
   res.redirect('/auth/login');

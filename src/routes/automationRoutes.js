@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const automationService = require('../services/automationService');
+const dailyChecklistJob = require('../jobs/dailyChecklistJob');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { query } = require('../config/database');
 
@@ -35,6 +36,33 @@ router.get('/run', authenticate, authorize('ADMINISTRATIVO'), async (req, res) =
   } catch (error) {
     console.error('Erro ao executar automações:', error);
     res.status(500).json({ error: 'Erro ao executar automações', message: error.message });
+  }
+});
+
+// Endpoint para gerar checklists diários manualmente
+// GET /automation/generate-checklists
+// Útil para testes ou execução manual
+router.get('/generate-checklists', authenticate, authorize('ADMINISTRATIVO'), async (req, res) => {
+  try {
+    if (req.user.roles.includes('SUPER_MASTER')) {
+      return res.status(403).json({ error: 'Acesso negado. SUPER_MASTER não tem acesso operacional.' });
+    }
+
+    const condominiumId = req.user.condominiumId;
+    if (!condominiumId) {
+      return res.status(400).json({ error: 'Condomínio não especificado' });
+    }
+
+    const result = await dailyChecklistJob.runManually(condominiumId);
+
+    res.json({
+      success: true,
+      message: 'Checklists gerados com sucesso',
+      result: result,
+    });
+  } catch (error) {
+    console.error('Erro ao gerar checklists:', error);
+    res.status(500).json({ error: 'Erro ao gerar checklists', message: error.message });
   }
 });
 

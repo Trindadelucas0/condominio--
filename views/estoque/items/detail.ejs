@@ -1,0 +1,71 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="flex justify-between items-start mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800"><%= item.name %></h1>
+      <p class="text-gray-600 mt-2">Detalhes do item de estoque</p>
+    </div>
+    <div class="flex space-x-3">
+      <a href="/estoque/items/<%= item.id %>/editar" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+        Editar
+      </a>
+      <a href="/estoque/items" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition">
+        Voltar
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Informações</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <p class="text-sm text-gray-500">Categoria</p>
+            <p class="font-semibold text-gray-900"><%= item.category || '-' %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">Unidade</p>
+            <p class="font-semibold text-gray-900"><%= item.unit || 'un' %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">Quantidade Atual</p>
+            <p class="font-semibold text-2xl <%= item.current_quantity < (item.minimum_quantity || 0) ? 'text-red-600' : 'text-green-600' %>">
+              <%= item.current_quantity || 0 %>
+            </p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">Estoque Mínimo</p>
+            <p class="font-semibold text-gray-900"><%= item.minimum_quantity || '-' %></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-gray-800">Movimentações</h2>
+          <a href="/estoque/items/<%= item.id %>/movimentacao" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm">
+            Nova Movimentação
+          </a>
+        </div>
+        <% if (movements && movements.length > 0) { %>
+          <div class="space-y-2">
+            <% movements.slice(0, 10).forEach(mov => { %>
+              <div class="border-l-4 border-blue-500 pl-4 py-2">
+                <p class="font-semibold"><%= mov.movement_type === 'ENTRY' ? 'Entrada' : 'SAIDA' %></p>
+                <p class="text-sm text-gray-600">Quantidade: <%= mov.quantity %></p>
+                <p class="text-sm text-gray-500"><%= new Date(mov.movement_date).toLocaleDateString('pt-BR') %></p>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <p class="text-gray-500 text-center py-4">Nenhuma movimentação registrada</p>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

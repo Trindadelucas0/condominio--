@@ -2,6 +2,7 @@
 // Gerencia requisições do painel operacional (zeladoria)
 
 const operacionalService = require('../services/operacionalService'); // Service do módulo operacional
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir dashboard operacional
 // GET /operacional/dashboard
@@ -20,7 +21,7 @@ const showDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard operacional:', error);
-    res.status(500).send('Erro ao carregar dashboard');
+    renderError(res, 500, 'Erro ao carregar dashboard operacional', error);
   }
 };
 
@@ -237,6 +238,32 @@ const createOcorrencia = async (req, res) => {
   }
 };
 
+// Função para exibir detalhes de uma ocorrência
+// GET /operacional/ocorrencias/:id
+const showOcorrencia = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
+    const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
+
+    if (!occurrence) {
+      return res.status(404).send('Ocorrência não encontrada');
+    }
+
+    res.render('operacional/ocorrencia-detail', {
+      title: 'Detalhes da Ocorrência',
+      user: req.user,
+      occurrence: occurrence,
+    });
+  } catch (error) {
+    console.error('Erro ao buscar ocorrência:', error);
+    res.status(500).send('Erro ao carregar ocorrência');
+  }
+};
+
 // Função para exibir formulário de resolução de ocorrência
 // GET /operacional/ocorrencias/:id/resolver
 const showResolveOcorrencia = async (req, res) => {
@@ -323,6 +350,7 @@ module.exports = {
   showCompleteTask,
   completeTask,
   showOcorrencias,
+  showOcorrencia,
   showCreateOcorrencia,
   createOcorrencia,
   showResolveOcorrencia,

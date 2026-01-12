@@ -1,0 +1,293 @@
+<%- include('../../partials/header', { title: title }) %>
+<%- include('../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Cabeçalho -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-gray-800"><%= model && model.id ? 'Editar Modelo' : 'Novo Modelo de Checklist' %></h1>
+      <p class="text-gray-600 mt-2"><%= model && model.id ? 'Atualize as informações do modelo' : 'Crie uma regra que será usada para gerar checklists automaticamente' %></p>
+    </div>
+
+    <!-- Mensagem de erro -->
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+        <p><%= error %></p>
+      </div>
+    <% } %>
+
+    <!-- Formulário -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <form method="POST" action="<%= model && model.id ? '/sindico/checklist-modelos/' + model.id : '/sindico/checklist-modelos' %>">
+        
+        <!-- Informações Básicas -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Informações Básicas</h2>
+          
+          <!-- Nome -->
+          <div class="mb-4">
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+              Nome do Modelo <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              value="<%= model ? model.name || '' : '' %>"
+              placeholder="Ex: Inspeção Zeladoria - Semanal"
+              class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <!-- Descrição -->
+          <div class="mb-4">
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+              Descrição
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              rows="3"
+              placeholder="Descreva o propósito deste modelo..."
+              class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+            ><%= model ? model.description || '' : '' %></textarea>
+          </div>
+
+          <!-- Departamento -->
+          <div class="mb-4">
+            <label for="department" class="block text-sm font-medium text-gray-700 mb-2">
+              Departamento <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="department"
+              name="department"
+              required
+              class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Selecione...</option>
+              <option value="ZELADORIA" <%= model && model.department === 'ZELADORIA' ? 'selected' : '' %>>Zeladoria</option>
+              <option value="LIMPEZA" <%= model && model.department === 'LIMPEZA' ? 'selected' : '' %>>Limpeza</option>
+            </select>
+          </div>
+
+          <!-- Status Ativo -->
+          <div class="mb-4">
+            <label class="flex items-center">
+              <input
+                type="checkbox"
+                name="isActive"
+                value="true"
+                <%= !model || model.is_active ? 'checked' : '' %>
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="ml-2 text-sm text-gray-700">Modelo ativo (gera checklists automaticamente)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Dias da Semana -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Dias da Semana <span class="text-red-500">*</span></h2>
+          <p class="text-sm text-gray-600 mb-4">Selecione os dias em que os checklists devem ser gerados automaticamente</p>
+          
+          <div class="grid grid-cols-7 gap-2">
+            <% 
+              const days = [
+                { value: 'sunday', label: 'Dom', dayNum: 0 },
+                { value: 'monday', label: 'Seg', dayNum: 1 },
+                { value: 'tuesday', label: 'Ter', dayNum: 2 },
+                { value: 'wednesday', label: 'Qua', dayNum: 3 },
+                { value: 'thursday', label: 'Qui', dayNum: 4 },
+                { value: 'friday', label: 'Sex', dayNum: 5 },
+                { value: 'saturday', label: 'Sáb', dayNum: 6 }
+              ];
+              const modelDays = model && model.days_of_week ? model.days_of_week : [];
+            %>
+            <% days.forEach(day => { %>
+              <label class="flex flex-col items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-50 <%= modelDays.includes(day.dayNum) ? 'border-blue-500 bg-blue-50' : 'border-gray-300' %>">
+                <input
+                  type="checkbox"
+                  name="<%= day.value %>"
+                  <%= modelDays.includes(day.dayNum) ? 'checked' : '' %>
+                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mb-2"
+                />
+                <span class="text-sm font-medium text-gray-700"><%= day.label %></span>
+              </label>
+            <% }); %>
+          </div>
+        </div>
+
+        <!-- Configurações -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Configurações</h2>
+          
+          <div class="space-y-4">
+            <label class="flex items-center">
+              <input
+                type="checkbox"
+                name="requiresPhoto"
+                value="true"
+                <%= !model || model.requires_photo ? 'checked' : '' %>
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="ml-2 text-sm text-gray-700">Requer foto obrigatória para finalizar checklist</span>
+            </label>
+
+            <label class="flex items-center">
+              <input
+                type="checkbox"
+                name="requiresJustification"
+                value="true"
+                <%= !model || model.requires_justification ? 'checked' : '' %>
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="ml-2 text-sm text-gray-700">Requer justificativa quando item não foi feito</span>
+            </label>
+
+            <div>
+              <label for="defaultAssignedRole" class="block text-sm font-medium text-gray-700 mb-2">
+                Role Padrão para Atribuição
+              </label>
+              <select
+                id="defaultAssignedRole"
+                name="defaultAssignedRole"
+                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Automático (baseado no departamento)</option>
+                <option value="OPERACIONAL" <%= model && model.default_assigned_role === 'OPERACIONAL' ? 'selected' : '' %>>Operacional</option>
+                <option value="LIMPEZA" <%= model && model.default_assigned_role === 'LIMPEZA' ? 'selected' : '' %>>Limpeza</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Itens do Checklist -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Itens do Checklist <span class="text-red-500">*</span></h2>
+          <p class="text-sm text-gray-600 mb-4">Adicione os itens que devem ser verificados em cada checklist gerado</p>
+          
+          <div id="items-container" class="space-y-3">
+            <% 
+              const items = model && model.items ? model.items : [{ name: '', order: 0, requiresPhoto: false }];
+              items.forEach((item, index) => { %>
+                <div class="flex gap-3 items-start p-4 border border-gray-300 rounded-lg item-row">
+                  <div class="flex-1">
+                    <input
+                      type="text"
+                      name="items[<%= index %>][name]"
+                      placeholder="Ex: Verificar lâmpadas"
+                      value="<%= item.name || '' %>"
+                      required
+                      class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      name="items[<%= index %>][order]"
+                      value="<%= item.item_order || index %>"
+                      min="0"
+                      placeholder="Ordem"
+                      class="w-20 border border-gray-300 rounded-md px-2 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <label class="flex items-center mt-2">
+                    <input
+                      type="checkbox"
+                      name="items[<%= index %>][requiresPhoto]"
+                      value="true"
+                      <%= item.requires_photo ? 'checked' : '' %>
+                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="ml-2 text-xs text-gray-600">Foto</span>
+                  </label>
+                  <button type="button" onclick="removeItem(this)" class="text-red-600 hover:text-red-800 mt-2 <%= items.length === 1 ? 'hidden' : '' %>">
+                    ✕
+                  </button>
+                </div>
+              <% }); 
+            %>
+          </div>
+          
+          <button type="button" onclick="addItem()" class="mt-3 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition">
+            + Adicionar Item
+          </button>
+        </div>
+
+        <!-- Botões -->
+        <div class="flex justify-end gap-4 pt-4 border-t">
+          <a href="/sindico/checklist-modelos" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-semibold transition">
+            Cancelar
+          </a>
+          <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition">
+            <%= model && model.id ? 'Atualizar Modelo' : 'Criar Modelo' %>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let itemIndex = <%= model && model.items ? model.items.length : 1 %>;
+
+function addItem() {
+  const container = document.getElementById('items-container');
+  const newItem = document.createElement('div');
+  newItem.className = 'flex gap-3 items-start p-4 border border-gray-300 rounded-lg item-row';
+  newItem.innerHTML = `
+    <div class="flex-1">
+      <input
+        type="text"
+        name="items[${itemIndex}][name]"
+        placeholder="Ex: Verificar lâmpadas"
+        required
+        class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+    </div>
+    <div>
+      <input
+        type="number"
+        name="items[${itemIndex}][order]"
+        value="${itemIndex}"
+        min="0"
+        placeholder="Ordem"
+        class="w-20 border border-gray-300 rounded-md px-2 py-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+    </div>
+    <label class="flex items-center mt-2">
+      <input
+        type="checkbox"
+        name="items[${itemIndex}][requiresPhoto]"
+        value="true"
+        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+      />
+      <span class="ml-2 text-xs text-gray-600">Foto</span>
+    </label>
+    <button type="button" onclick="removeItem(this)" class="text-red-600 hover:text-red-800 mt-2">
+      ✕
+    </button>
+  `;
+  container.appendChild(newItem);
+  itemIndex++;
+  updateRemoveButtons();
+}
+
+function removeItem(button) {
+  button.closest('.item-row').remove();
+  updateRemoveButtons();
+}
+
+function updateRemoveButtons() {
+  const rows = document.querySelectorAll('.item-row');
+  rows.forEach(row => {
+    const removeBtn = row.querySelector('button[onclick*="removeItem"]');
+    if (removeBtn) {
+      removeBtn.style.display = rows.length === 1 ? 'none' : 'block';
+    }
+  });
+}
+</script>
+
+<%- include('../../partials/footer') %>

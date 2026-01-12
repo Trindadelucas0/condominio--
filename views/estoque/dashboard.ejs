@@ -1,0 +1,69 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Estoque e Insumos</h1>
+    <p class="text-gray-600 mt-2">Gestão de estoque do condomínio</p>
+  </div>
+
+  <!-- Alertas de estoque baixo -->
+  <% if (itemsBelowMinimum && itemsBelowMinimum.length > 0) { %>
+    <div class="bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded mb-4">
+      <strong>Atenção:</strong> <%= itemsBelowMinimum.length %> item(ns) abaixo do estoque mínimo
+      <a href="/estoque/items?belowMinimum=true" class="underline ml-2">Ver itens</a>
+    </div>
+  <% } %>
+
+  <!-- Estatísticas -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+      <p class="text-gray-600 text-sm">Total de Itens</p>
+      <p class="text-3xl font-bold text-blue-600 mt-2"><%= items ? items.length : 0 %></p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <p class="text-gray-600 text-sm">Itens Abaixo do Mínimo</p>
+      <p class="text-3xl font-bold text-orange-600 mt-2"><%= itemsBelowMinimum ? itemsBelowMinimum.length : 0 %></p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <p class="text-gray-600 text-sm">Ações Rápidas</p>
+      <a href="/estoque/items/novo" class="text-blue-600 text-sm mt-2 inline-block hover:underline">
+        Novo Item →
+      </a>
+    </div>
+  </div>
+
+  <!-- Lista de itens -->
+  <div class="bg-white rounded-lg shadow">
+    <div class="p-6 border-b">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold text-gray-800">Itens de Estoque</h2>
+        <a href="/estoque/items" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+          Ver Todos
+        </a>
+      </div>
+    </div>
+    <div class="p-6">
+      <% if (items && items.length > 0) { %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <% items.slice(0, 6).forEach(item => { %>
+            <div class="border rounded-lg p-4 hover:shadow-md transition">
+              <h3 class="font-semibold text-gray-800"><%= item.name %></h3>
+              <p class="text-sm text-gray-600 mt-1">Quantidade: <%= item.current_quantity || 0 %></p>
+              <% if (item.minimum_quantity && item.current_quantity < item.minimum_quantity) { %>
+                <span class="text-xs text-orange-600 font-semibold mt-1 block">Abaixo do mínimo!</span>
+              <% } %>
+              <a href="/estoque/items/<%= item.id %>" class="text-blue-600 text-sm mt-2 inline-block hover:underline">
+                Ver detalhes →
+              </a>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="text-gray-500 text-center py-8">Nenhum item cadastrado</p>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

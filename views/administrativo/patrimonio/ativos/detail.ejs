@@ -26,10 +26,10 @@
       <p class="text-gray-600 mt-2">Detalhes do ativo</p>
     </div>
     <div class="flex space-x-3">
-      <a href="/administrativo/patrimonio/ativos/<%= asset.id %>/editar" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+      <a href="/patrimonio/ativos/<%= asset.id %>/editar" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
         Editar
       </a>
-      <a href="/administrativo/patrimonio/ativos" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition">
+      <a href="/patrimonio/ativos" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition">
         Voltar
       </a>
     </div>
@@ -136,7 +136,7 @@
             </div>
           </div>
           <div class="mt-4">
-            <form method="POST" action="/administrativo/patrimonio/ativos/<%= asset.id %>/calcular-depreciacao" class="inline">
+            <form method="POST" action="/patrimonio/ativos/<%= asset.id %>/calcular-depreciacao" class="inline">
               <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition text-sm">
                 Recalcular Depreciação
               </button>
@@ -149,7 +149,7 @@
       <div class="bg-white rounded-lg shadow p-6">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-bold text-gray-800">Histórico de Manutenções</h2>
-          <a href="/administrativo/patrimonio/ativos/<%= asset.id %>/manutencao/nova" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm">
+          <a href="/patrimonio/ativos/<%= asset.id %>/manutencao/nova" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm">
             Nova Manutenção
           </a>
         </div>
@@ -192,11 +192,11 @@
       <div class="bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-bold text-gray-800 mb-4">Ações Rápidas</h3>
         <div class="space-y-2">
-          <a href="/administrativo/patrimonio/ativos/<%= asset.id %>/manutencao/nova" class="block w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-center text-sm">
+          <a href="/patrimonio/ativos/<%= asset.id %>/manutencao/nova" class="block w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-center text-sm">
             Registrar Manutenção
           </a>
           <% if (asset.acquisition_date && asset.acquisition_cost) { %>
-            <form method="POST" action="/administrativo/patrimonio/ativos/<%= asset.id %>/calcular-depreciacao">
+            <form method="POST" action="/patrimonio/ativos/<%= asset.id %>/calcular-depreciacao">
               <button type="submit" class="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition text-sm">
                 Recalcular Depreciação
               </button>

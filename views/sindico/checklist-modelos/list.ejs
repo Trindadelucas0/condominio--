@@ -1,0 +1,128 @@
+<%- include('../../partials/header', { title: title }) %>
+<%- include('../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Modelos de Checklist</h1>
+      <p class="text-gray-600 mt-2">Gerencie as regras que geram checklists automáticos</p>
+    </div>
+    <a href="/sindico/checklist-modelos/novo" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+      + Novo Modelo
+    </a>
+  </div>
+
+  <!-- Mensagens -->
+  <% if (typeof query !== 'undefined' && query.success === 'created') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Modelo criado com sucesso!
+    </div>
+  <% } %>
+  <% if (typeof query !== 'undefined' && query.success === 'updated') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Modelo atualizado com sucesso!
+    </div>
+  <% } %>
+  <% if (typeof query !== 'undefined' && query.success === 'toggled') { %>
+    <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+      Status do modelo alterado com sucesso!
+    </div>
+  <% } %>
+
+  <!-- Informação sobre modelos -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+    <h3 class="text-sm font-semibold text-blue-800 mb-2">📋 Como funcionam os modelos?</h3>
+    <ul class="text-sm text-blue-700 space-y-1">
+      <li>• <strong>Modelos são regras:</strong> Você define uma vez, o sistema executa sempre</li>
+      <li>• <strong>Geração automática:</strong> Checklists são criados automaticamente nos dias configurados</li>
+      <li>• <strong>Modelo inativo:</strong> Não gera checklists, mas os já criados continuam válidos</li>
+      <li>• <strong>Departamento:</strong> Define quem recebe os checklists (ZELADORIA ou LIMPEZA)</li>
+    </ul>
+  </div>
+
+  <!-- Lista de modelos -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <% if (models.length === 0) { %>
+      <div class="p-8 text-center">
+        <p class="text-gray-500 mb-4">Nenhum modelo criado ainda.</p>
+        <p class="text-sm text-gray-400 mb-4">Crie seu primeiro modelo para o sistema começar a gerar checklists automaticamente.</p>
+        <a href="/sindico/checklist-modelos/novo" class="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+          Criar Primeiro Modelo
+        </a>
+      </div>
+    <% } else { %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Departamento</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dias da Semana</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Itens</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% models.forEach(model => { %>
+              <tr>
+                <td class="px-6 py-4">
+                  <div class="text-sm font-medium text-gray-900"><%= model.name %></div>
+                  <% if (model.description) { %>
+                    <div class="text-sm text-gray-500 mt-1"><%= model.description.substring(0, 60) %><%= model.description.length > 60 ? '...' : '' %></div>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800">
+                    <%= model.department %>
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex flex-wrap gap-1">
+                    <% 
+                      const dayNames = {0: 'Dom', 1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sáb'};
+                      const sortedDays = (model.days_of_week || []).sort((a, b) => a - b);
+                      sortedDays.forEach(day => { %>
+                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"><%= dayNames[day] %></span>
+                      <% }); 
+                    %>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-900"><%= model.items ? model.items.length : 0 %> itens</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% if (model.is_active) { %>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                      Ativo
+                    </span>
+                  <% } else { %>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                      Inativo
+                    </span>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div class="flex justify-end gap-2">
+                    <a href="/sindico/checklist-modelos/<%= model.id %>/editar" class="text-blue-600 hover:text-blue-900">
+                      Editar
+                    </a>
+                    <form method="POST" action="/sindico/checklist-modelos/<%= model.id %>/toggle" class="inline">
+                      <button type="submit" class="<%= model.is_active ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900' %>">
+                        <%= model.is_active ? 'Desativar' : 'Ativar' %>
+                      </button>
+                      <input type="hidden" name="isActive" value="<%= !model.is_active %>">
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>

@@ -50,7 +50,7 @@ const getDashboardStats = async (condominiumId) => {
     );
     const pendingAmount = parseFloat(pendingAmountResult.rows[0].total);
 
-    // Saldo financeiro (entradas - saídas pagas)
+    // Saldo financeiro (entradas recebidas - saídas pagas - saídas aprovadas mas não pagas)
     const entriesResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
        WHERE condominium_id = $1 AND received = TRUE`,
@@ -64,7 +64,16 @@ const getDashboardStats = async (condominiumId) => {
       [condominiumId]
     );
     const totalExitsPaid = parseFloat(exitsPaidResult.rows[0].total);
-    const balance = totalEntries - totalExitsPaid;
+
+    // Saídas aprovadas mas não pagas (comprometem o saldo)
+    const exitsApprovedResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 AND payment_status = 'APPROVED'`,
+      [condominiumId]
+    );
+    const totalExitsApproved = parseFloat(exitsApprovedResult.rows[0].total);
+
+    const balance = totalEntries - totalExitsPaid - totalExitsApproved;
 
     // Tarefas atrasadas
     const overdueTasksResult = await query(
@@ -126,9 +135,20 @@ const listPendingApprovals = async (condominiumId) => {
 // Retorna: aprovação atualizada
 const processApproval = async (approvalId, action, reason, userId, condominiumId, ipAddress, userAgent) => {
   try {
-    // Busca aprovação atual
+    const { validateUserBelongsToCondominium } = require('../utils/queryHelper');
+    const permissionService = require('./permissionService');
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    // Busca aprovação atual com lock (SELECT FOR UPDATE) para controle de concorrência
     const approvalResult = await query(
-      `SELECT * FROM approvals WHERE id = $1 AND condominium_id = $2`,
+      `SELECT * FROM approvals 
+       WHERE id = $1 AND condominium_id = $2 
+       FOR UPDATE`,
       [approvalId, condominiumId]
     );
 
@@ -142,27 +162,72 @@ const processApproval = async (approvalId, action, reason, userId, condominiumId
       throw new Error('Aprovação já foi processada');
     }
 
+    // Valida permissão
+    if (action === 'APPROVE') {
+      if (approval.entity_type === 'financial_exits') {
+        // Busca a saída para verificar se é alto valor
+        const exitResult = await query(
+          `SELECT amount, approval_limit FROM financial_exits WHERE id = $1`,
+          [approval.entity_id]
+        );
+        
+        if (exitResult.rows.length > 0) {
+          const exit = exitResult.rows[0];
+          const limitValue = exit.approval_limit || 1000.00;
+          const isHighValue = parseFloat(exit.amount) > limitValue;
+          
+          if (isHighValue) {
+            const canApprove = await permissionService.hasPermission(userId, 'financial_exits', 'approve_high_value');
+            if (!canApprove) {
+              throw new Error('Você não tem permissão para aprovar valores acima do limite');
+            }
+          } else {
+            const canApprove = await permissionService.hasPermission(userId, 'financial_exits', 'approve');
+            if (!canApprove) {
+              throw new Error('Você não tem permissão para aprovar esta saída');
+            }
+          }
+        }
+      }
+    }
+
     // Atualiza status
     const newStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
     const updateResult = await query(
       `UPDATE approvals 
        SET status = $1, approved_by = $2, approved_at = CURRENT_TIMESTAMP, 
            rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $4
+       WHERE id = $4 AND status = 'PENDING'
        RETURNING *`,
       [newStatus, userId, reason || null, approvalId]
     );
+
+    if (updateResult.rows.length === 0) {
+      throw new Error('Aprovação foi modificada por outro usuário. Recarregue a página e tente novamente.');
+    }
 
     const updated = updateResult.rows[0];
 
     // Se foi aprovada, atualiza a entidade relacionada (se for despesa financeira)
     if (newStatus === 'APPROVED' && approval.entity_type === 'financial_exits') {
-      await query(
-        `UPDATE financial_exits 
-         SET payment_status = 'APPROVED', approved_by = $1, approved_at = CURRENT_TIMESTAMP
-         WHERE id = $2`,
-        [userId, approval.entity_id]
+      // Usa lock otimista com version
+      const exitResult = await query(
+        `SELECT version FROM financial_exits WHERE id = $1`,
+        [approval.entity_id]
       );
+      
+      if (exitResult.rows.length > 0) {
+        const currentVersion = exitResult.rows[0].version;
+        await query(
+          `UPDATE financial_exits 
+           SET payment_status = 'APPROVED', 
+               approved_by = $1, 
+               approved_at = CURRENT_TIMESTAMP,
+               version = version + 1
+           WHERE id = $2 AND version = $3 AND payment_status = 'PENDING'`,
+          [userId, approval.entity_id, currentVersion]
+        );
+      }
     }
 
     // Registra no log de auditoria

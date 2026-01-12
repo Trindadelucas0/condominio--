@@ -3,6 +3,7 @@
 // SEPARADO do ADMINISTRATIVO conforme regras do sistema
 
 const patrimonioService = require('../services/patrimonioService'); // Service do módulo patrimônio
+const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir dashboard patrimonial
 // GET /patrimonio/dashboard
@@ -21,7 +22,7 @@ const showPatrimonioDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard patrimonial:', error);
-    res.status(500).send('Erro ao carregar dashboard patrimonial');
+    renderError(res, 500, 'Erro ao carregar dashboard patrimonial', error);
   }
 };
 
