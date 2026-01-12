@@ -427,7 +427,21 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
     const updateValues = [];
     let paramCount = 1;
 
-    updateFields.push(`status = 'RESOLVIDA'`);
+      // Valida transição de estado
+      const stateValidator = require('../utils/stateValidator');
+      const transitionValidation = await stateValidator.validateAndTransition(
+        userId,
+        'occurrences',
+        occurrence.status,
+        'RESOLVIDA',
+        occurrenceId
+      );
+
+      if (!transitionValidation.valid) {
+        throw new Error(transitionValidation.error || 'Transição de estado não permitida');
+      }
+
+      updateFields.push(`status = 'RESOLVIDA'`);
     updateFields.push(`resolved_at = CURRENT_TIMESTAMP`);
     updateFields.push(`resolved_by = $${paramCount++}`);
     updateValues.push(userId);

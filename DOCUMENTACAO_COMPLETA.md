@@ -1526,5 +1526,69 @@ O sistema está **pronto para produção** e segue todas as regras de negócio d
 
 ---
 
+## 23. SISTEMA DE PERMISSÕES FORMAIS (FASE 20)
+
+### 23.1 Matriz de Permissões (AÇÃO x ENTIDADE)
+
+**Tabelas Criadas:**
+- `permissions` - Define todas as ações possíveis sobre entidades
+- `role_permissions` - Mapeia quais perfis têm quais permissões
+
+**Estrutura:**
+- `entity_type` - Tipo de entidade (tasks, occurrences, financial_exits, etc)
+- `action` - Ação (create, read, update, delete, approve, pay, complete, etc)
+
+**Benefícios:**
+- ✅ Permissões centralizadas (não mais `if` espalhados)
+- ✅ Fácil manutenção (adicionar permissão = INSERT)
+- ✅ Consistência garantida
+- ✅ Auditoria completa de permissões
+
+### 23.2 State Machines Padronizadas
+
+**Tabelas Criadas:**
+- `state_machines` - Define estados válidos para cada entidade
+- `state_transitions` - Define transições permitidas e permissões necessárias
+
+**Entidades com State Machine:**
+- `tasks` - PENDING → IN_PROGRESS → COMPLETED/CANCELLED
+- `occurrences` - ABERTA → EM_ATENDIMENTO → RESOLVIDA/ENCERRADA
+- `financial_exits` - PENDING → APPROVED → PAID/REJECTED
+- `financial_entries` - PENDING → RECEIVED
+- `checklists` - PENDING → DONE/NOT_DONE
+- `assets` - ACTIVE → MAINTENANCE/INACTIVE/DECOMMISSIONED
+- `documents` - ACTIVE → EXPIRED/ARCHIVED
+- `budget_requests` - PENDING → APPROVED/REJECTED → PURCHASED
+
+**Validação Automática:**
+- Transições são validadas automaticamente
+- Verifica permissão necessária antes de permitir transição
+- Previne estados inválidos
+
+### 23.3 Middlewares Novos
+
+**`authorizeAction(entityType, action)`:**
+- Verifica permissão específica (AÇÃO x ENTIDADE)
+- Exemplo: `authorizeAction('financial_exits', 'approve')`
+
+**`authorizeTransition(entityType, fromState, toState)`:**
+- Verifica se transição de estado é permitida
+- Exemplo: `authorizeTransition('financial_exits', 'PENDING', 'APPROVED')`
+
+### 23.4 Decisão: ADMINISTRATIVO Aprova Dinheiro
+
+**✅ IMPLEMENTADO: ADMINISTRATIVO aprova até limite**
+
+- **ADMINISTRATIVO** pode aprovar saídas **até o limite** (padrão: R$ 1.000,00)
+- **SINDICO** aprova saídas **acima do limite**
+- **FINANCEIRO** cria saídas, mas **NÃO aprova** (apenas marca como paga)
+
+**Rotas:**
+- `GET /administrativo/aprovacoes-financeiras` - Lista saídas pendentes (até limite)
+- `POST /administrativo/aprovacoes-financeiras/:id/processar` - Aprova saída
+
+---
+
 **Última atualização:** Janeiro 2025  
-**Versão do documento:** 1.0.0
+**Versão do documento:** 1.0.1  
+**Fase 20:** Permissões Formais e State Machines implementadas
