@@ -16,12 +16,14 @@
   <!-- Mensagem de sucesso -->
   <% if (typeof query !== 'undefined' && query.success === 'created') { %>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-      Usuário criado com sucesso!
+      <strong>✅ Usuário criado com sucesso!</strong>
+      <p class="text-sm mt-1">Os perfis foram atribuídos automaticamente. O usuário já pode fazer login e acessar as funcionalidades do seu perfil.</p>
     </div>
   <% } %>
   <% if (typeof query !== 'undefined' && query.success === 'updated') { %>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-      Usuário atualizado com sucesso!
+      <strong>✅ Usuário atualizado com sucesso!</strong>
+      <p class="text-sm mt-1">Os perfis foram atualizados automaticamente. Se o usuário estiver logado, ele precisará fazer logout e login novamente para que as novas permissões sejam aplicadas.</p>
     </div>
   <% } %>
 

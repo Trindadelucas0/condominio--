@@ -4,6 +4,7 @@
 
 -- Tabela de notificações (já existe alerts, mas essa é para notificações internas para usuários)
 -- Registra notificações que aparecem para usuários específicos
+-- REGRA: Notificação não pode ser apagada, apenas resolvida ou justificada
 CREATE TABLE IF NOT EXISTS notifications (
   id SERIAL PRIMARY KEY, -- ID único
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- Usuário destinatário
@@ -14,9 +15,47 @@ CREATE TABLE IF NOT EXISTS notifications (
   entity_type VARCHAR(50), -- Tipo de entidade relacionada (tasks, occurrences, approvals, etc)
   entity_id INTEGER, -- ID da entidade relacionada
   read BOOLEAN DEFAULT FALSE, -- Se foi lida
-  read_at TIMESTAMP NULL, -- Data/hora da leitura
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Data de criação
+  read_at TIMESTAMP NULL -- Data/hora da leitura
 );
+
+-- Adiciona campos de resolução/justificativa se não existirem (para tabelas existentes)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='notifications' AND column_name='resolved') THEN
+    ALTER TABLE notifications ADD COLUMN resolved BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='notifications' AND column_name='resolved_at') THEN
+    ALTER TABLE notifications ADD COLUMN resolved_at TIMESTAMP NULL;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='notifications' AND column_name='resolved_by') THEN
+    ALTER TABLE notifications ADD COLUMN resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='notifications' AND column_name='justified') THEN
+    ALTER TABLE notifications ADD COLUMN justified BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='notifications' AND column_name='justification') THEN
+    ALTER TABLE notifications ADD COLUMN justification TEXT;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='notifications' AND column_name='justified_at') THEN
+    ALTER TABLE notifications ADD COLUMN justified_at TIMESTAMP NULL;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='notifications' AND column_name='justified_by') THEN
+    ALTER TABLE notifications ADD COLUMN justified_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Tabela de configuração de SLA
 -- Define regras de SLA por tipo de tarefa/ocorrência

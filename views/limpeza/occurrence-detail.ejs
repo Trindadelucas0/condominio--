@@ -1,0 +1,140 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Cabeçalho -->
+    <div class="mb-6 flex justify-between items-start">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800"><%= occurrence.title %></h1>
+        <p class="text-gray-600 mt-2">Detalhes da ocorrência de limpeza</p>
+      </div>
+      <a href="/limpeza/ocorrencias" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg font-semibold transition">
+        ← Voltar
+      </a>
+    </div>
+
+    <!-- Informações principais -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Informações da Ocorrência</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">Status</label>
+          <% 
+            const statusColors = {
+              'ABERTA': 'bg-yellow-100 text-yellow-800',
+              'EM_ATENDIMENTO': 'bg-blue-100 text-blue-800',
+              'RESOLVIDA': 'bg-green-100 text-green-800',
+              'ENCERRADA': 'bg-gray-100 text-gray-800'
+            };
+            const statusColor = statusColors[occurrence.status] || 'bg-gray-100 text-gray-800';
+          %>
+          <span class="px-3 py-1 inline-flex text-sm font-semibold rounded-full <%= statusColor %>">
+            <%= occurrence.status %>
+          </span>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">Tipo</label>
+          <% if (limpezaTypeInfo) { %>
+            <p class="text-sm text-gray-900"><%= limpezaTypeInfo.label %></p>
+            <p class="text-xs text-gray-500 mt-1"><%= limpezaTypeInfo.description %></p>
+          <% } else { %>
+            <p class="text-sm text-gray-900"><%= occurrence.limpeza_type || 'N/A' %></p>
+          <% } %>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">Localização</label>
+          <p class="text-sm text-gray-900"><%= occurrence.location || 'Não informada' %></p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">Data de Criação</label>
+          <p class="text-sm text-gray-900"><%= new Date(occurrence.created_at).toLocaleString('pt-BR') %></p>
+        </div>
+
+        <% if (occurrence.reported_by_name) { %>
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">Reportado por</label>
+            <p class="text-sm text-gray-900"><%= occurrence.reported_by_name %></p>
+          </div>
+        <% } %>
+
+        <% if (occurrence.needs_zeladoria) { %>
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">Status de Conversão</label>
+            <span class="px-3 py-1 inline-flex text-sm font-semibold rounded-full bg-orange-100 text-orange-800">
+              🔧 Requer Zeladoria
+            </span>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="mt-6">
+        <label class="block text-sm font-medium text-gray-500 mb-2">Descrição</label>
+        <div class="bg-gray-50 rounded-md p-4">
+          <p class="text-sm text-gray-900 whitespace-pre-wrap"><%= occurrence.description %></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ocorrência de Zeladoria vinculada (se convertida) -->
+    <% if (zeladoriaOccurrence) { %>
+      <div class="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+          <span class="mr-2">🔧</span>
+          Ocorrência de Zeladoria Criada Automaticamente
+        </h2>
+        <div class="bg-white rounded-md p-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Título</label>
+              <p class="text-sm text-gray-900"><%= zeladoriaOccurrence.title %></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Status</label>
+              <% 
+                const zelStatusColor = statusColors[zeladoriaOccurrence.status] || 'bg-gray-100 text-gray-800';
+              %>
+              <span class="px-3 py-1 inline-flex text-sm font-semibold rounded-full <%= zelStatusColor %>">
+                <%= zeladoriaOccurrence.status %>
+              </span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">Descrição</label>
+            <p class="text-sm text-gray-900 whitespace-pre-wrap"><%= zeladoriaOccurrence.description %></p>
+          </div>
+          <div class="mt-4">
+            <a href="/operacional/ocorrencias/<%= zeladoriaOccurrence.id %>" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+              Ver ocorrência de Zeladoria →
+            </a>
+          </div>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Histórico (se houver) -->
+    <% if (occurrence.resolved_at) { %>
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Resolução</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">Data de Resolução</label>
+            <p class="text-sm text-gray-900"><%= new Date(occurrence.resolved_at).toLocaleString('pt-BR') %></p>
+          </div>
+          <% if (occurrence.resolution_notes) { %>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Notas de Resolução</label>
+              <p class="text-sm text-gray-900 whitespace-pre-wrap"><%= occurrence.resolution_notes %></p>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

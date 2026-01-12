@@ -1,0 +1,204 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Cabeçalho -->
+    <div class="mb-6">
+      <a href="/sindico/tarefas" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">← Voltar para lista</a>
+      <h1 class="text-3xl font-bold text-gray-800">Detalhes da Tarefa</h1>
+    </div>
+
+    <!-- Informações Principais -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-800"><%= task.title %></h2>
+        <div class="flex gap-2">
+          <span class="px-3 py-1 text-xs font-semibold rounded
+            <%= task.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 
+                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : 
+                task.status === 'CANCELLED' ? 'bg-gray-100 text-gray-800' : 
+                'bg-yellow-100 text-yellow-800' %>">
+            <%= task.status %>
+          </span>
+          <span class="px-3 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800">
+            <%= task.priority %>
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <p class="text-sm text-gray-600">Criada por</p>
+          <p class="font-semibold"><%= task.created_by_name || 'N/A' %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Responsável</p>
+          <p class="font-semibold"><%= task.assigned_to_name || 'N/A' %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Prazo</p>
+          <p class="font-semibold"><%= new Date(task.due_date).toLocaleDateString('pt-BR') %></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-600">Tipo</p>
+          <p class="font-semibold"><%= task.task_type || 'N/A' %></p>
+        </div>
+        <% if (task.completed_at) { %>
+          <div>
+            <p class="text-sm text-gray-600">Concluída em</p>
+            <p class="font-semibold"><%= new Date(task.completed_at).toLocaleString('pt-BR') %></p>
+          </div>
+        <% } %>
+      </div>
+
+      <% if (task.description) { %>
+        <div class="mt-4">
+          <p class="text-sm text-gray-600 mb-1">Descrição</p>
+          <p class="text-gray-800"><%= task.description %></p>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Informações de Conclusão Estruturada -->
+    <% if (task.status === 'COMPLETED') { %>
+      <div class="bg-green-50 border border-green-200 rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Informações de Conclusão</h3>
+        <div class="space-y-3">
+          <% if (task.completion_success !== null) { %>
+            <div>
+              <p class="text-sm text-gray-600">Conclusão bem sucedida</p>
+              <p class="font-semibold <%= task.completion_success ? 'text-green-700' : 'text-red-700' %>">
+                <%= task.completion_success ? '✅ Sim' : '❌ Não' %>
+              </p>
+            </div>
+          <% } %>
+          <% if (task.completion_notes) { %>
+            <div>
+              <p class="text-sm text-gray-600">Observações Finais</p>
+              <p class="text-gray-800"><%= task.completion_notes %></p>
+            </div>
+          <% } %>
+          <% if (task.had_issues) { %>
+            <div>
+              <p class="text-sm text-gray-600">Contratempos</p>
+              <p class="text-orange-700 font-semibold">⚠ Sim</p>
+              <% if (task.issues_description) { %>
+                <p class="text-gray-800 mt-1"><%= task.issues_description %></p>
+              <% } %>
+            </div>
+          <% } %>
+          <% if (task.completion_quality) { %>
+            <div>
+              <p class="text-sm text-gray-600">Qualidade da Execução</p>
+              <p class="font-semibold"><%= task.completion_quality %></p>
+            </div>
+          <% } %>
+          <% if (task.completion_time_minutes) { %>
+            <div>
+              <p class="text-sm text-gray-600">Tempo Gasto</p>
+              <p class="font-semibold"><%= task.completion_time_minutes %> minutos 
+                (<%= Math.floor(task.completion_time_minutes / 60) %>h <%= task.completion_time_minutes % 60 %>min)
+              </p>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Checklist -->
+    <% if (task.checklists && task.checklists.length > 0) { %>
+      <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Checklist</h3>
+        <div class="space-y-2">
+          <% task.checklists.forEach(item => { %>
+            <div class="flex items-start space-x-3 p-3 border rounded
+              <%= item.status === 'DONE' ? 'bg-green-50 border-green-200' : 
+                  item.status === 'NOT_DONE' ? 'bg-red-50 border-red-200' : 
+                  'bg-gray-50 border-gray-200' %>">
+              <div class="flex-shrink-0 mt-1">
+                <% if (item.status === 'DONE') { %>
+                  <span class="text-green-600">✅</span>
+                <% } else if (item.status === 'NOT_DONE') { %>
+                  <span class="text-red-600">❌</span>
+                <% } else { %>
+                  <span class="text-gray-400">⏳</span>
+                <% } %>
+              </div>
+              <div class="flex-1">
+                <p class="font-semibold"><%= item.item_name %></p>
+                <% if (item.comment) { %>
+                  <p class="text-sm text-gray-600 mt-1"><%= item.comment %></p>
+                <% } %>
+                <% if (item.done_at) { %>
+                  <p class="text-xs text-gray-500 mt-1">Concluído em: <%= new Date(item.done_at).toLocaleString('pt-BR') %></p>
+                <% } %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Observações do Síndico -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Observações do Síndico</h3>
+      
+      <!-- Mensagem de sucesso/erro -->
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <%= error %>
+        </div>
+      <% } %>
+      <% if (typeof success !== 'undefined' && success === 'observation_added') { %>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          Observação adicionada com sucesso!
+        </div>
+      <% } %>
+
+      <!-- Lista de Observações -->
+      <% if (task.observations && task.observations.length > 0) { %>
+        <div class="space-y-4 mb-6">
+          <% task.observations.forEach(obs => { %>
+            <div class="bg-gray-50 border border-gray-200 rounded p-4">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <p class="font-semibold text-gray-800"><%= obs.user_name || 'Síndico' %></p>
+                  <p class="text-xs text-gray-500"><%= new Date(obs.created_at).toLocaleString('pt-BR') %></p>
+                </div>
+              </div>
+              <p class="text-gray-700 whitespace-pre-wrap"><%= obs.observation %></p>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="text-gray-500 mb-6">Nenhuma observação ainda.</p>
+      <% } %>
+
+      <!-- Formulário para Adicionar Observação -->
+      <form method="POST" action="/sindico/tarefas/<%= task.id %>/observacao" class="border-t pt-4">
+        <div class="mb-4">
+          <label for="observation" class="block text-sm font-medium text-gray-700 mb-2">
+            Adicionar Observação
+          </label>
+          <textarea
+            id="observation"
+            name="observation"
+            rows="4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Digite sua observação sobre esta tarefa..."
+            required
+          ></textarea>
+        </div>
+        <button
+          type="submit"
+          class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+        >
+          Adicionar Observação
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -46,6 +46,11 @@ const authenticate = async (req, res, next) => {
     // Extrai nomes dos perfis em array (ex: ['SUPER_MASTER', 'SINDICO'])
     const roles = rolesResult.rows.map((row) => row.name);
 
+    // Log de debug (apenas em desenvolvimento)
+    if (process.env.NODE_ENV !== 'production' && roles.length === 0) {
+      console.warn(`[AUTH] ⚠️  Usuário ${userResult.rows[0].username} (ID: ${decoded.userId}) não tem nenhum perfil atribuído!`);
+    }
+
     // Anexa dados do usuário à requisição (disponível nos controllers)
     req.user = {
       id: userResult.rows[0].id,
@@ -81,12 +86,38 @@ const authorize = (...allowedRoles) => {
       return res.status(401).redirect('/auth/login?error=not_authenticated');
     }
 
+    // Log de debug (apenas em desenvolvimento)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[AUTHORIZE] Usuário: ${req.user.username} (ID: ${req.user.id})`);
+      console.log(`[AUTHORIZE] Roles do usuário:`, req.user.roles);
+      console.log(`[AUTHORIZE] Roles permitidos:`, allowedRoles);
+    }
+
     // Verifica se o usuário tem algum dos perfis permitidos
     const hasRole = req.user.roles.some((role) => allowedRoles.includes(role));
 
-    // Se não tem permissão, retorna erro 403 (Forbidden)
+    // Se não tem permissão, retorna erro 403 (Forbidden) com informações de debug
     if (!hasRole) {
-      return res.status(403).send('Acesso negado. Permissão insuficiente.');
+      const errorMessage = `Acesso negado. Permissão insuficiente.
+      
+Usuário: ${req.user.username} (ID: ${req.user.id})
+Perfis do usuário: ${req.user.roles.join(', ') || 'Nenhum'}
+Perfis necessários: ${allowedRoles.join(', ')}
+
+Se você acabou de atribuir um perfil a este usuário, peça para ele fazer logout e login novamente.`;
+      
+      console.error(`[AUTHORIZE] Acesso negado para ${req.user.username}:`, {
+        userRoles: req.user.roles,
+        requiredRoles: allowedRoles,
+        hasRole: hasRole
+      });
+      
+      return res.status(403).send(errorMessage);
+    }
+
+    // Log de sucesso (apenas em desenvolvimento)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[AUTHORIZE] ✅ Acesso permitido para ${req.user.username}`);
     }
 
     next(); // Passa para o próximo middleware/controller

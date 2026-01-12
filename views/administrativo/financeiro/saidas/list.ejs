@@ -8,7 +8,7 @@
       <h1 class="text-3xl font-bold text-gray-800">Saídas Financeiras</h1>
       <p class="text-gray-600 mt-2">Despesas do condomínio</p>
     </div>
-    <a href="/administrativo/financeiro/saidas/nova" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+    <a href="/financeiro/saidas/nova" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
       Nova Saída
     </a>
   </div>
@@ -88,13 +88,18 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <% if (exit.payment_status === 'APPROVED' && exit.payment_status !== 'PAID') { %>
-                  <form method="POST" action="/administrativo/financeiro/saidas/<%= exit.id %>/pagar" class="inline">
-                    <button type="submit" class="text-green-600 hover:text-green-900">
-                      Marcar como Paga
-                    </button>
-                  </form>
+                  <a href="/financeiro/saidas/<%= exit.id %>/pagar" class="text-green-600 hover:text-green-900">
+                    Marcar como Paga
+                  </a>
                 <% } else if (exit.payment_status === 'PAID') { %>
-                  <span class="text-gray-400">Paga em <%= new Date(exit.paid_at).toLocaleDateString('pt-BR') %></span>
+                  <div class="flex flex-col items-end">
+                    <span class="text-gray-400 text-xs">Paga em <%= new Date(exit.paid_at).toLocaleDateString('pt-BR') %></span>
+                    <% if (exit.payment_receipt_pdf_path) { %>
+                      <a href="/financeiro/saidas/<%= exit.id %>/comprovante" target="_blank" class="text-blue-600 hover:text-blue-900 text-xs mt-1">
+                        Ver Comprovante
+                      </a>
+                    <% } %>
+                  </div>
                 <% } else { %>
                   <span class="text-gray-400">Aguardando aprovação</span>
                 <% } %>

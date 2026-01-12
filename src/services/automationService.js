@@ -391,6 +391,125 @@ const markNotificationAsRead = async (notificationId, userId) => {
   }
 };
 
+// Função para resolver notificação
+// REGRA: Notificação não pode ser apagada, apenas resolvida ou justificada
+// Recebe: notificationId, userId
+// Retorna: notificação atualizada
+const resolveNotification = async (notificationId, userId) => {
+  try {
+    // Busca notificação atual
+    const notificationResult = await query(
+      `SELECT * FROM notifications WHERE id = $1`,
+      [notificationId]
+    );
+
+    if (notificationResult.rows.length === 0) {
+      throw new Error('Notificação não encontrada');
+    }
+
+    const notification = notificationResult.rows[0];
+
+    // Verifica se já foi resolvida ou justificada
+    if (notification.resolved || notification.justified) {
+      throw new Error('Notificação já foi resolvida ou justificada');
+    }
+
+    // Atualiza notificação como resolvida
+    const result = await query(
+      `UPDATE notifications 
+       SET resolved = TRUE, resolved_at = CURRENT_TIMESTAMP, resolved_by = $1
+       WHERE id = $2
+       RETURNING *`,
+      [userId, notificationId]
+    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao resolver notificação:', error);
+    throw error;
+  }
+};
+
+// Função para justificar notificação
+// REGRA: Notificação não pode ser apagada, apenas resolvida ou justificada
+// Recebe: notificationId, userId, justification (texto)
+// Retorna: notificação atualizada
+const justifyNotification = async (notificationId, userId, justification) => {
+  try {
+    // Busca notificação atual
+    const notificationResult = await query(
+      `SELECT * FROM notifications WHERE id = $1`,
+      [notificationId]
+    );
+
+    if (notificationResult.rows.length === 0) {
+      throw new Error('Notificação não encontrada');
+    }
+
+    const notification = notificationResult.rows[0];
+
+    // Verifica se já foi resolvida ou justificada
+    if (notification.resolved || notification.justified) {
+      throw new Error('Notificação já foi resolvida ou justificada');
+    }
+
+    if (!justification || justification.trim() === '') {
+      throw new Error('Justificativa é obrigatória');
+    }
+
+    // Atualiza notificação como justificada
+    const result = await query(
+      `UPDATE notifications 
+       SET justified = TRUE, justification = $1, justified_at = CURRENT_TIMESTAMP, justified_by = $2
+       WHERE id = $3
+       RETURNING *`,
+      [justification.trim(), userId, notificationId]
+    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao justificar notificação:', error);
+    throw error;
+  }
+};
+
+// Função para listar todas as notificações de um usuário (incluindo resolvidas/justificadas)
+// Recebe: userId, condominiumId, filtros opcionais
+// Retorna: lista de notificações
+const listNotifications = async (userId, condominiumId, filters = {}) => {
+  try {
+    let queryText = `
+      SELECT * FROM notifications
+      WHERE user_id = $1 AND condominium_id = $2
+    `;
+    const params = [userId, condominiumId];
+
+    // Filtros opcionais
+    if (filters.read !== undefined) {
+      queryText += ` AND read = $${params.length + 1}`;
+      params.push(filters.read);
+    }
+
+    if (filters.resolved !== undefined) {
+      queryText += ` AND resolved = $${params.length + 1}`;
+      params.push(filters.resolved);
+    }
+
+    if (filters.justified !== undefined) {
+      queryText += ` AND justified = $${params.length + 1}`;
+      params.push(filters.justified);
+    }
+
+    queryText += ` ORDER BY created_at DESC LIMIT 100`;
+
+    const result = await query(queryText, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar notificações:', error);
+    throw error;
+  }
+};
+
 // Exporta funções
 module.exports = {
   checkTasksSLA,

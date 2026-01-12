@@ -71,7 +71,7 @@ const processLogin = async (req, res) => {
     } else if (user.roles.includes('OPERACIONAL')) {
       return res.redirect('/operacional/dashboard');
     } else if (user.roles.includes('LIMPEZA')) {
-      return res.redirect('/operacional/dashboard'); // LIMPEZA usa dashboard do OPERACIONAL (subset)
+      return res.redirect('/limpeza/dashboard'); // LIMPEZA tem seu próprio dashboard
     } else if (user.roles.includes('CONSELHO')) {
       return res.redirect('/conselho/dashboard');
     }

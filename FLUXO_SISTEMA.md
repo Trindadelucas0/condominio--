@@ -225,6 +225,68 @@ graph LR
     A --> G[NÃO executa tarefas]
     
     B --> H[Status: Pendente]
+        G[LIMPEZA<br/>Limpeza]
+        H[CONSELHO<br/>Leitura]
+    end
+    
+    A -->|Cria| B
+    A -->|Cria| C
+    A -->|Cria| D
+    A -->|Cria| E
+    A -->|Cria| F
+    A -->|Cria| G
+    A -->|Cria| H
+    
+    B -->|Aprova| D
+    B -->|Aprova| E
+    C -->|Cria tarefas para| F
+    C -->|Cria tarefas para| G
+    D -->|Cria despesas para| B
+    E -->|Vincula manutenções| F
+```
+
+---
+
+## 🔄 FLUXO COMPLETO: ADIÇÃO DE ROLE AO USUÁRIO
+
+```mermaid
+sequenceDiagram
+    participant SM as SUPER_MASTER
+    participant UI as Interface
+    participant API as API/Controller
+    participant DB as Database
+    participant U as Usuário Afetado
+    participant N as Navbar
+
+    SM->>UI: Acessa edição de usuário
+    UI->>SM: Formulário com roles
+    SM->>UI: Seleciona nova role (ex: FINANCEIRO)
+    UI->>API: POST /master/usuarios/:id
+    API->>DB: UPDATE user_roles
+    DB-->>API: Roles atualizadas
+    API-->>SM: Sucesso
+    
+    Note over U: Usuário faz logout/login
+    U->>API: Login
+    API->>DB: Busca roles
+    DB-->>API: Roles incluem FINANCEIRO
+    API->>U: Cookie JWT com roles atualizadas
+    U->>N: Renderiza página
+    N->>N: Verifica user.roles.includes('FINANCEIRO')
+    N->>U: Navbar mostra menus Financeiro
+    
+    Note over U: Automaticamente funcionando!
+```
+
+---
+
+## 📋 RESUMO DAS REGRAS DO SISTEMA
+
+### ✅ Regras Fundamentais
+
+1. **Não existe cargo fixo** → Usuário possui conjunto de permissões (roles)
+2. **Permissões somam, nunca subtraem** → Múltiplas roles = soma de permissões
+3. **Views não definem acesso** → Apenas refletem permissões (middleware controla)
     H --> I[SINDICO aprova]
     
     style F fill:#FFB6C1
@@ -380,68 +442,6 @@ graph TB
         D[FINANCEIRO<br/>Financeiro]
         E[PATRIMONIO<br/>Patrimonial]
         F[OPERACIONAL<br/>Execução]
-        G[LIMPEZA<br/>Limpeza]
-        H[CONSELHO<br/>Leitura]
-    end
-    
-    A -->|Cria| B
-    A -->|Cria| C
-    A -->|Cria| D
-    A -->|Cria| E
-    A -->|Cria| F
-    A -->|Cria| G
-    A -->|Cria| H
-    
-    B -->|Aprova| D
-    B -->|Aprova| E
-    C -->|Cria tarefas para| F
-    C -->|Cria tarefas para| G
-    D -->|Cria despesas para| B
-    E -->|Vincula manutenções| F
-```
-
----
-
-## 🔄 FLUXO COMPLETO: ADIÇÃO DE ROLE AO USUÁRIO
-
-```mermaid
-sequenceDiagram
-    participant SM as SUPER_MASTER
-    participant UI as Interface
-    participant API as API/Controller
-    participant DB as Database
-    participant U as Usuário Afetado
-    participant N as Navbar
-
-    SM->>UI: Acessa edição de usuário
-    UI->>SM: Formulário com roles
-    SM->>UI: Seleciona nova role (ex: FINANCEIRO)
-    UI->>API: POST /master/usuarios/:id
-    API->>DB: UPDATE user_roles
-    DB-->>API: Roles atualizadas
-    API-->>SM: Sucesso
-    
-    Note over U: Usuário faz logout/login
-    U->>API: Login
-    API->>DB: Busca roles
-    DB-->>API: Roles incluem FINANCEIRO
-    API->>U: Cookie JWT com roles atualizadas
-    U->>N: Renderiza página
-    N->>N: Verifica user.roles.includes('FINANCEIRO')
-    N->>U: Navbar mostra menus Financeiro
-    
-    Note over U: Automaticamente funcionando!
-```
-
----
-
-## 📋 RESUMO DAS REGRAS DO SISTEMA
-
-### ✅ Regras Fundamentais
-
-1. **Não existe cargo fixo** → Usuário possui conjunto de permissões (roles)
-2. **Permissões somam, nunca subtraem** → Múltiplas roles = soma de permissões
-3. **Views não definem acesso** → Apenas refletem permissões (middleware controla)
 4. **Quem executa não aprova** → Separação de responsabilidades
 5. **Quem aprova não executa** → Separação de responsabilidades
 6. **Tudo é auditável** → Logs de todas as ações

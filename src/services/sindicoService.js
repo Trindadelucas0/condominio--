@@ -340,6 +340,306 @@ const listUsers = async (condominiumId) => {
   }
 };
 
+// Função para listar tarefas do condomínio (para o síndico)
+// Recebe: condominiumId, filtros opcionais (status)
+// Retorna: lista de tarefas com informações completas
+const listTasks = async (condominiumId, filters = {}) => {
+  try {
+    let sql = `
+      SELECT t.*, 
+             creator.full_name as created_by_name,
+             assignee.full_name as assigned_to_name
+      FROM tasks t
+      LEFT JOIN users creator ON t.created_by = creator.id
+      LEFT JOIN users assignee ON t.assigned_to = assignee.id
+      WHERE t.condominium_id = $1
+    `;
+    const params = [condominiumId];
+    let paramCount = 2;
+
+    // Aplica filtros
+    if (filters.status) {
+      sql += ` AND t.status = $${paramCount++}`;
+      params.push(filters.status);
+    }
+
+    sql += ` ORDER BY t.created_at DESC LIMIT 200`;
+
+    const result = await query(sql, params);
+    const tasks = result.rows;
+
+    // Para cada tarefa, busca checklists (se necessário) e observações
+    for (const task of tasks) {
+      const checklistsResult = await query(
+        `SELECT COUNT(*) as total, 
+                SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) as done_count
+         FROM checklists WHERE task_id = $1`,
+        [task.id]
+      );
+      task.checklists_count = parseInt(checklistsResult.rows[0].total);
+      task.checklists_done = parseInt(checklistsResult.rows[0].done_count);
+
+      // Busca última observação do síndico (para preview)
+      const lastObservationResult = await query(
+        `SELECT so.observation, so.created_at, u.full_name as user_name
+         FROM sindico_observations so
+         LEFT JOIN users u ON so.user_id = u.id
+         WHERE so.entity_type = 'tasks' AND so.entity_id = $1 AND so.condominium_id = $2
+         ORDER BY so.created_at DESC LIMIT 1`,
+        [task.id, condominiumId]
+      );
+      if (lastObservationResult.rows.length > 0) {
+        task.last_observation = lastObservationResult.rows[0];
+      }
+    }
+
+    return tasks;
+  } catch (error) {
+    console.error('Erro ao listar tarefas do condomínio:', error);
+    throw error;
+  }
+};
+
+// Função para buscar uma tarefa específica com detalhes completos
+// Recebe: taskId, condominiumId
+// Retorna: tarefa com checklists e informações completas
+const getTaskById = async (taskId, condominiumId) => {
+  try {
+    const taskResult = await query(
+      `SELECT t.*, 
+              creator.full_name as created_by_name,
+              assignee.full_name as assigned_to_name
+       FROM tasks t
+       LEFT JOIN users creator ON t.created_by = creator.id
+       LEFT JOIN users assignee ON t.assigned_to = assignee.id
+       WHERE t.id = $1 AND t.condominium_id = $2`,
+      [taskId, condominiumId]
+    );
+
+    if (taskResult.rows.length === 0) {
+      return null;
+    }
+
+    const task = taskResult.rows[0];
+
+    // Busca checklists
+    const checklistsResult = await query(
+      `SELECT * FROM checklists WHERE task_id = $1 ORDER BY item_order, id`,
+      [taskId]
+    );
+    task.checklists = checklistsResult.rows;
+
+    // Busca observações do síndico
+    const observationsResult = await query(
+      `SELECT so.id, so.condominium_id, so.entity_type, so.entity_id, so.user_id, 
+              so.observation, so.created_at, so.updated_at,
+              u.full_name as user_name
+       FROM sindico_observations so
+       LEFT JOIN users u ON so.user_id = u.id
+       WHERE so.entity_type = 'tasks' AND so.entity_id = $1 AND so.condominium_id = $2
+       ORDER BY so.created_at DESC`,
+      [taskId, condominiumId]
+    );
+    task.observations = observationsResult.rows;
+
+    return task;
+  } catch (error) {
+    console.error('Erro ao buscar tarefa:', error);
+    throw error;
+  }
+};
+
+// Função para listar ocorrências do condomínio (para o síndico)
+// Recebe: condominiumId, filtros opcionais (status)
+// Retorna: lista de ocorrências com informações completas
+const listOccurrences = async (condominiumId, filters = {}) => {
+  try {
+    let sql = `
+      SELECT o.*, 
+             reporter.full_name as reported_by_name,
+             resolver.full_name as resolved_by_name,
+             assignee.full_name as assigned_to_name
+      FROM occurrences o
+      LEFT JOIN users reporter ON o.reported_by = reporter.id
+      LEFT JOIN users resolver ON o.resolved_by = resolver.id
+      LEFT JOIN users assignee ON o.assigned_to = assignee.id
+      WHERE o.condominium_id = $1
+    `;
+    const params = [condominiumId];
+    let paramCount = 2;
+
+    // Aplica filtros
+    if (filters.status) {
+      sql += ` AND o.status = $${paramCount++}`;
+      params.push(filters.status);
+    }
+
+    sql += ` ORDER BY o.created_at DESC LIMIT 200`;
+
+    const result = await query(sql, params);
+    const occurrences = result.rows;
+
+    // Para cada ocorrência, busca última observação do síndico (para preview)
+    for (const occurrence of occurrences) {
+      const lastObservationResult = await query(
+        `SELECT so.observation, so.created_at, u.full_name as user_name
+         FROM sindico_observations so
+         LEFT JOIN users u ON so.user_id = u.id
+         WHERE so.entity_type = 'occurrences' AND so.entity_id = $1 AND so.condominium_id = $2
+         ORDER BY so.created_at DESC LIMIT 1`,
+        [occurrence.id, condominiumId]
+      );
+      if (lastObservationResult.rows.length > 0) {
+        occurrence.last_observation = lastObservationResult.rows[0];
+      }
+    }
+
+    return occurrences;
+  } catch (error) {
+    console.error('Erro ao listar ocorrências do condomínio:', error);
+    throw error;
+  }
+};
+
+// Função para buscar uma ocorrência específica com detalhes completos
+// Recebe: occurrenceId, condominiumId
+// Retorna: ocorrência com informações completas
+const getOccurrenceById = async (occurrenceId, condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT o.*, 
+              reporter.full_name as reported_by_name,
+              resolver.full_name as resolved_by_name,
+              assignee.full_name as assigned_to_name
+       FROM occurrences o
+       LEFT JOIN users reporter ON o.reported_by = reporter.id
+       LEFT JOIN users resolver ON o.resolved_by = resolver.id
+       LEFT JOIN users assignee ON o.assigned_to = assignee.id
+       WHERE o.id = $1 AND o.condominium_id = $2`,
+      [occurrenceId, condominiumId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const occurrence = result.rows[0];
+
+    // Busca observações do síndico
+    const observationsResult = await query(
+      `SELECT so.id, so.condominium_id, so.entity_type, so.entity_id, so.user_id, 
+              so.observation, so.created_at, so.updated_at,
+              u.full_name as user_name
+       FROM sindico_observations so
+       LEFT JOIN users u ON so.user_id = u.id
+       WHERE so.entity_type = 'occurrences' AND so.entity_id = $1 AND so.condominium_id = $2
+       ORDER BY so.created_at DESC`,
+      [occurrenceId, condominiumId]
+    );
+    occurrence.observations = observationsResult.rows;
+
+    return occurrence;
+  } catch (error) {
+    console.error('Erro ao buscar ocorrência:', error);
+    throw error;
+  }
+};
+
+// Função para adicionar observação do síndico em tarefa ou ocorrência
+// Recebe: entityType ('tasks' ou 'occurrences'), entityId, observation, userId, condominiumId
+// Retorna: observação criada
+const addObservation = async (entityType, entityId, observation, userId, condominiumId, ipAddress, userAgent) => {
+  try {
+    // Validação
+    if (!observation || observation.trim() === '') {
+      throw new Error('Observação não pode estar vazia');
+    }
+
+    if (entityType !== 'tasks' && entityType !== 'occurrences') {
+      throw new Error('Tipo de entidade inválido');
+    }
+
+    // Verifica se a entidade existe e pertence ao condomínio
+    if (entityType === 'tasks') {
+      const taskCheck = await query(
+        `SELECT id FROM tasks WHERE id = $1 AND condominium_id = $2`,
+        [entityId, condominiumId]
+      );
+      if (taskCheck.rows.length === 0) {
+        throw new Error('Tarefa não encontrada');
+      }
+    } else {
+      const occurrenceCheck = await query(
+        `SELECT id FROM occurrences WHERE id = $1 AND condominium_id = $2`,
+        [entityId, condominiumId]
+      );
+      if (occurrenceCheck.rows.length === 0) {
+        throw new Error('Ocorrência não encontrada');
+      }
+    }
+
+    // Se for ocorrência, atualiza campos diretos na tabela occurrences
+    if (entityType === 'occurrences') {
+      await query(
+        `UPDATE occurrences 
+         SET sindico_observation = $1, sindico_observation_by = $2, sindico_observation_at = CURRENT_TIMESTAMP
+         WHERE id = $3 AND condominium_id = $4`,
+        [observation.trim(), userId, entityId, condominiumId]
+      );
+    }
+
+    // Insere observação (mantém compatibilidade com sistema antigo)
+    const result = await query(
+      `INSERT INTO sindico_observations (condominium_id, entity_type, entity_id, user_id, observation)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [condominiumId, entityType, entityId, userId, observation.trim()]
+    );
+
+    const observationRecord = result.rows[0];
+
+    // Registra no log de auditoria
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'CREATE',
+      module: 'OBSERVATION',
+      entityType: 'sindico_observations',
+      entityId: observationRecord.id,
+      afterData: observationRecord,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return observationRecord;
+  } catch (error) {
+    console.error('Erro ao adicionar observação:', error);
+    throw error;
+  }
+};
+
+// Função para listar observações de uma entidade
+// Recebe: entityType, entityId, condominiumId
+// Retorna: lista de observações
+const listObservations = async (entityType, entityId, condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT so.id, so.condominium_id, so.entity_type, so.entity_id, so.user_id, 
+              so.observation, so.created_at, so.updated_at,
+              u.full_name as user_name
+       FROM sindico_observations so
+       LEFT JOIN users u ON so.user_id = u.id
+       WHERE so.entity_type = $1 AND so.entity_id = $2 AND so.condominium_id = $3
+       ORDER BY so.created_at DESC`,
+      [entityType, entityId, condominiumId]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar observações:', error);
+    throw error;
+  }
+};
+
 // Exporta funções
 module.exports = {
   getDashboardStats,
@@ -349,4 +649,10 @@ module.exports = {
   resolveAlert,
   listAuditLogs,
   listUsers,
+  listTasks,
+  getTaskById,
+  listOccurrences,
+  getOccurrenceById,
+  addObservation,
+  listObservations,
 };

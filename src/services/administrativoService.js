@@ -37,10 +37,59 @@ const getDashboardStats = async (condominiumId) => {
     );
     const expiredDocuments = parseInt(expiredDocumentsResult.rows[0].total);
 
+    // Conta ocorrências não triadas
+    const untriagedOccurrencesResult = await query(
+      `SELECT COUNT(*) as total FROM occurrences 
+       WHERE condominium_id = $1 AND triaged = FALSE 
+         AND status NOT IN ('RESOLVIDA', 'ENCERRADA')`,
+      [condominiumId]
+    );
+    const untriagedOccurrences = parseInt(untriagedOccurrencesResult.rows[0].total);
+
+    // Conta ocorrências abertas (todas)
+    const openOccurrencesResult = await query(
+      `SELECT COUNT(*) as total FROM occurrences 
+       WHERE condominium_id = $1 
+         AND status IN ('ABERTA', 'EM_ATENDIMENTO', 'AGUARDANDO_TERCEIRO')`,
+      [condominiumId]
+    );
+    const openOccurrences = parseInt(openOccurrencesResult.rows[0].total);
+
+    // Conta alertas de SLA (tarefas e ocorrências)
+    const slaAlertsResult = await query(
+      `SELECT COUNT(*) as total FROM (
+        SELECT id FROM tasks 
+        WHERE condominium_id = $1 
+          AND status IN ('PENDING', 'IN_PROGRESS')
+          AND due_date IS NOT NULL 
+          AND due_date <= CURRENT_TIMESTAMP
+        UNION ALL
+        SELECT id FROM occurrences 
+        WHERE condominium_id = $1 
+          AND status IN ('ABERTA', 'EM_ATENDIMENTO')
+          AND sla_due_date IS NOT NULL 
+          AND sla_due_date <= CURRENT_TIMESTAMP
+      ) as alerts`,
+      [condominiumId]
+    );
+    const slaAlerts = parseInt(slaAlertsResult.rows[0].total);
+
+    // Conta solicitações de orçamento pendentes
+    const pendingBudgetRequestsResult = await query(
+      `SELECT COUNT(*) as total FROM budget_requests 
+       WHERE condominium_id = $1 AND status = 'PENDING'`,
+      [condominiumId]
+    );
+    const pendingBudgetRequests = parseInt(pendingBudgetRequestsResult.rows[0].total);
+
     return {
       activeTasks,
       expiringDocuments,
       expiredDocuments,
+      untriagedOccurrences,
+      openOccurrences,
+      slaAlerts,
+      pendingBudgetRequests,
     };
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard administrativo:', error);
@@ -74,7 +123,7 @@ const listOperacionais = async (condominiumId) => {
 // Retorna: tarefa criada
 const createTask = async (data, userId, condominiumId, ipAddress, userAgent) => {
   try {
-    const { title, description, assignedTo, dueDate, priority, taskType, checklistItems } = data;
+    const { title, description, assignedTo, dueDate, priority, taskType, checklistItems, relatedOccurrenceId } = data;
 
     // Validações
     if (!title || title.trim() === '') {
@@ -101,12 +150,12 @@ const createTask = async (data, userId, condominiumId, ipAddress, userAgent) => 
       throw new Error('Usuário responsável inválido ou não é operacional');
     }
 
-    // Insere tarefa
+    // Insere tarefa (pode ter ocorrência relacionada)
     const taskResult = await query(
-      `INSERT INTO tasks (condominium_id, created_by, assigned_to, title, description, task_type, priority, due_date, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
+      `INSERT INTO tasks (condominium_id, created_by, assigned_to, title, description, task_type, priority, due_date, status, related_occurrence_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9)
        RETURNING *`,
-      [condominiumId, userId, assignedTo, title.trim(), description || null, taskType || 'CHECKLIST', priority || 'NORMAL', dueDate]
+      [condominiumId, userId, assignedTo, title.trim(), description || null, taskType || 'CHECKLIST', priority || 'NORMAL', dueDate, relatedOccurrenceId]
     );
 
     const task = taskResult.rows[0];
@@ -359,6 +408,63 @@ const updateDocument = async (documentId, data, userId, condominiumId, ipAddress
   }
 };
 
+// Função para criar documento com upload de arquivo
+// Recebe: dados do documento + arquivo, userId, condominiumId
+// Retorna: documento criado
+const createDocumentWithFile = async (data, files, userId, condominiumId, ipAddress, userAgent) => {
+  try {
+    const { title, description, categoryId, documentType, expiryDate } = data;
+
+    if (!title || title.trim() === '') {
+      throw new Error('Título é obrigatório');
+    }
+
+    // Se há arquivos, pega o primeiro (ou pode processar múltiplos depois)
+    const file = files && files.length > 0 ? files[0] : null;
+    const filePath = file ? file.path : null;
+    const fileName = file ? file.originalname : null;
+    const fileType = file ? file.mimetype : null;
+
+    const result = await query(
+      `INSERT INTO documents (condominium_id, category_id, title, description, document_type, expiry_date, status, file_path, file_name, file_type, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', $7, $8, $9, $10)
+       RETURNING *`,
+      [
+        condominiumId,
+        categoryId || null,
+        title.trim(),
+        description || null,
+        documentType || 'DOCUMENT',
+        expiryDate || null,
+        filePath,
+        fileName,
+        fileType,
+        userId,
+      ]
+    );
+
+    const document = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'CREATE',
+      module: 'DOCUMENT',
+      entityType: 'documents',
+      entityId: document.id,
+      afterData: document,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return document;
+  } catch (error) {
+    console.error('Erro ao criar documento com arquivo:', error);
+    throw error;
+  }
+};
+
 // Exporta funções
 module.exports = {
   getDashboardStats,
@@ -369,5 +475,6 @@ module.exports = {
   listDocumentCategories,
   createDocumentCategory,
   createDocument,
+  createDocumentWithFile,
   updateDocument,
 };

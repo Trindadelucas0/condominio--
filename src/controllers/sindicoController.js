@@ -170,6 +170,184 @@ const showLogs = async (req, res) => {
   }
 };
 
+// Função para listar tarefas do condomínio
+// GET /sindico/tarefas
+const showTarefas = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const filters = {
+      status: req.query.status || undefined,
+    };
+
+    const tasks = await sindicoService.listTasks(req.user.condominiumId, filters);
+
+    res.render('sindico/tarefas', {
+      title: 'Tarefas do Condomínio',
+      user: req.user,
+      tasks: tasks,
+      filters: filters,
+    });
+  } catch (error) {
+    console.error('Erro ao listar tarefas:', error);
+    res.status(500).send('Erro ao carregar tarefas');
+  }
+};
+
+// Função para exibir detalhes de uma tarefa
+// GET /sindico/tarefas/:id
+const showTask = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const task = await sindicoService.getTaskById(req.params.id, req.user.condominiumId);
+
+    if (!task) {
+      return res.status(404).send('Tarefa não encontrada');
+    }
+
+    // Verifica se há mensagem de sucesso na query string
+    const success = req.query.success || null;
+
+    res.render('sindico/task-detail', {
+      title: 'Detalhes da Tarefa',
+      user: req.user,
+      task: task,
+      error: null,
+      success: success,
+    });
+  } catch (error) {
+    console.error('Erro ao buscar tarefa:', error);
+    res.status(500).send('Erro ao carregar tarefa');
+  }
+};
+
+// Função para adicionar observação em tarefa
+// POST /sindico/tarefas/:id/observacao
+const addTaskObservation = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const taskId = req.params.id;
+    const observation = req.body.observation;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await sindicoService.addObservation('tasks', taskId, observation, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+
+    res.redirect('/sindico/tarefas/' + taskId + '?success=observation_added');
+  } catch (error) {
+    console.error('Erro ao adicionar observação:', error);
+    // Volta para a página da tarefa com erro
+    try {
+      const task = await sindicoService.getTaskById(req.params.id, req.user.condominiumId);
+      res.render('sindico/task-detail', {
+        title: 'Detalhes da Tarefa',
+        user: req.user,
+        task: task,
+        error: error.message,
+      });
+    } catch (renderError) {
+      res.redirect('/sindico/tarefas?error=' + encodeURIComponent(error.message));
+    }
+  }
+};
+
+// Função para listar ocorrências do condomínio
+// GET /sindico/ocorrencias
+const showOcorrencias = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const filters = {
+      status: req.query.status || undefined,
+    };
+
+    const occurrences = await sindicoService.listOccurrences(req.user.condominiumId, filters);
+
+    res.render('sindico/ocorrencias', {
+      title: 'Ocorrências do Condomínio',
+      user: req.user,
+      occurrences: occurrences,
+      filters: filters,
+    });
+  } catch (error) {
+    console.error('Erro ao listar ocorrências:', error);
+    res.status(500).send('Erro ao carregar ocorrências');
+  }
+};
+
+// Função para exibir detalhes de uma ocorrência
+// GET /sindico/ocorrencias/:id
+const showOccurrence = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const occurrence = await sindicoService.getOccurrenceById(req.params.id, req.user.condominiumId);
+
+    if (!occurrence) {
+      return res.status(404).send('Ocorrência não encontrada');
+    }
+
+    // Verifica se há mensagem de sucesso na query string
+    const success = req.query.success || null;
+
+    res.render('sindico/occurrence-detail', {
+      title: 'Detalhes da Ocorrência',
+      user: req.user,
+      occurrence: occurrence,
+      error: null,
+      success: success,
+    });
+  } catch (error) {
+    console.error('Erro ao buscar ocorrência:', error);
+    res.status(500).send('Erro ao carregar ocorrência');
+  }
+};
+
+// Função para adicionar observação em ocorrência
+// POST /sindico/ocorrencias/:id/observacao
+const addOccurrenceObservation = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const occurrenceId = req.params.id;
+    const observation = req.body.observation;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await sindicoService.addObservation('occurrences', occurrenceId, observation, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+
+    res.redirect('/sindico/ocorrencias/' + occurrenceId + '?success=observation_added');
+  } catch (error) {
+    console.error('Erro ao adicionar observação:', error);
+    // Volta para a página da ocorrência com erro
+    try {
+      const occurrence = await sindicoService.getOccurrenceById(req.params.id, req.user.condominiumId);
+      res.render('sindico/occurrence-detail', {
+        title: 'Detalhes da Ocorrência',
+        user: req.user,
+        occurrence: occurrence,
+        error: error.message,
+      });
+    } catch (renderError) {
+      res.redirect('/sindico/ocorrencias?error=' + encodeURIComponent(error.message));
+    }
+  }
+};
+
 // Exporta funções
 module.exports = {
   showDashboard,
@@ -178,4 +356,10 @@ module.exports = {
   showAlertas,
   resolverAlerta,
   showLogs,
+  showTarefas,
+  showTask,
+  addTaskObservation,
+  showOcorrencias,
+  showOccurrence,
+  addOccurrenceObservation,
 };

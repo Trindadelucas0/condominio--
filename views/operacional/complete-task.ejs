@@ -1,0 +1,174 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-3xl mx-auto">
+    <!-- Cabeçalho -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-gray-800">Concluir Tarefa</h1>
+      <p class="text-gray-600 mt-2">Preencha os dados de conclusão da tarefa</p>
+    </div>
+
+    <!-- Informações da Tarefa -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Informações da Tarefa</h2>
+      <div class="space-y-2">
+        <p><span class="font-semibold">Título:</span> <%= task.title %></p>
+        <% if (task.description) { %>
+          <p><span class="font-semibold">Descrição:</span> <%= task.description %></p>
+        <% } %>
+        <p><span class="font-semibold">Prazo:</span> <%= new Date(task.due_date).toLocaleDateString('pt-BR') %></p>
+        <p><span class="font-semibold">Prioridade:</span> <%= task.priority %></p>
+      </div>
+    </div>
+
+    <!-- Formulário de Conclusão -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <%= error %>
+        </div>
+      <% } %>
+
+      <form method="POST" action="/operacional/tarefas/<%= task.id %>/finalizar">
+        <!-- Sucesso na Conclusão (obrigatório) -->
+        <div class="mb-6">
+          <label class="block text-gray-700 font-semibold mb-2">
+            A tarefa foi concluída com sucesso? <span class="text-red-600">*</span>
+          </label>
+          <div class="flex gap-4">
+            <label class="flex items-center">
+              <input type="radio" name="completion_success" value="true" required 
+                     <%= formData && formData.completion_success === 'true' ? 'checked' : '' %>>
+              <span class="ml-2">Sim</span>
+            </label>
+            <label class="flex items-center">
+              <input type="radio" name="completion_success" value="false" required
+                     <%= formData && formData.completion_success === 'false' ? 'checked' : '' %>>
+              <span class="ml-2">Não</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Observações Finais -->
+        <div class="mb-6">
+          <label for="completion_notes" class="block text-gray-700 font-semibold mb-2">
+            Observações Finais
+          </label>
+          <textarea
+            id="completion_notes"
+            name="completion_notes"
+            rows="4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Descreva como foi a execução da tarefa, resultados obtidos, etc."
+          ><%= formData && formData.completion_notes ? formData.completion_notes : '' %></textarea>
+        </div>
+
+        <!-- Teve Contratempos -->
+        <div class="mb-6">
+          <label class="block text-gray-700 font-semibold mb-2">
+            Houve contratempos durante a execução?
+          </label>
+          <div class="flex gap-4">
+            <label class="flex items-center">
+              <input type="radio" name="had_issues" value="true"
+                     <%= formData && formData.had_issues === 'true' ? 'checked' : '' %>>
+              <span class="ml-2">Sim</span>
+            </label>
+            <label class="flex items-center">
+              <input type="radio" name="had_issues" value="false" checked>
+              <span class="ml-2">Não</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Descrição dos Contratempos -->
+        <div class="mb-6" id="issues-description-section" style="display: none;">
+          <label for="issues_description" class="block text-gray-700 font-semibold mb-2">
+            Descreva os contratempos encontrados
+          </label>
+          <textarea
+            id="issues_description"
+            name="issues_description"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Descreva os problemas, dificuldades ou contratempos que ocorreram..."
+          ><%= formData && formData.issues_description ? formData.issues_description : '' %></textarea>
+        </div>
+
+        <!-- Tempo Gasto -->
+        <div class="mb-6">
+          <label for="completion_time_minutes" class="block text-gray-700 font-semibold mb-2">
+            Tempo gasto (em minutos)
+          </label>
+          <input
+            type="number"
+            id="completion_time_minutes"
+            name="completion_time_minutes"
+            min="1"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ex: 120 (para 2 horas)"
+            value="<%= formData && formData.completion_time_minutes ? formData.completion_time_minutes : '' %>"
+          >
+        </div>
+
+        <!-- Qualidade da Execução -->
+        <div class="mb-6">
+          <label for="completion_quality" class="block text-gray-700 font-semibold mb-2">
+            Qualidade da execução
+          </label>
+          <select
+            id="completion_quality"
+            name="completion_quality"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Selecione...</option>
+            <option value="EXCELENTE" <%= formData && formData.completion_quality === 'EXCELENTE' ? 'selected' : '' %>>Excelente</option>
+            <option value="BOM" <%= formData && formData.completion_quality === 'BOM' ? 'selected' : '' %>>Bom</option>
+            <option value="REGULAR" <%= formData && formData.completion_quality === 'REGULAR' ? 'selected' : '' %>>Regular</option>
+            <option value="RUIM" <%= formData && formData.completion_quality === 'RUIM' ? 'selected' : '' %>>Ruim</option>
+          </select>
+        </div>
+
+        <!-- Botões -->
+        <div class="flex gap-4">
+          <button
+            type="submit"
+            class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
+          >
+            Concluir Tarefa
+          </button>
+          <a
+            href="/operacional/checklist"
+            class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400 transition"
+          >
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Mostra/esconde campo de descrição de contratempos
+document.querySelectorAll('input[name="had_issues"]').forEach(radio => {
+  radio.addEventListener('change', function() {
+    const issuesSection = document.getElementById('issues-description-section');
+    if (this.value === 'true') {
+      issuesSection.style.display = 'block';
+      document.getElementById('issues_description').required = true;
+    } else {
+      issuesSection.style.display = 'none';
+      document.getElementById('issues_description').required = false;
+    }
+  });
+});
+
+// Verifica estado inicial
+if (document.querySelector('input[name="had_issues"]:checked')?.value === 'true') {
+  document.getElementById('issues-description-section').style.display = 'block';
+}
+</script>
+
+<%- include('../partials/footer') %>

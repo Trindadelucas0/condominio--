@@ -15,10 +15,13 @@ router.get('/dashboard', operacionalController.showDashboard);
 router.get('/checklist', operacionalController.showChecklist);
 router.get('/tarefas/:id', operacionalController.showTask);
 router.post('/checklist/:id/atualizar', operacionalController.updateChecklistItem);
+router.get('/tarefas/:id/concluir', operacionalController.showCompleteTask);
 router.post('/tarefas/:id/finalizar', operacionalController.completeTask);
 // REGRA: LIMPEZA NÃO pode criar ocorrências (apenas OPERACIONAL pode)
 router.get('/ocorrencias', operacionalController.showOcorrencias);
 router.get('/ocorrencias/nova', blockLimpezaFromOccurrences, operacionalController.showCreateOcorrencia);
 router.post('/ocorrencias', blockLimpezaFromOccurrences, operacionalController.createOcorrencia);
+router.get('/ocorrencias/:id/resolver', operacionalController.showResolveOcorrencia);
+router.post('/ocorrencias/:id/resolver', operacionalController.resolveOcorrencia);
 
 module.exports = router;

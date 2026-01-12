@@ -133,6 +133,12 @@ const listUsuarios = async (req, res) => {
 // GET /master/usuarios/novo
 const showCreateUsuario = async (req, res) => {
   try {
+    // Proteção: se por algum motivo vier um ID na URL, redireciona
+    if (req.params.id && req.params.id !== 'novo') {
+      console.warn(`[CREATE USER] Tentativa de criar com ID na URL: ${req.params.id}. Redirecionando...`);
+      return res.redirect('/master/usuarios/novo');
+    }
+
     const roles = await masterService.getAllRoles();
     const condominios = await masterService.listCondominios();
 
@@ -144,7 +150,7 @@ const showCreateUsuario = async (req, res) => {
       condominios: condominios,
     });
   } catch (error) {
-    console.error('Erro ao carregar formulário:', error);
+    console.error('Erro ao carregar formulário de criação:', error);
     res.status(500).send('Erro ao carregar formulário');
   }
 };
@@ -157,9 +163,32 @@ const createUsuario = async (req, res) => {
     const userAgent = req.get('user-agent');
 
     // Converte roleIds de array (se múltiplos) ou string única
-    const roleIds = Array.isArray(req.body.roleIds) 
-      ? req.body.roleIds.map(id => parseInt(id))
-      : req.body.roleIds ? [parseInt(req.body.roleIds)] : [];
+    // Remove valores inválidos (null, undefined, NaN, strings vazias)
+    let roleIds = [];
+    if (Array.isArray(req.body.roleIds)) {
+      roleIds = req.body.roleIds
+        .map(id => parseInt(id))
+        .filter(id => !isNaN(id) && id > 0);
+    } else if (req.body.roleIds) {
+      const parsed = parseInt(req.body.roleIds);
+      if (!isNaN(parsed) && parsed > 0) {
+        roleIds = [parsed];
+      }
+    }
+
+    // Valida se pelo menos um perfil foi selecionado
+    if (roleIds.length === 0) {
+      const roles = await masterService.getAllRoles();
+      const condominios = await masterService.listCondominios();
+      return res.render('master/usuarios/form', {
+        title: 'Novo Usuário',
+        user: req.user,
+        roles: roles,
+        condominios: condominios,
+        error: 'Selecione pelo menos um perfil para o usuário',
+        formData: req.body,
+      });
+    }
 
     const data = {
       ...req.body,
@@ -175,15 +204,21 @@ const createUsuario = async (req, res) => {
       const roles = await masterService.getAllRoles();
       const condominios = await masterService.listCondominios();
 
+      // Remove qualquer ID do req.body para garantir que é criação, não edição
+      const formData = { ...req.body };
+      delete formData.id;
+
       res.render('master/usuarios/form', {
         title: 'Novo Usuário',
         user: req.user,
-        usuario: req.body,
+        usuario: null, // Sempre null na criação, mesmo após erro
         roles: roles,
         condominios: condominios,
         error: error.message,
+        formData: formData, // Passa dados do formulário separadamente
       });
     } catch (renderError) {
+      console.error('Erro ao renderizar formulário após erro:', renderError);
       res.status(500).send('Erro ao processar criação de usuário');
     }
   }
@@ -193,7 +228,19 @@ const createUsuario = async (req, res) => {
 // GET /master/usuarios/:id/editar
 const showEditUsuario = async (req, res) => {
   try {
-    const usuario = await masterService.getUsuarioById(req.params.id);
+    // Verifica se não é a rota de criação (proteção extra)
+    if (req.params.id === 'novo' || req.params.id === 'criar') {
+      return res.redirect('/master/usuarios/novo');
+    }
+
+    // Valida e converte ID do usuário
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId) || userId <= 0) {
+      console.error(`[EDIT USER] ID inválido recebido: ${req.params.id}`);
+      return res.status(400).send(`ID do usuário inválido: "${req.params.id}". Se você está tentando criar um novo usuário, acesse <a href="/master/usuarios/novo">/master/usuarios/novo</a>`);
+    }
+
+    const usuario = await masterService.getUsuarioById(userId);
     const roles = await masterService.getAllRoles();
     const condominios = await masterService.listCondominios();
 
@@ -218,15 +265,30 @@ const showEditUsuario = async (req, res) => {
 // POST /master/usuarios/:id
 const updateUsuario = async (req, res) => {
   try {
+    // Valida e converte ID do usuário
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId) || userId <= 0) {
+      return res.status(400).send('ID do usuário inválido');
+    }
+
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
-    // Converte roleIds
-    const roleIds = req.body.roleIds 
-      ? (Array.isArray(req.body.roleIds) 
-          ? req.body.roleIds.map(id => parseInt(id))
-          : [parseInt(req.body.roleIds)])
-      : undefined;
+    // Converte roleIds - remove valores inválidos
+    let roleIds = undefined;
+    if (req.body.roleIds) {
+      if (Array.isArray(req.body.roleIds)) {
+        const parsed = req.body.roleIds
+          .map(id => parseInt(id))
+          .filter(id => !isNaN(id) && id > 0);
+        roleIds = parsed.length > 0 ? parsed : undefined;
+      } else {
+        const parsed = parseInt(req.body.roleIds);
+        if (!isNaN(parsed) && parsed > 0) {
+          roleIds = [parsed];
+        }
+      }
+    }
 
     const data = {
       ...req.body,
@@ -235,7 +297,7 @@ const updateUsuario = async (req, res) => {
       active: req.body.active === 'true' || req.body.active === true,
     };
 
-    await masterService.updateUsuario(req.params.id, data, req.user.id, ipAddress, userAgent);
+    await masterService.updateUsuario(userId, data, req.user.id, ipAddress, userAgent);
 
     res.redirect('/master/usuarios?success=updated');
   } catch (error) {

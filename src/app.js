@@ -17,6 +17,10 @@ app.set('view engine', 'ejs'); // Define EJS como engine de templates
 // Arquivos em public/ ficam acessíveis via URL
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Middleware para servir arquivos de upload (comprovantes PDF)
+// Arquivos em uploads/ ficam acessíveis via URL /uploads/
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Middleware para processar JSON no corpo das requisições
 // Permite receber dados JSON em POST/PUT
 app.use(express.json());
@@ -39,6 +43,10 @@ const patrimonioRoutes = require('./routes/patrimonioRoutes'); // Rotas do PATRI
 const operacionalRoutes = require('./routes/operacionalRoutes'); // Rotas do OPERACIONAL
 const conselhoRoutes = require('./routes/conselhoRoutes'); // Rotas do CONSELHO
 const automationRoutes = require('./routes/automationRoutes'); // Rotas de automações
+const notificationRoutes = require('./routes/notificationRoutes'); // Rotas de notificações
+const configRoutes = require('./routes/configRoutes'); // Rotas de configurações
+const estoqueRoutes = require('./routes/estoqueRoutes'); // Rotas de estoque
+const limpezaRoutes = require('./routes/limpezaRoutes'); // Rotas de LIMPEZA (ocorrências específicas)
 
 // Registra rotas na aplicação
 app.use('/auth', authRoutes); // Todas as rotas de /auth/*
@@ -50,6 +58,10 @@ app.use('/patrimonio', patrimonioRoutes); // Todas as rotas de /patrimonio/* (ex
 app.use('/operacional', operacionalRoutes); // Todas as rotas de /operacional/* (exige OPERACIONAL ou LIMPEZA)
 app.use('/conselho', conselhoRoutes); // Todas as rotas de /conselho/* (exige CONSELHO)
 app.use('/automation', automationRoutes); // Rotas de automações
+app.use('/notifications', notificationRoutes); // Rotas de notificações
+app.use('/config', configRoutes); // Rotas de configurações
+app.use('/estoque', estoqueRoutes); // Rotas de estoque
+app.use('/limpeza', limpezaRoutes); // Rotas de /limpeza/* (exige LIMPEZA - ocorrências específicas)
 
 // Rota raiz (/) redireciona para login
 app.get('/', (req, res) => {

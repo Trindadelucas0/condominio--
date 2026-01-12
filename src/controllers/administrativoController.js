@@ -193,7 +193,14 @@ const createDocumento = async (req, res) => {
       expiryDate: req.body.expiryDate || null,
     };
 
-    await administrativoService.createDocument(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    const files = req.files || [];
+
+    // Se há arquivos, usa createDocumentWithFile, senão createDocument
+    if (files.length > 0) {
+      await administrativoService.createDocumentWithFile(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    } else {
+      await administrativoService.createDocument(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    }
 
     res.redirect('/administrativo/documentos?success=created');
   } catch (error) {
@@ -282,6 +289,132 @@ const updateDocumento = async (req, res) => {
   }
 };
 
+// Função para listar ocorrências (ADM vê todas)
+// GET /administrativo/ocorrencias
+const showOcorrencias = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const triagemService = require('../services/administrativoTriagemService');
+    const filters = {
+      status: req.query.status || undefined,
+      priority: req.query.priority || undefined,
+      occurrenceType: req.query.occurrenceType || undefined,
+      triaged: req.query.triaged === 'true' ? true : req.query.triaged === 'false' ? false : undefined,
+    };
+
+    const occurrences = await triagemService.listAllOccurrences(req.user.condominiumId, filters);
+
+    res.render('administrativo/ocorrencias/list', {
+      title: 'Ocorrências',
+      user: req.user,
+      occurrences,
+      filters,
+    });
+  } catch (error) {
+    console.error('Erro ao listar ocorrências:', error);
+    res.status(500).send('Erro ao carregar ocorrências');
+  }
+};
+
+// Função para exibir formulário de triagem
+// GET /administrativo/ocorrencias/:id/triar
+const showTriarOcorrencia = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const triagemService = require('../services/administrativoTriagemService');
+    const administrativoService = require('../services/administrativoService');
+
+    const occurrences = await triagemService.listAllOccurrences(req.user.condominiumId);
+    const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
+
+    if (!occurrence) {
+      return res.status(404).send('Ocorrência não encontrada');
+    }
+
+    const operacionais = await administrativoService.listOperacionais(req.user.condominiumId);
+
+    res.render('administrativo/ocorrencias/triar', {
+      title: 'Triar Ocorrência',
+      user: req.user,
+      occurrence,
+      operacionais,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar formulário de triagem:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+};
+
+// Função para processar triagem
+// POST /administrativo/ocorrencias/:id/triar
+const triarOcorrencia = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const triagemService = require('../services/administrativoTriagemService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const triagemData = {
+      priority: req.body.priority,
+      classification: req.body.classification,
+      slaHours: req.body.slaHours ? parseInt(req.body.slaHours) : null,
+      assignTo: req.body.assignTo ? parseInt(req.body.assignTo) : null,
+      convertToTask: req.body.convertToTask === 'true',
+      taskData: req.body.convertToTask === 'true' ? {
+        title: req.body.taskTitle || req.body.title,
+        description: req.body.taskDescription || req.body.description,
+        dueDate: req.body.taskDueDate,
+        taskType: req.body.taskType || 'CORRECTIVE',
+      } : null,
+    };
+
+    await triagemService.triageOccurrence(
+      parseInt(req.params.id),
+      triagemData,
+      req.user.id,
+      req.user.condominiumId,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/administrativo/ocorrencias?success=triaged');
+  } catch (error) {
+    console.error('Erro ao triar ocorrência:', error);
+    res.redirect(`/administrativo/ocorrencias/${req.params.id}/triar?error=${encodeURIComponent(error.message)}`);
+  }
+};
+
+// Função para listar ocorrências pendentes de triagem
+// GET /administrativo/ocorrencias/pendentes
+const showOcorrenciasPendentes = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const triagemService = require('../services/administrativoTriagemService');
+    const occurrences = await triagemService.listOccurrencesPendingTriage(req.user.condominiumId);
+
+    res.render('administrativo/ocorrencias/pendentes', {
+      title: 'Ocorrências Pendentes de Triagem',
+      user: req.user,
+      occurrences,
+    });
+  } catch (error) {
+    console.error('Erro ao listar ocorrências pendentes:', error);
+    res.status(500).send('Erro ao carregar ocorrências');
+  }
+};
+
 // REMOVIDO: Todas as funções financeiras e patrimoniais foram movidas para controllers separados
 module.exports = {
   showDashboard,
@@ -293,6 +426,10 @@ module.exports = {
   createDocumento,
   showEditDocumento,
   updateDocumento,
+  showOcorrencias,
+  showTriarOcorrencia,
+  triarOcorrencia,
+  showOcorrenciasPendentes,
   // REMOVIDO: Funções financeiras (movidas para financeiroController.js)
   // REMOVIDO: Funções patrimoniais (movidas para patrimonioController.js)
 };

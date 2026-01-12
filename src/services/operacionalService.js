@@ -30,7 +30,9 @@ const getDashboardStats = async (userId, condominiumId) => {
     // Conta ocorrências abertas reportadas pelo usuário
     const openOccurrencesResult = await query(
       `SELECT COUNT(*) as total FROM occurrences 
-       WHERE reported_by = $1 AND status IN ('ABERTA', 'EM_ATENDIMENTO') AND condominium_id = $2`,
+       WHERE reported_by = $1 AND status IN ('ABERTA', 'EM_ATENDIMENTO') 
+         AND condominium_id = $2 
+         AND (occurrence_type = 'ZELADORIA' OR occurrence_type IS NULL)`,
       [userId, condominiumId]
     );
     const openOccurrences = parseInt(openOccurrencesResult.rows[0].total);
@@ -208,10 +210,10 @@ const updateChecklistItem = async (checklistId, status, comment, userId, condomi
   }
 };
 
-// Função para finalizar tarefa
-// Recebe: taskId, userId
+// Função para finalizar tarefa com dados estruturados
+// Recebe: taskId, userId, dados de conclusão (completionData)
 // Retorna: tarefa atualizada
-const completeTask = async (taskId, userId, condominiumId, ipAddress, userAgent) => {
+const completeTask = async (taskId, userId, condominiumId, completionData, ipAddress, userAgent) => {
   try {
     // Busca tarefa atual
     const taskResult = await query(
@@ -238,13 +240,63 @@ const completeTask = async (taskId, userId, condominiumId, ipAddress, userAgent)
       throw new Error('Todos os itens do checklist devem estar concluídos');
     }
 
+    // Validação: completion_success é obrigatório
+    if (completionData.completion_success === undefined || completionData.completion_success === null) {
+      throw new Error('É obrigatório informar se a tarefa foi concluída com sucesso');
+    }
+
+    // Prepara campos de atualização
+    const updateFields = [];
+    const updateValues = [];
+    let paramCount = 1;
+
+    updateFields.push(`status = 'COMPLETED'`);
+    updateFields.push(`completed_at = CURRENT_TIMESTAMP`);
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateFields.push(`completion_success = $${paramCount++}`);
+    updateValues.push(completionData.completion_success === true || completionData.completion_success === 'true');
+
+    // Campos opcionais
+    if (completionData.completion_notes !== undefined && completionData.completion_notes !== null) {
+      updateFields.push(`completion_notes = $${paramCount++}`);
+      updateValues.push(completionData.completion_notes.trim());
+    }
+
+    if (completionData.had_issues !== undefined && completionData.had_issues !== null) {
+      updateFields.push(`had_issues = $${paramCount++}`);
+      updateValues.push(completionData.had_issues === true || completionData.had_issues === 'true');
+    }
+
+    if (completionData.issues_description !== undefined && completionData.issues_description !== null && completionData.issues_description.trim() !== '') {
+      updateFields.push(`issues_description = $${paramCount++}`);
+      updateValues.push(completionData.issues_description.trim());
+    }
+
+    if (completionData.completion_time_minutes !== undefined && completionData.completion_time_minutes !== null) {
+      const minutes = parseInt(completionData.completion_time_minutes);
+      if (!isNaN(minutes) && minutes > 0) {
+        updateFields.push(`completion_time_minutes = $${paramCount++}`);
+        updateValues.push(minutes);
+      }
+    }
+
+    if (completionData.completion_quality !== undefined && completionData.completion_quality !== null) {
+      const validQualities = ['EXCELENTE', 'BOM', 'REGULAR', 'RUIM'];
+      if (validQualities.includes(completionData.completion_quality.toUpperCase())) {
+        updateFields.push(`completion_quality = $${paramCount++}`);
+        updateValues.push(completionData.completion_quality.toUpperCase());
+      }
+    }
+
+    updateValues.push(taskId);
+
     // Atualiza tarefa
     const updateResult = await query(
       `UPDATE tasks 
-       SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramCount}
        RETURNING *`,
-      [taskId]
+      updateValues
     );
 
     const updated = updateResult.rows[0];
@@ -285,10 +337,10 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
       throw new Error('Descrição é obrigatória');
     }
 
-    // Insere ocorrência
+    // Insere ocorrência de ZELADORIA (OPERACIONAL cria ocorrências técnicas)
     const result = await query(
-      `INSERT INTO occurrences (condominium_id, reported_by, title, description, location, priority, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'ABERTA')
+      `INSERT INTO occurrences (condominium_id, reported_by, title, description, location, priority, status, occurrence_type)
+       VALUES ($1, $2, $3, $4, $5, $6, 'ABERTA', 'ZELADORIA')
        RETURNING *`,
       [condominiumId, userId, title.trim(), description.trim(), location || null, priority || 'NORMAL']
     );
@@ -315,14 +367,15 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
   }
 };
 
-// Função para listar ocorrências do operacional
+// Função para listar ocorrências de ZELADORIA (OPERACIONAL)
 // Recebe: userId, condominiumId, filtros
-// Retorna: lista de ocorrências
+// Retorna: lista de ocorrências de zeladoria
 const listOccurrences = async (userId, condominiumId, filters = {}) => {
   try {
     let sql = `
       SELECT * FROM occurrences 
-      WHERE reported_by = $1 AND condominium_id = $2
+      WHERE reported_by = $1 AND condominium_id = $2 
+        AND (occurrence_type = 'ZELADORIA' OR occurrence_type IS NULL)
     `;
     const params = [userId, condominiumId];
     let paramCount = 3;
@@ -342,6 +395,122 @@ const listOccurrences = async (userId, condominiumId, filters = {}) => {
   }
 };
 
+// Função para resolver ocorrência com dados estruturados
+// Recebe: occurrenceId, userId, condominiumId, dados de resolução (resolutionData)
+// Retorna: ocorrência atualizada
+const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolutionData, ipAddress, userAgent) => {
+  try {
+    // Busca ocorrência atual
+    const occurrenceResult = await query(
+      `SELECT * FROM occurrences WHERE id = $1 AND condominium_id = $2`,
+      [occurrenceId, condominiumId]
+    );
+
+    if (occurrenceResult.rows.length === 0) {
+      throw new Error('Ocorrência não encontrada');
+    }
+
+    const occurrence = occurrenceResult.rows[0];
+
+    // Validação: resolution_success é obrigatório
+    if (resolutionData.resolution_success === undefined || resolutionData.resolution_success === null) {
+      throw new Error('É obrigatório informar se a ocorrência foi resolvida com sucesso');
+    }
+
+    // Validação: resolution_notes é obrigatório
+    if (!resolutionData.resolution_notes || resolutionData.resolution_notes.trim() === '') {
+      throw new Error('Notas de resolução são obrigatórias');
+    }
+
+    // Prepara campos de atualização
+    const updateFields = [];
+    const updateValues = [];
+    let paramCount = 1;
+
+    updateFields.push(`status = 'RESOLVIDA'`);
+    updateFields.push(`resolved_at = CURRENT_TIMESTAMP`);
+    updateFields.push(`resolved_by = $${paramCount++}`);
+    updateValues.push(userId);
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateFields.push(`resolution_success = $${paramCount++}`);
+    updateValues.push(resolutionData.resolution_success === true || resolutionData.resolution_success === 'true');
+    updateFields.push(`resolution_notes = $${paramCount++}`);
+    updateValues.push(resolutionData.resolution_notes.trim());
+
+    // Campos opcionais
+    if (resolutionData.resolution_method !== undefined && resolutionData.resolution_method !== null) {
+      const validMethods = ['INTERNA', 'TERCEIRO', 'MANUTENCAO', 'OUTRA'];
+      if (validMethods.includes(resolutionData.resolution_method.toUpperCase())) {
+        updateFields.push(`resolution_method = $${paramCount++}`);
+        updateValues.push(resolutionData.resolution_method.toUpperCase());
+      }
+    }
+
+    if (resolutionData.resolution_cost !== undefined && resolutionData.resolution_cost !== null) {
+      const cost = parseFloat(resolutionData.resolution_cost);
+      if (!isNaN(cost) && cost >= 0) {
+        updateFields.push(`resolution_cost = $${paramCount++}`);
+        updateValues.push(cost);
+      }
+    }
+
+    if (resolutionData.had_complications !== undefined && resolutionData.had_complications !== null) {
+      updateFields.push(`had_complications = $${paramCount++}`);
+      updateValues.push(resolutionData.had_complications === true || resolutionData.had_complications === 'true');
+    }
+
+    if (resolutionData.complications_description !== undefined && resolutionData.complications_description !== null && resolutionData.complications_description.trim() !== '') {
+      updateFields.push(`complications_description = $${paramCount++}`);
+      updateValues.push(resolutionData.complications_description.trim());
+    }
+
+    if (resolutionData.resolution_time_minutes !== undefined && resolutionData.resolution_time_minutes !== null) {
+      const minutes = parseInt(resolutionData.resolution_time_minutes);
+      if (!isNaN(minutes) && minutes > 0) {
+        updateFields.push(`resolution_time_minutes = $${paramCount++}`);
+        updateValues.push(minutes);
+      }
+    }
+
+    if (resolutionData.preventive_measures !== undefined && resolutionData.preventive_measures !== null && resolutionData.preventive_measures.trim() !== '') {
+      updateFields.push(`preventive_measures = $${paramCount++}`);
+      updateValues.push(resolutionData.preventive_measures.trim());
+    }
+
+    updateValues.push(occurrenceId);
+
+    // Atualiza ocorrência
+    const updateResult = await query(
+      `UPDATE occurrences 
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramCount}
+       RETURNING *`,
+      updateValues
+    );
+
+    const updated = updateResult.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'RESOLVE',
+      module: 'OCCURRENCE',
+      entityType: 'occurrences',
+      entityId: occurrenceId,
+      beforeData: occurrence,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao resolver ocorrência:', error);
+    throw error;
+  }
+};
+
 // Exporta funções
 module.exports = {
   getDashboardStats,
@@ -351,4 +520,5 @@ module.exports = {
   completeTask,
   createOccurrence,
   listOccurrences,
+  resolveOccurrence,
 };

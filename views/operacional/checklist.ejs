@@ -97,15 +97,40 @@
           <!-- Botão finalizar -->
           <% if (task.status !== 'COMPLETED') { %>
             <div class="border-t pt-4 mt-4">
-              <form method="POST" action="/operacional/tarefas/<%= task.id %>/finalizar">
-                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition">
-                  Finalizar Tarefa
-                </button>
-              </form>
+              <a href="/operacional/tarefas/<%= task.id %>/concluir" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition inline-block">
+                Concluir Tarefa (Formulário Estruturado)
+              </a>
             </div>
           <% } else { %>
             <div class="border-t pt-4 mt-4">
-              <span class="text-green-600 font-semibold">✓ Tarefa concluída em <%= new Date(task.completed_at).toLocaleString('pt-BR') %></span>
+              <div class="bg-green-50 border border-green-200 rounded p-4">
+                <p class="text-green-800 font-semibold mb-2">✓ Tarefa concluída em <%= new Date(task.completed_at).toLocaleString('pt-BR') %></p>
+                <% if (task.completion_success !== null) { %>
+                  <p class="text-sm text-gray-700">
+                    <span class="font-semibold">Sucesso:</span> <%= task.completion_success ? 'Sim' : 'Não' %>
+                  </p>
+                <% } %>
+                <% if (task.completion_notes) { %>
+                  <p class="text-sm text-gray-700 mt-1">
+                    <span class="font-semibold">Observações:</span> <%= task.completion_notes %>
+                  </p>
+                <% } %>
+                <% if (task.had_issues) { %>
+                  <p class="text-sm text-orange-700 mt-1">
+                    <span class="font-semibold">⚠ Contratempos:</span> <%= task.issues_description || 'Sim' %>
+                  </p>
+                <% } %>
+                <% if (task.completion_quality) { %>
+                  <p class="text-sm text-gray-700 mt-1">
+                    <span class="font-semibold">Qualidade:</span> <%= task.completion_quality %>
+                  </p>
+                <% } %>
+                <% if (task.completion_time_minutes) { %>
+                  <p class="text-sm text-gray-700 mt-1">
+                    <span class="font-semibold">Tempo gasto:</span> <%= task.completion_time_minutes %> minutos
+                  </p>
+                <% } %>
+              </div>
             </div>
           <% } %>
         </div>

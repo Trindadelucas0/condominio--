@@ -67,6 +67,14 @@ const initTables = async () => {
   
   // Lista de tabelas da FASE 10 (alertas e automações)
   const phase10Tables = ['notifications', 'slas', 'escalation_rules'];
+  
+  // Lista de tabelas da FASE 11 (configurações do condomínio)
+  const phase11Tables = ['condominium_settings'];
+  
+  // Lista de tabelas da FASE 12 (estoque/insumos)
+  const phase12Tables = ['inventory_items', 'inventory_movements'];
+  
+  // FASE 13 não adiciona novas tabelas, apenas campos nas existentes
 
   // Verifica cada tabela base
   for (const table of requiredTables) {
@@ -164,6 +172,184 @@ const initTables = async () => {
   }
 
   console.log('✅ Tabelas da FASE 10 verificadas/criadas com sucesso');
+
+  // Verifica e cria tabelas da FASE 11 (configurações do condomínio)
+  console.log('🔍 Verificando tabelas da FASE 11 (configurações)...');
+  for (const table of phase11Tables) {
+    const exists = await tableExists(table);
+    if (!exists) {
+      console.log(`⚠️  Tabela ${table} não encontrada. Criando...`);
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase11.sql'));
+      break;
+    }
+  }
+
+  console.log('✅ Tabelas da FASE 11 verificadas/criadas com sucesso');
+
+  // Verifica e cria tabelas da FASE 12 (estoque/insumos)
+  console.log('🔍 Verificando tabelas da FASE 12 (estoque)...');
+  for (const table of phase12Tables) {
+    const exists = await tableExists(table);
+    if (!exists) {
+      console.log(`⚠️  Tabela ${table} não encontrada. Criando...`);
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase12.sql'));
+      break;
+    }
+  }
+
+  console.log('✅ Tabelas da FASE 12 verificadas/criadas com sucesso');
+
+  // FASE 13 adiciona campos nas tabelas existentes (não cria novas tabelas)
+  console.log('🔍 Verificando campos da FASE 13 (reabertura)...');
+  try {
+    // Verifica se campos de reabertura já existem (testa em occurrences)
+    const columnExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'occurrences' AND column_name = 'reopened'
+      )
+    `);
+    
+    if (!columnExists.rows[0].exists) {
+      console.log('⚠️  Campos de reabertura não encontrados. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase13.sql'));
+      console.log('✅ Campos da FASE 13 criados com sucesso');
+    } else {
+      console.log('✅ Campos da FASE 13 já existem');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar campos da FASE 13:', error);
+    // Não interrompe inicialização se falhar (pode ser que tabelas ainda não existam)
+  }
+
+  // FASE 14 adiciona campos na tabela occurrences para diferenciar LIMPEZA e ZELADORIA
+  console.log('🔍 Verificando campos da FASE 14 (ocorrências de limpeza)...');
+  try {
+    // Verifica se campos de ocorrências de limpeza já existem
+    const columnExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'occurrences' AND column_name = 'occurrence_type'
+      )
+    `);
+    
+    if (!columnExists.rows[0].exists) {
+      console.log('⚠️  Campos de ocorrências de limpeza não encontrados. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase14.sql'));
+      console.log('✅ Campos da FASE 14 criados com sucesso');
+    } else {
+      console.log('✅ Campos da FASE 14 já existem');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar campos da FASE 14:', error);
+    // Não interrompe inicialização se falhar
+  }
+
+  // FASE 15 adiciona campos de triagem, observações do síndico, solicitações de orçamento e comunicados
+  console.log('🔍 Verificando campos/tabelas da FASE 15 (triagem e observações)...');
+  try {
+    // Verifica se campos de triagem já existem
+    const columnExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'occurrences' AND column_name = 'triaged'
+      )
+    `);
+    
+    if (!columnExists.rows[0].exists) {
+      console.log('⚠️  Campos/tabelas da FASE 15 não encontrados. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase15.sql'));
+      console.log('✅ Campos/tabelas da FASE 15 criados com sucesso');
+    } else {
+      console.log('✅ Campos/tabelas da FASE 15 já existem');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar campos/tabelas da FASE 15:', error);
+  }
+
+  // FASE 16 adiciona campos de comprovante PDF e detalhes em financial_entries
+  console.log('🔍 Verificando campos da FASE 16 (comprovantes de recebimento)...');
+  try {
+    const columnExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'financial_entries' AND column_name = 'receipt_pdf_path'
+      )
+    `);
+    
+    if (!columnExists.rows[0].exists) {
+      console.log('⚠️  Campos de comprovante não encontrados. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase16.sql'));
+      console.log('✅ Campos da FASE 16 criados com sucesso');
+    } else {
+      console.log('✅ Campos da FASE 16 já existem');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar campos da FASE 16:', error);
+  }
+
+  // FASE 17 adiciona campos de comprovante PDF e detalhes em financial_exits
+  console.log('🔍 Verificando campos da FASE 17 (comprovantes de pagamento)...');
+  try {
+    const columnExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'financial_exits' AND column_name = 'payment_receipt_pdf_path'
+      )
+    `);
+    
+    if (!columnExists.rows[0].exists) {
+      console.log('⚠️  Campos de comprovante de pagamento não encontrados. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase17.sql'));
+      console.log('✅ Campos da FASE 17 criados com sucesso');
+    } else {
+      console.log('✅ Campos da FASE 17 já existem');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar campos da FASE 17:', error);
+  }
+
+  // FASE 18 adiciona tabela de consumo mensal
+  console.log('🔍 Verificando tabela da FASE 18 (consumo mensal)...');
+  try {
+    const tableExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'monthly_consumption'
+      )
+    `);
+    
+    if (!tableExists.rows[0].exists) {
+      console.log('⚠️  Tabela de consumo mensal não encontrada. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase18.sql'));
+      console.log('✅ Tabela da FASE 18 criada com sucesso');
+    } else {
+      console.log('✅ Tabela da FASE 18 já existe');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar tabela da FASE 18:', error);
+  }
+
+  // FASE 19 adiciona campos de recorrência e projeções
+  console.log('🔍 Verificando campos da FASE 19 (recorrência e projeções)...');
+  try {
+    const columnExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'financial_entries' AND column_name = 'is_recurring'
+      )
+    `);
+    
+    if (!columnExists.rows[0].exists) {
+      console.log('⚠️  Campos de recorrência não encontrados. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase19.sql'));
+      console.log('✅ Campos da FASE 19 criados com sucesso');
+    } else {
+      console.log('✅ Campos da FASE 19 já existem');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar campos da FASE 19:', error);
+  }
 };
 
 // Função para inicializar perfis (roles) padrão

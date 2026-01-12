@@ -108,7 +108,34 @@ const updateChecklistItem = async (req, res) => {
   }
 };
 
-// Função para finalizar tarefa
+// Função para exibir formulário de conclusão de tarefa
+// GET /operacional/tarefas/:id/concluir
+const showCompleteTask = async (req, res) => {
+  try {
+    const task = await operacionalService.getTaskById(req.params.id, req.user.id);
+
+    if (!task) {
+      return res.status(404).send('Tarefa não encontrada');
+    }
+
+    if (task.status === 'COMPLETED') {
+      return res.redirect('/operacional/checklist?error=' + encodeURIComponent('Tarefa já está concluída'));
+    }
+
+    res.render('operacional/complete-task', {
+      title: 'Concluir Tarefa',
+      user: req.user,
+      task: task,
+      error: null,
+      formData: null,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de conclusão:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+};
+
+// Função para finalizar tarefa com dados estruturados
 // POST /operacional/tarefas/:id/finalizar
 const completeTask = async (req, res) => {
   try {
@@ -120,12 +147,34 @@ const completeTask = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
-    await operacionalService.completeTask(taskId, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    // Prepara dados de conclusão estruturados
+    const completionData = {
+      completion_success: req.body.completion_success,
+      completion_notes: req.body.completion_notes,
+      had_issues: req.body.had_issues,
+      issues_description: req.body.issues_description,
+      completion_time_minutes: req.body.completion_time_minutes,
+      completion_quality: req.body.completion_quality,
+    };
+
+    await operacionalService.completeTask(taskId, req.user.id, req.user.condominiumId, completionData, ipAddress, userAgent);
 
     res.redirect('/operacional/checklist?success=completed');
   } catch (error) {
     console.error('Erro ao finalizar tarefa:', error);
-    res.redirect('/operacional/checklist?error=' + encodeURIComponent(error.message));
+    // Se houver erro, volta para o formulário com os dados
+    try {
+      const task = await operacionalService.getTaskById(req.params.id, req.user.id);
+      res.render('operacional/complete-task', {
+        title: 'Concluir Tarefa',
+        user: req.user,
+        task: task,
+        error: error.message,
+        formData: req.body,
+      });
+    } catch (renderError) {
+      res.redirect('/operacional/checklist?error=' + encodeURIComponent(error.message));
+    }
   }
 };
 
@@ -188,13 +237,94 @@ const createOcorrencia = async (req, res) => {
   }
 };
 
+// Função para exibir formulário de resolução de ocorrência
+// GET /operacional/ocorrencias/:id/resolver
+const showResolveOcorrencia = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
+    const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
+
+    if (!occurrence) {
+      return res.status(404).send('Ocorrência não encontrada');
+    }
+
+    if (occurrence.status === 'RESOLVIDA' || occurrence.status === 'ENCERRADA') {
+      return res.redirect('/operacional/ocorrencias?error=' + encodeURIComponent('Ocorrência já está resolvida'));
+    }
+
+    res.render('operacional/resolve-occurrence', {
+      title: 'Resolver Ocorrência',
+      user: req.user,
+      occurrence: occurrence,
+      error: null,
+      formData: null,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de resolução:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+};
+
+// Função para processar resolução de ocorrência
+// POST /operacional/ocorrencias/:id/resolver
+const resolveOcorrencia = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const occurrenceId = req.params.id;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    // Prepara dados de resolução estruturados
+    const resolutionData = {
+      resolution_success: req.body.resolution_success,
+      resolution_notes: req.body.resolution_notes,
+      resolution_method: req.body.resolution_method,
+      resolution_cost: req.body.resolution_cost,
+      had_complications: req.body.had_complications,
+      complications_description: req.body.complications_description,
+      resolution_time_minutes: req.body.resolution_time_minutes,
+      preventive_measures: req.body.preventive_measures,
+    };
+
+    await operacionalService.resolveOccurrence(occurrenceId, req.user.id, req.user.condominiumId, resolutionData, ipAddress, userAgent);
+
+    res.redirect('/operacional/ocorrencias?success=resolved');
+  } catch (error) {
+    console.error('Erro ao resolver ocorrência:', error);
+    // Se houver erro, volta para o formulário com os dados
+    try {
+      const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
+      const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
+      res.render('operacional/resolve-occurrence', {
+        title: 'Resolver Ocorrência',
+        user: req.user,
+        occurrence: occurrence,
+        error: error.message,
+        formData: req.body,
+      });
+    } catch (renderError) {
+      res.redirect('/operacional/ocorrencias?error=' + encodeURIComponent(error.message));
+    }
+  }
+};
+
 module.exports = {
   showDashboard,
   showChecklist,
   showTask,
   updateChecklistItem,
+  showCompleteTask,
   completeTask,
   showOcorrencias,
   showCreateOcorrencia,
   createOcorrencia,
+  showResolveOcorrencia,
+  resolveOcorrencia,
 };

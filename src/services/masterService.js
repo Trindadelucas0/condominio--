@@ -241,13 +241,19 @@ const listUsuarios = async () => {
 // Retorna: dados do usuário ou null
 const getUsuarioById = async (id) => {
   try {
+    // Valida ID
+    const userId = parseInt(id);
+    if (isNaN(userId) || userId <= 0) {
+      throw new Error('ID do usuário inválido');
+    }
+
     const result = await query(
       `SELECT u.id, u.username, u.email, u.full_name, u.condominium_id, u.active,
               c.name as condominium_name
        FROM users u
        LEFT JOIN condominiums c ON u.condominium_id = c.id
        WHERE u.id = $1`,
-      [id]
+      [userId]
     );
 
     if (result.rows.length === 0) {
@@ -335,12 +341,63 @@ const createUsuario = async (data, userId, ipAddress, userAgent) => {
 
     const newUser = userResult.rows[0];
 
-    // Vincula perfis ao usuário
-    for (const roleId of roleIds) {
-      await query(
-        `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
-        [newUser.id, roleId]
+    // Valida e vincula perfis ao usuário
+    if (roleIds && roleIds.length > 0) {
+      // Valida se todos os roleIds existem
+      const validRolesResult = await query(
+        `SELECT id, name FROM roles WHERE id = ANY($1::int[])`,
+        [roleIds]
       );
+      
+      if (validRolesResult.rows.length !== roleIds.length) {
+        const foundIds = validRolesResult.rows.map(r => r.id);
+        const missingIds = roleIds.filter(id => !foundIds.includes(id));
+        throw new Error(`Um ou mais perfis informados não existem. IDs não encontrados: ${missingIds.join(', ')}`);
+      }
+
+      console.log(`[CREATE USER] Atribuindo perfis ao usuário ${newUser.id}:`, validRolesResult.rows.map(r => r.name));
+
+      // Vincula perfis ao usuário
+      for (const roleId of roleIds) {
+        try {
+          const insertResult = await query(
+            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)
+             ON CONFLICT (user_id, role_id) DO NOTHING
+             RETURNING *`,
+            [newUser.id, roleId]
+          );
+          
+          if (insertResult.rows.length === 0) {
+            console.log(`[CREATE USER] Perfil ${roleId} já estava atribuído ao usuário ${newUser.id}`);
+          } else {
+            console.log(`[CREATE USER] ✅ Perfil ${roleId} atribuído ao usuário ${newUser.id}`);
+          }
+        } catch (error) {
+          console.error(`[CREATE USER] ❌ Erro ao vincular perfil ${roleId} ao usuário ${newUser.id}:`, error);
+          throw new Error(`Erro ao atribuir perfil: ${error.message}`);
+        }
+      }
+
+      // Verifica se os perfis foram realmente atribuídos (aguarda um pouco para garantir commit)
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const verifyRolesResult = await query(
+        `SELECT r.id, r.name FROM roles r 
+         INNER JOIN user_roles ur ON r.id = ur.role_id 
+         WHERE ur.user_id = $1
+         ORDER BY r.name`,
+        [newUser.id]
+      );
+
+      if (verifyRolesResult.rows.length === 0) {
+        console.error(`[CREATE USER] ⚠️  ATENÇÃO: Nenhum perfil encontrado após atribuição para usuário ${newUser.id}!`);
+        throw new Error('Falha ao atribuir perfis. Nenhum perfil foi encontrado após a operação.');
+      }
+
+      console.log(`[CREATE USER] ✅ Verificação: Usuário ${newUser.id} agora tem ${verifyRolesResult.rows.length} perfil(is):`, verifyRolesResult.rows.map(r => r.name));
+    } else {
+      console.error(`[CREATE USER] ⚠️  ATENÇÃO: Nenhum perfil foi fornecido para o usuário ${newUser.id}!`);
+      throw new Error('Usuário deve ter pelo menos um perfil atribuído');
     }
 
     // Busca perfis vinculados para log
@@ -423,15 +480,67 @@ const updateUsuario = async (id, data, userId, ipAddress, userAgent) => {
 
     // Se roleIds foi fornecido, atualiza perfis
     if (roleIds !== undefined) {
+      // Valida se todos os roleIds existem (se não for array vazio)
+      if (Array.isArray(roleIds) && roleIds.length > 0) {
+        const validRolesResult = await query(
+          `SELECT id, name FROM roles WHERE id = ANY($1::int[])`,
+          [roleIds]
+        );
+        
+        if (validRolesResult.rows.length !== roleIds.length) {
+          const foundIds = validRolesResult.rows.map(r => r.id);
+          const missingIds = roleIds.filter(id => !foundIds.includes(id));
+          throw new Error(`Um ou mais perfis informados não existem. IDs não encontrados: ${missingIds.join(', ')}`);
+        }
+
+        console.log(`[UPDATE USER] Atribuindo perfis ao usuário ${id}:`, validRolesResult.rows.map(r => r.name));
+      }
+
       // Remove todos os perfis atuais
-      await query(`DELETE FROM user_roles WHERE user_id = $1`, [id]);
+      const deleteResult = await query(`DELETE FROM user_roles WHERE user_id = $1 RETURNING role_id`, [id]);
+      console.log(`[UPDATE USER] Removidos ${deleteResult.rows.length} perfis antigos do usuário ${id}`);
 
       // Adiciona novos perfis
-      for (const roleId of roleIds) {
-        await query(
-          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
-          [id, roleId]
+      if (Array.isArray(roleIds) && roleIds.length > 0) {
+        for (const roleId of roleIds) {
+          try {
+            const insertResult = await query(
+              `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)
+               ON CONFLICT (user_id, role_id) DO NOTHING
+               RETURNING *`,
+              [id, roleId]
+            );
+            
+            if (insertResult.rows.length === 0) {
+              console.log(`[UPDATE USER] Perfil ${roleId} já estava atribuído ao usuário ${id}`);
+            } else {
+              console.log(`[UPDATE USER] ✅ Perfil ${roleId} atribuído ao usuário ${id}`);
+            }
+          } catch (error) {
+            console.error(`[UPDATE USER] ❌ Erro ao vincular perfil ${roleId} ao usuário ${id}:`, error);
+            throw new Error(`Erro ao atribuir perfil: ${error.message}`);
+          }
+        }
+
+        // Verifica se os perfis foram realmente atribuídos (aguarda um pouco para garantir commit)
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const verifyRolesResult = await query(
+          `SELECT r.id, r.name FROM roles r 
+           INNER JOIN user_roles ur ON r.id = ur.role_id 
+           WHERE ur.user_id = $1
+           ORDER BY r.name`,
+          [id]
         );
+
+        if (verifyRolesResult.rows.length === 0) {
+          console.error(`[UPDATE USER] ⚠️  ATENÇÃO: Nenhum perfil encontrado após atribuição para usuário ${id}!`);
+          throw new Error('Falha ao atribuir perfis. Nenhum perfil foi encontrado após a operação.');
+        }
+
+        console.log(`[UPDATE USER] ✅ Verificação: Usuário ${id} agora tem ${verifyRolesResult.rows.length} perfil(is):`, verifyRolesResult.rows.map(r => r.name));
+      } else {
+        console.log(`[UPDATE USER] ⚠️  Nenhum perfil atribuído ao usuário ${id} (array vazio ou inválido)`);
       }
     }
 

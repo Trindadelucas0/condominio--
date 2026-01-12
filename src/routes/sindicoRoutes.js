@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const sindicoController = require('../controllers/sindicoController');
+const reaberturaController = require('../controllers/reaberturaController');
 const { authenticate, authorize } = require('../middlewares/auth');
 
 // Todas as rotas exigem autenticação
@@ -25,6 +26,22 @@ router.post('/alertas/:id/resolver', sindicoController.resolverAlerta);
 
 // Logs
 router.get('/logs', sindicoController.showLogs);
+
+// Tarefas
+router.get('/tarefas', sindicoController.showTarefas);
+router.get('/tarefas/:id', sindicoController.showTask);
+router.post('/tarefas/:id/observacao', sindicoController.addTaskObservation);
+
+// Ocorrências
+router.get('/ocorrencias', sindicoController.showOcorrencias);
+router.get('/ocorrencias/:id', sindicoController.showOccurrence);
+router.post('/ocorrencias/:id/observacao', sindicoController.addOccurrenceObservation);
+
+// Reabertura de ocorrências
+router.post('/ocorrencias/:id/reabrir', reaberturaController.reopenOccurrence);
+
+// Reabertura de tarefas
+router.post('/tarefas/:id/reabrir', reaberturaController.reopenTask);
 
 // Exporta roteador
 module.exports = router;

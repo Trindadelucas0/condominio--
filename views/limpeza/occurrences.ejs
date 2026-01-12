@@ -1,0 +1,123 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6 flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Ocorrências de Limpeza</h1>
+      <p class="text-gray-600 mt-2">Gerencie suas ocorrências de limpeza</p>
+    </div>
+    <a href="/limpeza/ocorrencias/nova" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+      + Nova Ocorrência
+    </a>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <form method="GET" action="/limpeza/ocorrencias" class="flex flex-wrap gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select name="status" class="border border-gray-300 rounded-md px-4 py-2">
+          <option value="">Todos</option>
+          <option value="ABERTA" <%= filters.status === 'ABERTA' ? 'selected' : '' %>>Aberta</option>
+          <option value="EM_ATENDIMENTO" <%= filters.status === 'EM_ATENDIMENTO' ? 'selected' : '' %>>Em Atendimento</option>
+          <option value="RESOLVIDA" <%= filters.status === 'RESOLVIDA' ? 'selected' : '' %>>Resolvida</option>
+          <option value="ENCERRADA" <%= filters.status === 'ENCERRADA' ? 'selected' : '' %>>Encerrada</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+        <select name="limpezaType" class="border border-gray-300 rounded-md px-4 py-2">
+          <option value="">Todos</option>
+          <% limpezaTypes.forEach(type => { %>
+            <option value="<%= type.value %>" <%= filters.limpezaType === type.value ? 'selected' : '' %>>
+              <%= type.label %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition">
+          Filtrar
+        </button>
+        <a href="/limpeza/ocorrencias" class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-semibold transition">
+          Limpar
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Lista de ocorrências -->
+  <div class="bg-white rounded-lg shadow">
+    <div class="p-6">
+      <% if (occurrences.length === 0) { %>
+        <p class="text-gray-500 text-center py-8">Nenhuma ocorrência encontrada.</p>
+      <% } else { %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localização</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <% occurrences.forEach(occurrence => { %>
+                <tr>
+                  <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-gray-900"><%= occurrence.title %></div>
+                    <div class="text-sm text-gray-500 mt-1"><%= occurrence.description.substring(0, 50) %>...</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <% 
+                      const typeInfo = limpezaTypes.find(t => t.value === occurrence.limpeza_type);
+                      const typeLabel = typeInfo ? typeInfo.label : occurrence.limpeza_type;
+                    %>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      <%= typeLabel %>
+                    </span>
+                    <% if (occurrence.needs_zeladoria) { %>
+                      <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800" title="Convertida para Zeladoria">
+                        🔧 Zeladoria
+                      </span>
+                    <% } %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <%= occurrence.location || '-' %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <% 
+                      const statusColors = {
+                        'ABERTA': 'bg-yellow-100 text-yellow-800',
+                        'EM_ATENDIMENTO': 'bg-blue-100 text-blue-800',
+                        'RESOLVIDA': 'bg-green-100 text-green-800',
+                        'ENCERRADA': 'bg-gray-100 text-gray-800'
+                      };
+                      const statusColor = statusColors[occurrence.status] || 'bg-gray-100 text-gray-800';
+                    %>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= statusColor %>">
+                      <%= occurrence.status %>
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <%= new Date(occurrence.created_at).toLocaleDateString('pt-BR') %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <a href="/limpeza/ocorrencias/<%= occurrence.id %>" class="text-blue-600 hover:text-blue-900">Ver detalhes</a>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

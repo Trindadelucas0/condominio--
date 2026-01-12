@@ -1,0 +1,153 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Marcar Saída como Paga</h1>
+    <p class="text-gray-600 mt-2">Preencha os detalhes do pagamento e anexe o comprovante</p>
+  </div>
+
+  <!-- Mensagem de erro -->
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= error %>
+    </div>
+  <% } %>
+
+  <!-- Informações da saída -->
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Informações da Saída</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <p class="text-sm text-gray-500">Descrição</p>
+        <p class="font-semibold text-gray-800"><%= exit.description %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Valor</p>
+        <p class="font-bold text-red-600 text-lg">
+          R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+        </p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Data da Saída</p>
+        <p class="font-semibold text-gray-800"><%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Categoria</p>
+        <p class="font-semibold text-gray-800"><%= exit.category %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Status</p>
+        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+          Aprovada
+        </span>
+      </div>
+      <% if (exit.cost_center_name) { %>
+        <div>
+          <p class="text-sm text-gray-500">Centro de Custo</p>
+          <p class="font-semibold text-gray-800"><%= exit.cost_center_name %></p>
+        </div>
+      <% } %>
+      <% if (exit.bill_name) { %>
+        <div>
+          <p class="text-sm text-gray-500">Conta Vinculada</p>
+          <p class="font-semibold text-gray-800"><%= exit.bill_name %></p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Formulário de pagamento -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Detalhes do Pagamento</h2>
+    
+    <form method="POST" action="/financeiro/saidas/<%= exit.id %>/pagar" enctype="multipart/form-data">
+      <!-- Método de Pagamento -->
+      <div class="mb-4">
+        <label for="paymentMethod" class="block text-sm font-medium text-gray-700 mb-2">
+          Método de Pagamento <span class="text-red-500">*</span>
+        </label>
+        <select
+          id="paymentMethod"
+          name="paymentMethod"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        >
+          <option value="">Selecione...</option>
+          <option value="PIX" <%= (typeof formData !== 'undefined' && formData.paymentMethod === 'PIX') ? 'selected' : '' %>>PIX</option>
+          <option value="TRANSFERENCIA" <%= (typeof formData !== 'undefined' && formData.paymentMethod === 'TRANSFERENCIA') ? 'selected' : '' %>>Transferência Bancária</option>
+          <option value="DINHEIRO" <%= (typeof formData !== 'undefined' && formData.paymentMethod === 'DINHEIRO') ? 'selected' : '' %>>Dinheiro</option>
+          <option value="CHEQUE" <%= (typeof formData !== 'undefined' && formData.paymentMethod === 'CHEQUE') ? 'selected' : '' %>>Cheque</option>
+          <option value="BOLETO" <%= (typeof formData !== 'undefined' && formData.paymentMethod === 'BOLETO') ? 'selected' : '' %>>Boleto</option>
+          <option value="CARTAO" <%= (typeof formData !== 'undefined' && formData.paymentMethod === 'CARTAO') ? 'selected' : '' %>>Cartão de Débito/Crédito</option>
+          <option value="OUTRA" <%= (typeof formData !== 'undefined' && formData.paymentMethod === 'OUTRA') ? 'selected' : '' %>>Outra</option>
+        </select>
+      </div>
+
+      <!-- Upload de PDF -->
+      <div class="mb-4">
+        <label for="paymentReceiptPdf" class="block text-sm font-medium text-gray-700 mb-2">
+          Comprovante em PDF <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="file"
+          id="paymentReceiptPdf"
+          name="paymentReceiptPdf"
+          accept="application/pdf"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+        <p class="text-xs text-gray-500 mt-1">Apenas arquivos PDF são permitidos (máximo 10MB)</p>
+      </div>
+
+      <!-- Detalhes do Pagamento -->
+      <div class="mb-4">
+        <label for="paymentDetails" class="block text-sm font-medium text-gray-700 mb-2">
+          Detalhes do Pagamento <span class="text-red-500">*</span>
+        </label>
+        <textarea
+          id="paymentDetails"
+          name="paymentDetails"
+          rows="4"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ex: Pago via PIX, comprovante anexado. Valor debitado da conta corrente do condomínio."
+          required
+        ><%= typeof formData !== 'undefined' && formData.paymentDetails ? formData.paymentDetails : '' %></textarea>
+        <p class="text-xs text-gray-500 mt-1">Descreva os detalhes do pagamento (método, conta, data, etc.)</p>
+      </div>
+
+      <!-- Observações Adicionais -->
+      <div class="mb-6">
+        <label for="paymentNotes" class="block text-sm font-medium text-gray-700 mb-2">
+          Observações Adicionais (Opcional)
+        </label>
+        <textarea
+          id="paymentNotes"
+          name="paymentNotes"
+          rows="3"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Informações adicionais sobre o pagamento..."
+        ><%= typeof formData !== 'undefined' && formData.paymentNotes ? formData.paymentNotes : '' %></textarea>
+      </div>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a
+          href="/financeiro/saidas"
+          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+        >
+          Confirmar Pagamento
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

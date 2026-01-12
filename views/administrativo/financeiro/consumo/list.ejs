@@ -1,0 +1,126 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Consumo Mensal de Contas</h1>
+      <p class="text-gray-600 mt-2">Registro de consumo e valores de água, energia, gás, etc.</p>
+    </div>
+    <a href="/financeiro/consumo/novo" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+      Registrar Consumo
+    </a>
+  </div>
+
+  <!-- Mensagens -->
+  <% if (typeof query !== 'undefined' && query.success === 'created') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Consumo registrado com sucesso!
+    </div>
+  <% } %>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-lg shadow p-4 mb-6">
+    <form method="GET" action="/financeiro/consumo" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <label for="year" class="block text-sm font-medium text-gray-700 mb-2">Ano</label>
+        <input
+          type="number"
+          id="year"
+          name="year"
+          min="2020"
+          max="2099"
+          value="<%= filters.year %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label for="month" class="block text-sm font-medium text-gray-700 mb-2">Mês</label>
+        <select
+          id="month"
+          name="month"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Todos</option>
+          <% const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']; %>
+          <% for (let i = 1; i <= 12; i++) { %>
+            <option value="<%= i %>" <%= filters.month == i ? 'selected' : '' %>><%= monthNames[i - 1] %></option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label for="billId" class="block text-sm font-medium text-gray-700 mb-2">Conta</label>
+        <select
+          id="billId"
+          name="billId"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Todas</option>
+          <% bills.forEach(bill => { %>
+            <option value="<%= bill.id %>" <%= filters.billId == bill.id ? 'selected' : '' %>>
+              <%= bill.name %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button
+          type="submit"
+          class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+        >
+          Filtrar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Lista de consumo -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conta</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mês/Ano</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vencimento</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% if (consumption.length === 0) { %>
+          <tr>
+            <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+              Nenhum consumo registrado. <a href="/financeiro/consumo/novo" class="text-blue-600 hover:underline">Registre o primeiro consumo</a>
+            </td>
+          </tr>
+        <% } else { %>
+          <% consumption.forEach(cons => { %>
+            <tr>
+              <td class="px-6 py-4">
+                <div class="text-sm font-medium text-gray-900"><%= cons.bill_name %></div>
+                <div class="text-sm text-gray-500"><%= cons.bill_type %></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= cons.month %>/<%= cons.year %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= cons.consumption_value ? cons.consumption_value.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ' ' + cons.consumption_unit : '-' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-bold text-gray-900">
+                  R$ <%= parseFloat(cons.bill_amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= cons.due_date ? new Date(cons.due_date).toLocaleDateString('pt-BR') : '-' %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

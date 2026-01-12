@@ -1,0 +1,190 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Cabeçalho -->
+    <div class="mb-6">
+      <a href="/sindico/ocorrencias" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">← Voltar para lista</a>
+      <h1 class="text-3xl font-bold text-gray-800">Detalhes da Ocorrência</h1>
+    </div>
+
+    <!-- Informações Principais -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-800"><%= occurrence.title %></h2>
+        <div class="flex gap-2">
+          <span class="px-3 py-1 text-xs font-semibold rounded
+            <%= occurrence.status === 'RESOLVIDA' || occurrence.status === 'ENCERRADA' ? 'bg-green-100 text-green-800' : 
+                occurrence.status === 'EM_ATENDIMENTO' ? 'bg-blue-100 text-blue-800' : 
+                occurrence.status === 'AGUARDANDO_TERCEIRO' ? 'bg-yellow-100 text-yellow-800' : 
+                'bg-red-100 text-red-800' %>">
+            <%= occurrence.status %>
+          </span>
+          <span class="px-3 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800">
+            <%= occurrence.priority %>
+          </span>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <p class="text-sm text-gray-600 mb-1">Descrição</p>
+        <p class="text-gray-800"><%= occurrence.description %></p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <p class="text-sm text-gray-600">Reportada por</p>
+          <p class="font-semibold"><%= occurrence.reported_by_name || 'N/A' %></p>
+        </div>
+        <% if (occurrence.location) { %>
+          <div>
+            <p class="text-sm text-gray-600">Localização</p>
+            <p class="font-semibold"><%= occurrence.location %></p>
+          </div>
+        <% } %>
+        <div>
+          <p class="text-sm text-gray-600">Criada em</p>
+          <p class="font-semibold"><%= new Date(occurrence.created_at).toLocaleString('pt-BR') %></p>
+        </div>
+        <% if (occurrence.assigned_to_name) { %>
+          <div>
+            <p class="text-sm text-gray-600">Atribuída a</p>
+            <p class="font-semibold"><%= occurrence.assigned_to_name %></p>
+          </div>
+        <% } %>
+        <% if (occurrence.resolved_at) { %>
+          <div>
+            <p class="text-sm text-gray-600">Resolvida em</p>
+            <p class="font-semibold"><%= new Date(occurrence.resolved_at).toLocaleString('pt-BR') %></p>
+          </div>
+        <% } %>
+        <% if (occurrence.resolved_by_name) { %>
+          <div>
+            <p class="text-sm text-gray-600">Resolvida por</p>
+            <p class="font-semibold"><%= occurrence.resolved_by_name %></p>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Informações de Resolução Estruturada -->
+    <% if (occurrence.status === 'RESOLVIDA' || occurrence.status === 'ENCERRADA') { %>
+      <div class="bg-green-50 border border-green-200 rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Informações de Resolução</h3>
+        <div class="space-y-3">
+          <% if (occurrence.resolution_success !== null) { %>
+            <div>
+              <p class="text-sm text-gray-600">Resolução bem sucedida</p>
+              <p class="font-semibold <%= occurrence.resolution_success ? 'text-green-700' : 'text-red-700' %>">
+                <%= occurrence.resolution_success ? '✅ Sim' : '❌ Não' %>
+              </p>
+            </div>
+          <% } %>
+          <% if (occurrence.resolution_notes) { %>
+            <div>
+              <p class="text-sm text-gray-600">Notas de Resolução</p>
+              <p class="text-gray-800"><%= occurrence.resolution_notes %></p>
+            </div>
+          <% } %>
+          <% if (occurrence.resolution_method) { %>
+            <div>
+              <p class="text-sm text-gray-600">Método de Resolução</p>
+              <p class="font-semibold"><%= occurrence.resolution_method %></p>
+            </div>
+          <% } %>
+          <% if (occurrence.resolution_cost) { %>
+            <div>
+              <p class="text-sm text-gray-600">Custo da Resolução</p>
+              <p class="font-semibold">R$ <%= parseFloat(occurrence.resolution_cost).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+            </div>
+          <% } %>
+          <% if (occurrence.had_complications) { %>
+            <div>
+              <p class="text-sm text-gray-600">Complicações</p>
+              <p class="text-orange-700 font-semibold">⚠ Sim</p>
+              <% if (occurrence.complications_description) { %>
+                <p class="text-gray-800 mt-1"><%= occurrence.complications_description %></p>
+              <% } %>
+            </div>
+          <% } %>
+          <% if (occurrence.resolution_time_minutes) { %>
+            <div>
+              <p class="text-sm text-gray-600">Tempo Gasto</p>
+              <p class="font-semibold"><%= occurrence.resolution_time_minutes %> minutos 
+                (<%= Math.floor(occurrence.resolution_time_minutes / 60) %>h <%= occurrence.resolution_time_minutes % 60 %>min)
+              </p>
+            </div>
+          <% } %>
+          <% if (occurrence.preventive_measures) { %>
+            <div>
+              <p class="text-sm text-gray-600">Medidas Preventivas</p>
+              <p class="text-gray-800"><%= occurrence.preventive_measures %></p>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Observações do Síndico -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Observações do Síndico</h3>
+      
+      <!-- Mensagem de sucesso/erro -->
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <%= error %>
+        </div>
+      <% } %>
+      <% if (typeof success !== 'undefined' && success === 'observation_added') { %>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          Observação adicionada com sucesso!
+        </div>
+      <% } %>
+
+      <!-- Lista de Observações -->
+      <% if (occurrence.observations && occurrence.observations.length > 0) { %>
+        <div class="space-y-4 mb-6">
+          <% occurrence.observations.forEach(obs => { %>
+            <div class="bg-gray-50 border border-gray-200 rounded p-4">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <p class="font-semibold text-gray-800"><%= obs.user_name || 'Síndico' %></p>
+                  <p class="text-xs text-gray-500"><%= new Date(obs.created_at).toLocaleString('pt-BR') %></p>
+                </div>
+              </div>
+              <p class="text-gray-700 whitespace-pre-wrap"><%= obs.observation %></p>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="text-gray-500 mb-6">Nenhuma observação ainda.</p>
+      <% } %>
+
+      <!-- Formulário para Adicionar Observação -->
+      <form method="POST" action="/sindico/ocorrencias/<%= occurrence.id %>/observacao" class="border-t pt-4">
+        <div class="mb-4">
+          <label for="observation" class="block text-sm font-medium text-gray-700 mb-2">
+            Adicionar Observação
+          </label>
+          <textarea
+            id="observation"
+            name="observation"
+            rows="4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Digite sua observação sobre esta ocorrência..."
+            required
+          ></textarea>
+        </div>
+        <button
+          type="submit"
+          class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+        >
+          Adicionar Observação
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
