@@ -5,6 +5,8 @@ const dailyChecklistService = require('../services/dailyChecklistService');
 const { query } = require('../config/database');
 
 // Função para executar geração de checklists para todos os condomínios ativos
+// ATENÇÃO: Esta função é apenas para execução automática via cron job
+// Para execução manual, use runManually(condominiumId) que gera apenas para o condomínio específico
 // Esta função deve ser chamada por um cron job todo dia
 const generateDailyChecklistsForAllCondominiums = async () => {
   try {
@@ -44,16 +46,17 @@ const generateDailyChecklistsForAllCondominiums = async () => {
 };
 
 // Função para executar manualmente (útil para testes ou chamadas via endpoint)
+// IMPORTANTE: Quando chamada via endpoint, sempre recebe condominiumId do usuário logado
+// Gera checklists apenas para o condomínio especificado e seus departamentos/usuários
 const runManually = async (condominiumId = null) => {
   try {
-    if (condominiumId) {
-      // Gera apenas para um condomínio específico
-      const created = await dailyChecklistService.generateDailyChecklists(condominiumId);
-      return { totalCreated: created.length, condominiumsProcessed: 1 };
-    } else {
-      // Gera para todos
-      return await generateDailyChecklistsForAllCondominiums();
+    if (!condominiumId) {
+      throw new Error('condominiumId é obrigatório para execução manual');
     }
+    
+    // Gera apenas para o condomínio específico (e seus departamentos/usuários)
+    const created = await dailyChecklistService.generateDailyChecklists(condominiumId);
+    return { totalCreated: created.length, condominiumsProcessed: 1 };
   } catch (error) {
     console.error('[DAILY_CHECKLIST_JOB] Erro ao executar manualmente:', error);
     throw error;

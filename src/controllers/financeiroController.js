@@ -114,12 +114,14 @@ const showCreateExit = async (req, res) => {
     }
 
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
 
     res.render('administrativo/financeiro/saidas/form', {
       title: 'Nova Saída Financeira',
       user: req.user,
       saida: null,
       costCenters,
+      bills: bills || [],
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de saída:', error);
@@ -155,11 +157,13 @@ const createExit = async (req, res) => {
   } catch (error) {
     console.error('Erro ao criar saída:', error);
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
     res.render('administrativo/financeiro/saidas/form', {
       title: 'Nova Saída Financeira',
       user: req.user,
       saida: req.body,
       costCenters,
+      bills: bills || [],
       error: error.message,
     });
   }

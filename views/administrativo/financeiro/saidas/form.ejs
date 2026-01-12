@@ -78,14 +78,16 @@
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           <option value="">Sem conta vinculada</option>
-          <% bills.forEach(bill => { %>
-            <option
-              value="<%= bill.id %>"
-              <%= saida && saida.billId == bill.id ? 'selected' : '' %>
-            >
-              <%= bill.name %> (<%= bill.bill_type %>)
-            </option>
-          <% }); %>
+          <% if (bills && bills.length > 0) { %>
+            <% bills.forEach(bill => { %>
+              <option
+                value="<%= bill.id %>"
+                <%= saida && saida.billId == bill.id ? 'selected' : '' %>
+              >
+                <%= bill.name %> (<%= bill.bill_type %>)
+              </option>
+            <% }); %>
+          <% } %>
         </select>
       </div>
 

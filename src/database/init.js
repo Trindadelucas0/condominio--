@@ -390,6 +390,15 @@ const initializeDatabase = async () => {
         console.log('✅ Permissões atribuídas aos perfis');
       } else {
         console.log('✅ Tabelas da FASE 20 já existem');
+        
+        // Sempre verifica e atualiza permissões aos papéis (pode ter novas permissões)
+        try {
+          console.log('📝 Verificando atribuições de permissões aos papéis...');
+          await executeSQLFile(path.join(__dirname, 'initRolePermissions.sql'));
+          console.log('✅ Permissões aos papéis verificadas/atualizadas');
+        } catch (error) {
+          console.error('⚠️  Erro ao atualizar permissões aos papéis (pode ser normal se já existirem):', error.message);
+        }
       }
     } catch (error) {
       console.error('Erro ao verificar/criar tabelas da FASE 20:', error);

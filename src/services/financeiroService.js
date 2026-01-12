@@ -77,8 +77,8 @@ const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => 
     const paymentStatus = needsApproval ? 'PENDING' : 'APPROVED';
 
     const result = await query(
-      `INSERT INTO financial_exits (condominium_id, description, amount, exit_date, cost_center_id, category, bill_id, requires_approval, approval_limit, payment_status, created_by, is_recurring, recurrence_type, is_variable, average_amount, version)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 1)
+      `INSERT INTO financial_exits (condominium_id, description, amount, exit_date, cost_center_id, category, bill_id, requires_approval, approval_limit, payment_status, created_by, is_recurring, recurrence_type, is_variable, average_amount)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         condominiumId, 
@@ -157,10 +157,7 @@ const updateExit = async (exitId, condominiumId, userId, data, userRoles, ipAddr
       throw new Error('Saída já foi paga e não pode ser editada');
     }
 
-    // Valida lock otimista (version)
-    if (data.version !== undefined && data.version !== current.version) {
-      throw new Error('Saída foi modificada por outro usuário. Recarregue a página e tente novamente.');
-    }
+    // Lock otimista removido - coluna version não existe
 
     const updateFields = [];
     const updateValues = [];
@@ -249,11 +246,9 @@ const updateExit = async (exitId, condominiumId, userId, data, userRoles, ipAddr
       updateValues.push(data.billId || null);
     }
 
-    // Incrementa version para lock otimista
-    updateFields.push(`version = version + 1`);
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
 
-    if (updateFields.length === 2) {
+    if (updateFields.length === 1) {
       throw new Error('Nenhum campo para atualizar');
     }
 
@@ -262,13 +257,13 @@ const updateExit = async (exitId, condominiumId, userId, data, userRoles, ipAddr
     const updateResult = await query(
       `UPDATE financial_exits 
        SET ${updateFields.join(', ')}
-       WHERE id = $${paramCount++} AND condominium_id = $${paramCount++} AND version = $${paramCount++}
+       WHERE id = $${paramCount++} AND condominium_id = $${paramCount++}
        RETURNING *`,
-      [...updateValues, current.version]
+      updateValues
     );
 
     if (updateResult.rows.length === 0) {
-      throw new Error('Saída foi modificada por outro usuário. Recarregue a página e tente novamente.');
+      throw new Error('Saída não encontrada ou não pertence a este condomínio');
     }
 
     const updated = updateResult.rows[0];
@@ -347,21 +342,20 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
       }
     }
 
-    // Atualiza com lock otimista
+    // Atualiza status para aprovado
     const updateResult = await query(
       `UPDATE financial_exits 
        SET payment_status = 'APPROVED', 
-           approved_by = $1, 
+           approved_by = $1,
            approved_at = CURRENT_TIMESTAMP,
-           version = version + 1,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2 AND condominium_id = $3 AND version = $4 AND payment_status = 'PENDING'
+       WHERE id = $2 AND condominium_id = $3 AND payment_status = 'PENDING'
        RETURNING *`,
-      [userId, exitId, condominiumId, current.version]
+      [userId, exitId, condominiumId]
     );
 
     if (updateResult.rows.length === 0) {
-      throw new Error('Saída foi modificada por outro usuário. Recarregue a página e tente novamente.');
+      throw new Error('Saída não encontrada, não pertence a este condomínio ou já foi aprovada/rejeitada');
     }
 
     const updated = updateResult.rows[0];
@@ -442,18 +436,17 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
       throw new Error('Comprovante de pagamento é obrigatório');
     }
 
-    // Atualiza com lock otimista
+    // Atualiza status para pago
     const updateResult = await query(
       `UPDATE financial_exits 
        SET payment_status = 'PAID', 
            paid_at = CURRENT_TIMESTAMP, 
            updated_at = CURRENT_TIMESTAMP,
-           version = version + 1,
            payment_receipt_pdf_path = $1,
            payment_details = $2,
            payment_method = $3,
            payment_notes = $4
-       WHERE id = $5 AND condominium_id = $6 AND version = $7 AND payment_status = 'APPROVED'
+       WHERE id = $5 AND condominium_id = $6 AND payment_status = 'APPROVED'
        RETURNING *`,
       [
         paymentReceiptPdfPath,
@@ -461,13 +454,12 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
         paymentMethod || null,
         paymentNotes || null,
         exitId,
-        condominiumId,
-        current.version
+        condominiumId
       ]
     );
 
     if (updateResult.rows.length === 0) {
-      throw new Error('Saída foi modificada por outro usuário. Recarregue a página e tente novamente.');
+      throw new Error('Saída não encontrada, não pertence a este condomínio ou não está aprovada');
     }
 
     const updated = updateResult.rows[0];
