@@ -350,6 +350,47 @@ const initTables = async () => {
   } catch (error) {
     console.error('Erro ao verificar/criar campos da FASE 19:', error);
   }
+
+  // FASE 20 adiciona sistema formal de permissões e state machines
+  console.log('🔍 Verificando tabelas da FASE 20 (permissões formais e state machines)...');
+  try {
+    const tableExists = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'permissions'
+      )
+    `);
+    
+    if (!tableExists.rows[0].exists) {
+      console.log('⚠️  Tabelas da FASE 20 não encontradas. Criando...');
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase20.sql'));
+      console.log('✅ Tabelas da FASE 20 criadas com sucesso');
+      
+      // Popula permissões
+      console.log('📝 Populando permissões base...');
+      await executeSQLFile(path.join(__dirname, 'initPermissions.sql'));
+      console.log('✅ Permissões base criadas');
+      
+      // Popula state machines
+      console.log('📝 Populando state machines...');
+      await executeSQLFile(path.join(__dirname, 'initStateMachines.sql'));
+      console.log('✅ State machines criadas');
+      
+      // Popula transições
+      console.log('📝 Populando transições de estado...');
+      await executeSQLFile(path.join(__dirname, 'initStateTransitions.sql'));
+      console.log('✅ Transições criadas');
+      
+      // Atribui permissões aos perfis
+      console.log('📝 Atribuindo permissões aos perfis...');
+      await executeSQLFile(path.join(__dirname, 'initRolePermissions.sql'));
+      console.log('✅ Permissões atribuídas aos perfis');
+    } else {
+      console.log('✅ Tabelas da FASE 20 já existem');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/criar tabelas da FASE 20:', error);
+  }
 };
 
 // Função para inicializar perfis (roles) padrão

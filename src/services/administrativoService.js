@@ -466,6 +466,108 @@ const createDocumentWithFile = async (data, files, userId, condominiumId, ipAddr
 };
 
 // Exporta funções
+// Função para aprovar saída financeira (ADMINISTRATIVO - até limite)
+// Recebe: exitId, userId, condominiumId
+// Retorna: saída atualizada
+// REGRA: ADMINISTRATIVO pode aprovar apenas se valor <= approval_limit
+const approveFinancialExit = async (exitId, userId, condominiumId, ipAddress, userAgent) => {
+  try {
+    // Busca saída atual
+    const exitResult = await query(
+      `SELECT * FROM financial_exits WHERE id = $1 AND condominium_id = $2`,
+      [exitId, condominiumId]
+    );
+
+    if (exitResult.rows.length === 0) {
+      throw new Error('Saída não encontrada');
+    }
+
+    const exit = exitResult.rows[0];
+
+    // Valida se está pendente
+    if (exit.payment_status !== 'PENDING') {
+      throw new Error('Saída já foi processada');
+    }
+
+    // Valida se ADMINISTRATIVO pode aprovar (valor <= limite)
+    const limitValue = exit.approval_limit || 1000.00;
+    if (parseFloat(exit.amount) > limitValue) {
+      throw new Error(`Valor acima do limite de R$ ${limitValue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}. Aprovação deve ser feita pelo síndico.`);
+    }
+
+    // Atualiza saída
+    const updateResult = await query(
+      `UPDATE financial_exits 
+       SET payment_status = 'APPROVED', 
+           approved_by = $1, 
+           approved_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING *`,
+      [userId, exitId]
+    );
+
+    const updated = updateResult.rows[0];
+
+    // Atualiza aprovação relacionada (se existir)
+    await query(
+      `UPDATE approvals 
+       SET status = 'APPROVED', 
+           approved_by = $1, 
+           approved_at = CURRENT_TIMESTAMP
+       WHERE entity_type = 'financial_exits' 
+         AND entity_id = $2 
+         AND status = 'PENDING'`,
+      [userId, exitId]
+    );
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'APPROVE',
+      module: 'FINANCIAL',
+      entityType: 'financial_exits',
+      entityId: exitId,
+      beforeData: exit,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao aprovar saída:', error);
+    throw error;
+  }
+};
+
+// Função para listar saídas pendentes de aprovação (até limite do ADMINISTRATIVO)
+// Recebe: condominiumId
+// Retorna: lista de saídas que ADMINISTRATIVO pode aprovar
+const listPendingFinancialExitsForApproval = async (condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT fe.*, cc.name as cost_center_name, b.name as bill_name, u.full_name as created_by_name
+       FROM financial_exits fe
+       LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id
+       LEFT JOIN bills b ON fe.bill_id = b.id
+       LEFT JOIN users u ON fe.created_by = u.id
+       WHERE fe.condominium_id = $1
+         AND fe.payment_status = 'PENDING'
+         AND fe.requires_approval = TRUE
+         AND fe.amount <= COALESCE(fe.approval_limit, 1000.00)
+       ORDER BY fe.created_at DESC`,
+      [condominiumId]
+    );
+
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar saídas pendentes de aprovação:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   getDashboardStats,
   listOperacionais,
@@ -477,4 +579,6 @@ module.exports = {
   createDocument,
   createDocumentWithFile,
   updateDocument,
+  approveFinancialExit,
+  listPendingFinancialExitsForApproval,
 };

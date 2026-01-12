@@ -17,7 +17,7 @@
 
   <!-- Formulário -->
   <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form method="POST" action="<%= documento ? '/administrativo/documentos/' + documento.id : '/administrativo/documentos' %>">
+    <form method="POST" action="<%= documento ? '/administrativo/documentos/' + documento.id : '/administrativo/documentos' %>" enctype="multipart/form-data">
       <!-- Título -->
       <div class="mb-4">
         <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
@@ -50,15 +50,20 @@
 
       <!-- Categoria -->
       <div class="mb-4">
-        <label for="categoryId" class="block text-sm font-medium text-gray-700 mb-1">
-          Categoria
-        </label>
+        <div class="flex items-center justify-between mb-1">
+          <label for="categoryId" class="block text-sm font-medium text-gray-700">
+            Categoria
+          </label>
+          <a href="/administrativo/documentos/categorias" class="text-xs text-green-600 hover:text-green-800">
+            + Criar categoria
+          </a>
+        </div>
         <select
           id="categoryId"
           name="categoryId"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
         >
-          <option value="">Sem categoria</option>
+          <option value="">Sem categoria (documento genérico)</option>
           <% categories.forEach(cat => { %>
             <option
               value="<%= cat.id %>"
@@ -68,6 +73,10 @@
             </option>
           <% }); %>
         </select>
+        <p class="text-xs text-gray-500 mt-1">
+          <strong>Sem categoria:</strong> Use para documentos que não se encaixam em categorias específicas. 
+          Você pode criar categorias como "Contratos", "Atas", "Laudos", etc.
+        </p>
       </div>
 
       <!-- Tipo -->
@@ -87,6 +96,52 @@
           <option value="OUTRO" <%= documento && documento.document_type === 'OUTRO' ? 'selected' : '' %>>Outro</option>
         </select>
       </div>
+
+      <!-- Upload de PDF (apenas na criação) -->
+      <% if (!documento) { %>
+        <div class="mb-4">
+          <label for="contractFiles" class="block text-sm font-medium text-gray-700 mb-1">
+            Arquivo PDF (Contrato/Documento)
+          </label>
+          <input
+            type="file"
+            id="contractFiles"
+            name="contractFiles"
+            accept=".pdf,application/pdf"
+            multiple
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <p class="text-xs text-gray-500 mt-1">
+            <strong>Limite:</strong> 50MB por arquivo. Você pode enviar até 10 arquivos por vez.
+            <br>
+            <strong>Importante:</strong> Para contratos grandes, use este campo. Arquivos são salvos em <code>uploads/contracts/</code>
+          </p>
+        </div>
+      <% } else if (documento.file_path) { %>
+        <!-- Mostra arquivo existente na edição -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Arquivo Atual
+          </label>
+          <div class="bg-gray-50 border border-gray-300 rounded-md p-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-900"><%= documento.file_name || 'Arquivo PDF' %></p>
+                <p class="text-xs text-gray-500">Caminho: <%= documento.file_path %></p>
+              </div>
+              <% 
+                const filePath = documento.file_path.includes('uploads/') 
+                  ? documento.file_path.split('uploads/')[1] 
+                  : documento.file_path.split('uploads\\')[1] || documento.file_path;
+              %>
+              <a href="/uploads/<%= filePath %>" target="_blank" class="text-green-600 hover:text-green-800 text-sm font-medium">
+                Ver PDF →
+              </a>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Para alterar o arquivo, delete e recrie o documento.</p>
+        </div>
+      <% } %>
 
       <!-- Data de Vencimento -->
       <div class="mb-4">

@@ -124,8 +124,107 @@ Se você acabou de atribuir um perfil a este usuário, peça para ele fazer logo
   };
 };
 
+// Middleware para verificar permissão específica (AÇÃO x ENTIDADE)
+// Verifica se o usuário tem permissão para uma ação específica em uma entidade
+// Recebe: entityType, action
+// Exemplo: authorizeAction('financial_exits', 'approve')
+const authorizeAction = (entityType, action) => {
+  const permissionService = require('../services/permissionService');
+  
+  return async (req, res, next) => {
+    // Verifica se usuário está autenticado
+    if (!req.user) {
+      return res.status(401).redirect('/auth/login?error=not_authenticated');
+    }
+
+    // Verifica permissão usando o serviço formal
+    const hasPerm = await permissionService.hasPermission(
+      req.user.id,
+      entityType,
+      action
+    );
+
+    if (!hasPerm) {
+      const errorMessage = `Acesso negado. Permissão insuficiente.
+      
+Usuário: ${req.user.username} (ID: ${req.user.id})
+Ação necessária: ${action} em ${entityType}
+Perfis do usuário: ${req.user.roles.join(', ') || 'Nenhum'}
+
+Esta ação requer permissão específica que não está atribuída aos seus perfis.`;
+      
+      console.error(`[AUTHORIZE_ACTION] Acesso negado para ${req.user.username}:`, {
+        entityType,
+        action,
+        userRoles: req.user.roles,
+      });
+      
+      return res.status(403).send(errorMessage);
+    }
+
+    // Log de sucesso (apenas em desenvolvimento)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[AUTHORIZE_ACTION] ✅ Permissão ${entityType}:${action} concedida para ${req.user.username}`);
+    }
+
+    next();
+  };
+};
+
+// Middleware para verificar transição de estado
+// Verifica se o usuário pode fazer uma transição de estado específica
+// Recebe: entityType, fromState, toState
+// Exemplo: authorizeTransition('financial_exits', 'PENDING', 'APPROVED')
+const authorizeTransition = (entityType, fromState, toState) => {
+  const permissionService = require('../services/permissionService');
+  
+  return async (req, res, next) => {
+    // Verifica se usuário está autenticado
+    if (!req.user) {
+      return res.status(401).redirect('/auth/login?error=not_authenticated');
+    }
+
+    // Verifica se a transição é permitida
+    const canTrans = await permissionService.canTransition(
+      req.user.id,
+      entityType,
+      fromState,
+      toState
+    );
+
+    if (!canTrans) {
+      const errorMessage = `Transição de estado não permitida.
+      
+Usuário: ${req.user.username} (ID: ${req.user.id})
+Entidade: ${entityType}
+Transição: ${fromState} → ${toState}
+Perfis do usuário: ${req.user.roles.join(', ') || 'Nenhum'}
+
+Esta transição de estado não é permitida ou você não tem permissão para realizá-la.`;
+      
+      console.error(`[AUTHORIZE_TRANSITION] Transição negada para ${req.user.username}:`, {
+        entityType,
+        fromState,
+        toState,
+        userRoles: req.user.roles,
+      });
+      
+      return res.status(403).send(errorMessage);
+    }
+
+    // Log de sucesso (apenas em desenvolvimento)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[AUTHORIZE_TRANSITION] ✅ Transição ${fromState} → ${toState} permitida para ${req.user.username}`);
+    }
+
+    next();
+  };
+};
+
 // Exporta middlewares para uso nas rotas
 module.exports = {
   authenticate, // Verifica autenticação
-  authorize, // Verifica autorização (deve vir após authenticate)
+  authorize, // Verifica autorização por perfil (deve vir após authenticate)
+  authorizeAction, // Verifica permissão específica (AÇÃO x ENTIDADE)
+  authorizeTransition, // Verifica transição de estado
 };

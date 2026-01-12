@@ -53,6 +53,18 @@ BEGIN
     ALTER TABLE occurrences ADD COLUMN related_task_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL;
   END IF;
   
+  -- ID do ativo relacionado (vinculação com patrimônio)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='occurrences' AND column_name='related_asset_id') THEN
+    ALTER TABLE occurrences ADD COLUMN related_asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL;
+  END IF;
+  
+  -- ID do ativo relacionado em tarefas (vinculação com patrimônio)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='tasks' AND column_name='related_asset_id') THEN
+    ALTER TABLE tasks ADD COLUMN related_asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL;
+  END IF;
+  
   -- Observação do síndico
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='occurrences' AND column_name='sindico_observation') THEN

@@ -289,6 +289,67 @@ const updateDocumento = async (req, res) => {
   }
 };
 
+// Função para listar categorias de documentos
+// GET /administrativo/documentos/categorias
+const showCategorias = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const categories = await administrativoService.listDocumentCategories(req.user.condominiumId);
+
+    res.render('administrativo/documentos/categorias/list', {
+      title: 'Categorias de Documentos',
+      user: req.user,
+      categories,
+      query: req.query,
+    });
+  } catch (error) {
+    console.error('Erro ao listar categorias:', error);
+    res.status(500).send('Erro ao carregar categorias');
+  }
+};
+
+// Função para exibir formulário de criação de categoria
+// GET /administrativo/documentos/categorias/nova
+const showCreateCategoria = (req, res) => {
+  res.render('administrativo/documentos/categorias/form', {
+    title: 'Nova Categoria',
+    user: req.user,
+    categoria: null,
+  });
+};
+
+// Função para criar categoria
+// POST /administrativo/documentos/categorias
+const createCategoria = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      name: req.body.name,
+      description: req.body.description || null,
+    };
+
+    await administrativoService.createDocumentCategory(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+
+    res.redirect('/administrativo/documentos/categorias?success=created');
+  } catch (error) {
+    res.render('administrativo/documentos/categorias/form', {
+      title: 'Nova Categoria',
+      user: req.user,
+      categoria: req.body,
+      error: error.message,
+    });
+  }
+};
+
 // Função para listar ocorrências (ADM vê todas)
 // GET /administrativo/ocorrencias
 const showOcorrencias = async (req, res) => {
@@ -415,6 +476,206 @@ const showOcorrenciasPendentes = async (req, res) => {
   }
 };
 
+// Função para listar solicitações de orçamento
+// GET /administrativo/orcamentos
+const showOrcamentos = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const orcamentoService = require('../services/orcamentoService');
+    const filters = {
+      status: req.query.status || undefined,
+    };
+
+    const requests = await orcamentoService.listBudgetRequests(req.user.condominiumId, filters);
+
+    res.render('administrativo/orcamentos/list', {
+      title: 'Solicitações de Orçamento',
+      user: req.user,
+      requests,
+      filters,
+    });
+  } catch (error) {
+    console.error('Erro ao listar solicitações de orçamento:', error);
+    res.status(500).send('Erro ao carregar solicitações');
+  }
+};
+
+// Função para exibir formulário de solicitação de orçamento
+// GET /administrativo/orcamentos/novo
+const showCreateOrcamento = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    // Busca ocorrências e tarefas para vincular (opcional)
+    const triagemService = require('../services/administrativoTriagemService');
+    const administrativoService = require('../services/administrativoService');
+    
+    const occurrences = await triagemService.listAllOccurrences(req.user.condominiumId, { status: 'ABERTA' });
+    const tasks = await administrativoService.listTasks(req.user.id, req.user.condominiumId, { status: 'PENDING' });
+
+    res.render('administrativo/orcamentos/form', {
+      title: 'Nova Solicitação de Orçamento',
+      user: req.user,
+      request: null,
+      occurrences,
+      tasks,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar formulário:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+};
+
+// Função para criar solicitação de orçamento
+// POST /administrativo/orcamentos
+const createOrcamento = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const orcamentoService = require('../services/orcamentoService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      title: req.body.title,
+      description: req.body.description,
+      estimatedValue: req.body.estimatedValue,
+      priority: req.body.priority || 'NORMAL',
+      relatedOccurrenceId: req.body.relatedOccurrenceId || null,
+      relatedTaskId: req.body.relatedTaskId || null,
+    };
+
+    const files = req.files || [];
+
+    await orcamentoService.createBudgetRequest(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+
+    res.redirect('/administrativo/orcamentos?success=created');
+  } catch (error) {
+    try {
+      const triagemService = require('../services/administrativoTriagemService');
+      const administrativoService = require('../services/administrativoService');
+      const occurrences = await triagemService.listAllOccurrences(req.user.condominiumId);
+      const tasks = await administrativoService.listTasks(req.user.id, req.user.condominiumId);
+      
+      res.render('administrativo/orcamentos/form', {
+        title: 'Nova Solicitação de Orçamento',
+        user: req.user,
+        request: req.body,
+        occurrences,
+        tasks,
+        error: error.message,
+      });
+    } catch (renderError) {
+      res.status(500).send('Erro ao processar solicitação');
+    }
+  }
+};
+
+// Função para listar comunicados operacionais
+// GET /administrativo/comunicados
+const showComunicados = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const comunicadoService = require('../services/comunicadoService');
+    const filters = {
+      active: req.query.active !== 'false',
+      targetAudience: req.query.targetAudience || undefined,
+    };
+
+    const communications = await comunicadoService.listCommunications(req.user.condominiumId, filters);
+
+    res.render('administrativo/comunicados/list', {
+      title: 'Comunicados Operacionais',
+      user: req.user,
+      communications,
+      filters,
+    });
+  } catch (error) {
+    console.error('Erro ao listar comunicados:', error);
+    res.status(500).send('Erro ao carregar comunicados');
+  }
+};
+
+// Função para exibir formulário de comunicado
+// GET /administrativo/comunicados/novo
+const showCreateComunicado = (req, res) => {
+  res.render('administrativo/comunicados/form', {
+    title: 'Novo Comunicado Operacional',
+    user: req.user,
+    comunicado: null,
+  });
+};
+
+// Função para criar comunicado
+// POST /administrativo/comunicados
+const createComunicado = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const comunicadoService = require('../services/comunicadoService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      title: req.body.title,
+      message: req.body.message,
+      communicationType: req.body.communicationType || 'INFO',
+      targetAudience: req.body.targetAudience || 'ALL',
+      expiresAt: req.body.expiresAt || null,
+    };
+
+    await comunicadoService.createCommunication(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+
+    res.redirect('/administrativo/comunicados?success=created');
+  } catch (error) {
+    res.render('administrativo/comunicados/form', {
+      title: 'Novo Comunicado Operacional',
+      user: req.user,
+      comunicado: req.body,
+      error: error.message,
+    });
+  }
+};
+
+// Função para desativar comunicado
+// POST /administrativo/comunicados/:id/desativar
+const deactivateComunicado = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const comunicadoService = require('../services/comunicadoService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await comunicadoService.deactivateCommunication(
+      parseInt(req.params.id),
+      req.user.id,
+      req.user.condominiumId,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/administrativo/comunicados?success=deactivated');
+  } catch (error) {
+    console.error('Erro ao desativar comunicado:', error);
+    res.redirect('/administrativo/comunicados?error=' + encodeURIComponent(error.message));
+  }
+};
+
 // REMOVIDO: Todas as funções financeiras e patrimoniais foram movidas para controllers separados
 module.exports = {
   showDashboard,
@@ -426,10 +687,82 @@ module.exports = {
   createDocumento,
   showEditDocumento,
   updateDocumento,
+  // Categorias de documentos
+  showCategorias,
+  showCreateCategoria,
+  createCategoria,
   showOcorrencias,
   showTriarOcorrencia,
   triarOcorrencia,
   showOcorrenciasPendentes,
-  // REMOVIDO: Funções financeiras (movidas para financeiroController.js)
+  // Solicitações de orçamento (ADM → Síndico)
+  showOrcamentos,
+  showCreateOrcamento,
+  createOrcamento,
+  // Comunicados operacionais
+  showComunicados,
+  showCreateComunicado,
+  createComunicado,
+  deactivateComunicado,
+  // Aprovações financeiras (ADMINISTRATIVO aprova até limite)
+  showAprovacoesFinanceiras,
+  processAprovacaoFinanceira,
   // REMOVIDO: Funções patrimoniais (movidas para patrimonioController.js)
+};
+
+// Função para exibir aprovações financeiras pendentes (ADMINISTRATIVO)
+// GET /administrativo/aprovacoes-financeiras
+const showAprovacoesFinanceiras = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const administrativoService = require('../services/administrativoService');
+    const exits = await administrativoService.listPendingFinancialExitsForApproval(req.user.condominiumId);
+
+    res.render('administrativo/aprovacoes-financeiras', {
+      title: 'Aprovações Financeiras',
+      user: req.user,
+      exits: exits,
+      query: req.query,
+    });
+  } catch (error) {
+    console.error('Erro ao listar aprovações financeiras:', error);
+    res.status(500).send('Erro ao carregar aprovações');
+  }
+};
+
+// Função para processar aprovação financeira (ADMINISTRATIVO)
+// POST /administrativo/aprovacoes-financeiras/:id/processar
+const processAprovacaoFinanceira = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const { action } = req.body;
+    const exitId = parseInt(req.params.id);
+
+    if (!action || action !== 'APPROVE') {
+      return res.status(400).send('Ação inválida. Apenas aprovação é permitida para ADMINISTRATIVO.');
+    }
+
+    const administrativoService = require('../services/administrativoService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await administrativoService.approveFinancialExit(
+      exitId,
+      req.user.id,
+      req.user.condominiumId,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/administrativo/aprovacoes-financeiras?success=approved');
+  } catch (error) {
+    console.error('Erro ao processar aprovação financeira:', error);
+    res.redirect(`/administrativo/aprovacoes-financeiras?error=${encodeURIComponent(error.message)}`);
+  }
 };

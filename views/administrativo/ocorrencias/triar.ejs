@@ -1,0 +1,245 @@
+<%- include('../../partials/header', { title: title }) %>
+<%- include('../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Triar Ocorrência</h1>
+    <p class="text-gray-600 mt-2">Classifique e organize a ocorrência para tratamento adequado</p>
+  </div>
+
+  <!-- Informações da Ocorrência -->
+  <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Informações da Ocorrência</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <p class="text-sm text-gray-600">Título</p>
+        <p class="font-semibold text-gray-900"><%= occurrence.title %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-600">Status Atual</p>
+        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+          <%= occurrence.status %>
+        </span>
+      </div>
+      <div class="md:col-span-2">
+        <p class="text-sm text-gray-600">Descrição</p>
+        <p class="text-gray-900"><%= occurrence.description %></p>
+      </div>
+      <% if (occurrence.location) { %>
+        <div>
+          <p class="text-sm text-gray-600">Localização</p>
+          <p class="text-gray-900"><%= occurrence.location %></p>
+        </div>
+      <% } %>
+      <div>
+        <p class="text-sm text-gray-600">Reportado por</p>
+        <p class="text-gray-900"><%= occurrence.reported_by_name || 'N/A' %></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensagem de erro -->
+  <% if (typeof query !== 'undefined' && query.error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= query.error %>
+    </div>
+  <% } %>
+
+  <!-- Formulário de Triagem -->
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <form method="POST" action="/administrativo/ocorrencias/<%= occurrence.id %>/triar">
+      <!-- Prioridade -->
+      <div class="mb-4">
+        <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
+          Prioridade <span class="text-red-500">*</span>
+        </label>
+        <select
+          id="priority"
+          name="priority"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        >
+          <option value="BAIXA" <%= occurrence.priority === 'BAIXA' ? 'selected' : '' %>>Baixa</option>
+          <option value="NORMAL" <%= !occurrence.priority || occurrence.priority === 'NORMAL' ? 'selected' : '' %>>Normal</option>
+          <option value="ALTA" <%= occurrence.priority === 'ALTA' ? 'selected' : '' %>>Alta</option>
+          <option value="URGENTE" <%= occurrence.priority === 'URGENTE' ? 'selected' : '' %>>Urgente</option>
+        </select>
+      </div>
+
+      <!-- Classificação (Categoria) -->
+      <div class="mb-4">
+        <label for="classification" class="block text-sm font-medium text-gray-700 mb-2">
+          Classificação <span class="text-red-500">*</span>
+        </label>
+        <select
+          id="classification"
+          name="classification"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        >
+          <option value="">Selecione uma classificação...</option>
+          <option value="PREVENTIVA" <%= occurrence.classification === 'PREVENTIVA' ? 'selected' : '' %>>Preventiva</option>
+          <option value="CORRETIVA" <%= occurrence.classification === 'CORRETIVA' ? 'selected' : '' %>>Corretiva</option>
+          <option value="EMERGENCIA" <%= occurrence.classification === 'EMERGENCIA' ? 'selected' : '' %>>Emergência</option>
+          <option value="MELHORIA" <%= occurrence.classification === 'MELHORIA' ? 'selected' : '' %>>Melhoria/Upgrade</option>
+          <option value="LIMPEZA" <%= occurrence.classification === 'LIMPEZA' ? 'selected' : '' %>>Limpeza</option>
+          <option value="JARDINAGEM" <%= occurrence.classification === 'JARDINAGEM' ? 'selected' : '' %>>Jardinagem</option>
+          <option value="SEGURANCA" <%= occurrence.classification === 'SEGURANCA' ? 'selected' : '' %>>Segurança</option>
+          <option value="ELETRICA" <%= occurrence.classification === 'ELETRICA' ? 'selected' : '' %>>Elétrica</option>
+          <option value="HIDRAULICA" <%= occurrence.classification === 'HIDRAULICA' ? 'selected' : '' %>>Hidráulica</option>
+          <option value="OUTRA" <%= occurrence.classification === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">Classifique o tipo de manutenção/ocorrência para melhor organização</p>
+      </div>
+
+      <!-- SLA (Horas) -->
+      <div class="mb-4">
+        <label for="slaHours" class="block text-sm font-medium text-gray-700 mb-2">
+          SLA (Horas para Resolução)
+        </label>
+        <input
+          type="number"
+          id="slaHours"
+          name="slaHours"
+          min="1"
+          max="720"
+          value="<%= occurrence.sla_hours || '' %>"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ex: 24 (para 24 horas)"
+        />
+        <p class="text-xs text-gray-500 mt-1">Tempo máximo em horas para resolução desta ocorrência</p>
+      </div>
+
+      <!-- Atribuir para -->
+      <div class="mb-4">
+        <label for="assignTo" class="block text-sm font-medium text-gray-700 mb-2">
+          Atribuir para
+        </label>
+        <select
+          id="assignTo"
+          name="assignTo"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Não atribuir agora</option>
+          <% operacionais.forEach(op => { %>
+            <option value="<%= op.id %>" <%= occurrence.assigned_to == op.id ? 'selected' : '' %>>
+              <%= op.full_name %> (<%= op.username %>)
+            </option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Converter para Tarefa -->
+      <div class="mb-6 border-t pt-4">
+        <label class="flex items-center mb-4">
+          <input
+            type="checkbox"
+            id="convertToTask"
+            name="convertToTask"
+            value="true"
+            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            onchange="toggleTaskFields()"
+          />
+          <span class="ml-2 text-sm font-medium text-gray-700">Converter esta ocorrência em uma tarefa</span>
+        </label>
+
+        <!-- Campos da Tarefa (ocultos por padrão) -->
+        <div id="taskFields" style="display: none;" class="ml-6 space-y-4">
+          <div>
+            <label for="taskTitle" class="block text-sm font-medium text-gray-700 mb-2">
+              Título da Tarefa
+            </label>
+            <input
+              type="text"
+              id="taskTitle"
+              name="taskTitle"
+              value="<%= occurrence.title %>"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Título da tarefa"
+            />
+          </div>
+
+          <div>
+            <label for="taskDescription" class="block text-sm font-medium text-gray-700 mb-2">
+              Descrição da Tarefa
+            </label>
+            <textarea
+              id="taskDescription"
+              name="taskDescription"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Descrição detalhada da tarefa"
+            ><%= occurrence.description %></textarea>
+          </div>
+
+          <div>
+            <label for="taskDueDate" class="block text-sm font-medium text-gray-700 mb-2">
+              Prazo da Tarefa
+            </label>
+            <input
+              type="date"
+              id="taskDueDate"
+              name="taskDueDate"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label for="taskType" class="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Tarefa
+            </label>
+            <select
+              id="taskType"
+              name="taskType"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="CORRECTIVE">Corretiva</option>
+              <option value="PREVENTIVE">Preventiva</option>
+              <option value="INSPECTION">Inspeção</option>
+              <option value="CLEANING">Limpeza</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a
+          href="/administrativo/ocorrencias"
+          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Finalizar Triagem
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleTaskFields() {
+  const convertToTask = document.getElementById('convertToTask').checked;
+  const taskFields = document.getElementById('taskFields');
+  
+  if (convertToTask) {
+    taskFields.style.display = 'block';
+    // Preenche data de vencimento com base no SLA se definido
+    const slaHours = document.getElementById('slaHours').value;
+    if (slaHours) {
+      const dueDate = new Date();
+      dueDate.setHours(dueDate.getHours() + parseInt(slaHours));
+      document.getElementById('taskDueDate').value = dueDate.toISOString().split('T')[0];
+    }
+  } else {
+    taskFields.style.display = 'none';
+  }
+}
+</script>
+
+<%- include('../../partials/footer') %>

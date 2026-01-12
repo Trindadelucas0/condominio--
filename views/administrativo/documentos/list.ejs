@@ -8,9 +8,14 @@
       <h1 class="text-3xl font-bold text-gray-800">Documentos</h1>
       <p class="text-gray-600 mt-2">Gerenciar documentos do condomínio</p>
     </div>
-    <a href="/administrativo/documentos/novo" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
-      Novo Documento
-    </a>
+    <div class="flex gap-3">
+      <a href="/administrativo/documentos/categorias" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
+        Gerenciar Categorias
+      </a>
+      <a href="/administrativo/documentos/novo" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+        Novo Documento
+      </a>
+    </div>
   </div>
 
   <!-- Mensagens -->
@@ -94,7 +99,13 @@
                 <% } %>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-500"><%= doc.category_name || '-' %></div>
+                <div class="text-sm text-gray-500">
+                  <% if (doc.category_name) { %>
+                    <%= doc.category_name %>
+                  <% } else { %>
+                    <span class="text-gray-400 italic">Sem categoria</span>
+                  <% } %>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800">
@@ -130,6 +141,17 @@
                 <% } %>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <% if (doc.file_path) { %>
+                  <% 
+                    // Extrai o caminho relativo a partir de uploads/
+                    const filePath = doc.file_path.includes('uploads/') 
+                      ? doc.file_path.split('uploads/')[1] 
+                      : doc.file_path.split('uploads\\')[1] || doc.file_path;
+                  %>
+                  <a href="/uploads/<%= filePath %>" target="_blank" class="text-blue-600 hover:text-blue-900 mr-3" title="Abrir PDF">
+                    📄 Ver PDF
+                  </a>
+                <% } %>
                 <a href="/administrativo/documentos/<%= doc.id %>/editar" class="text-green-600 hover:text-green-900">
                   Editar
                 </a>
