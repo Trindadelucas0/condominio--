@@ -114,6 +114,80 @@ router.post('/entradas/:id/rejeitar', async (req, res) => {
   }
 });
 
+// Orçamentos pendentes de aprovação
+router.get('/orcamentos-pendentes', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const orcamentoService = require('../services/orcamentoService');
+    const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'PENDING_SINDICO');
+    res.render('sindico/orcamentos-pendentes', {
+      title: 'Orçamentos Aguardando Aprovação',
+      user: req.user,
+      budgets: budgets,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao listar orçamentos pendentes:', error);
+    res.status(500).send('Erro ao carregar orçamentos');
+  }
+});
+
+// Aprovar ou rejeitar orçamento
+router.post('/orcamentos/:id/aprovar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const orcamentoService = require('../services/orcamentoService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    await orcamentoService.approveOrRejectBySindico(
+      req.params.id,
+      req.user.id,
+      req.user.condominiumId,
+      'APPROVE',
+      {
+        budgetApprovedAmount: req.body.budgetApprovedAmount,
+        sindicoNotes: req.body.approvalNotes,
+      },
+      ipAddress,
+      userAgent
+    );
+    res.redirect('/sindico/orcamentos-pendentes?success=approved');
+  } catch (error) {
+    console.error('Erro ao aprovar orçamento:', error);
+    res.redirect('/sindico/orcamentos-pendentes?error=' + encodeURIComponent(error.message));
+  }
+});
+
+router.post('/orcamentos/:id/rejeitar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const orcamentoService = require('../services/orcamentoService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    await orcamentoService.approveOrRejectBySindico(
+      req.params.id,
+      req.user.id,
+      req.user.condominiumId,
+      'REJECT',
+      {
+        rejectionReason: req.body.rejectionReason,
+      },
+      ipAddress,
+      userAgent
+    );
+    res.redirect('/sindico/orcamentos-pendentes?success=rejected');
+  } catch (error) {
+    console.error('Erro ao rejeitar orçamento:', error);
+    res.redirect('/sindico/orcamentos-pendentes?error=' + encodeURIComponent(error.message));
+  }
+});
+
 // Aprovação de ocorrências
 router.get('/ocorrencias-pendentes-aprovacao', async (req, res) => {
   try {
