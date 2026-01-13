@@ -35,13 +35,28 @@ async function checkIfCorrectionsApplied() {
       AND state = 'PENDING_REVIEW'
     `);
 
+    // Verifica se a permissão occurrences:resolve foi atribuída ao OPERACIONAL
+    const checkPermission = await query(`
+      SELECT COUNT(*) as count
+      FROM role_permissions rp
+      INNER JOIN roles r ON rp.role_id = r.id
+      INNER JOIN permissions p ON rp.permission_id = p.id
+      WHERE r.name = 'OPERACIONAL'
+        AND p.entity_type = 'occurrences'
+        AND p.action = 'resolve'
+    `);
+
+    const permissionExists = parseInt(checkPermission.rows[0].count) > 0;
+
     return {
       deletedAtExists: checkDeletedAt.rows.length > 0,
       assetIdExists: checkAssetId.rows.length > 0,
       statesExist: checkStates.rows.length > 0,
+      permissionExists: permissionExists,
       allApplied: checkDeletedAt.rows.length > 0 && 
                   checkAssetId.rows.length > 0 && 
-                  checkStates.rows.length > 0
+                  checkStates.rows.length > 0 &&
+                  permissionExists
     };
   } catch (error) {
     console.error('Erro ao verificar correções:', error.message);
@@ -199,12 +214,65 @@ async function applyCorrections() {
       console.warn('  ⚠️  Não foi possível adicionar comentário na coluna (normal se não tiver permissão)');
     }
 
+    // ============================================
+    // CORREÇÃO 4: Permissão occurrences:resolve para OPERACIONAL + Transição
+    // ============================================
+    console.log('  → Garantindo permissão occurrences:resolve para OPERACIONAL...');
+    
+    // Cria a permissão se não existir
+    const permissionResult = await client.query(`
+      INSERT INTO permissions (entity_type, action, description) 
+      VALUES ('occurrences', 'resolve', 'Resolver ocorrências')
+      ON CONFLICT (entity_type, action) DO UPDATE SET description = EXCLUDED.description
+      RETURNING id
+    `);
+
+    // Obtém o ID da permissão (pode ter sido criada agora ou já existia)
+    let permissionId;
+    if (permissionResult.rows.length > 0) {
+      permissionId = permissionResult.rows[0].id;
+    } else {
+      const existingPermission = await client.query(`
+        SELECT id FROM permissions 
+        WHERE entity_type = 'occurrences' AND action = 'resolve'
+      `);
+      permissionId = existingPermission.rows[0].id;
+    }
+
+    // Obtém o ID do role OPERACIONAL
+    const roleResult = await client.query(`
+      SELECT id FROM roles WHERE name = 'OPERACIONAL'
+    `);
+
+    if (roleResult.rows.length === 0) {
+      throw new Error('Role OPERACIONAL não encontrado');
+    }
+
+    const roleId = roleResult.rows[0].id;
+
+    // Atribui a permissão ao role OPERACIONAL
+    await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      VALUES ($1, $2)
+      ON CONFLICT (role_id, permission_id) DO NOTHING
+    `, [roleId, permissionId]);
+
+    // Garante que a transição ABERTA → RESOLVIDA existe
+    console.log('  → Garantindo transição ABERTA → RESOLVIDA para ocorrências...');
+    await client.query(`
+      INSERT INTO state_transitions (entity_type, from_state, to_state, required_permission, description) 
+      VALUES ('occurrences', 'ABERTA', 'RESOLVIDA', 'occurrences:resolve', 'Ocorrência resolvida diretamente pelo operacional')
+      ON CONFLICT (entity_type, from_state, to_state) 
+      DO UPDATE SET required_permission = EXCLUDED.required_permission, description = EXCLUDED.description
+    `);
+
     await client.query('COMMIT'); // Confirma transação
 
     console.log('✅ Todas as correções foram aplicadas com sucesso!');
     console.log('  → Estados de financial_entries atualizados');
     console.log('  → Soft delete implementado em financial_entries');
     console.log('  → Asset_id adicionado em financial_exits');
+    console.log('  → Permissão occurrences:resolve atribuída ao OPERACIONAL');
 
     return true;
   } catch (error) {
@@ -217,6 +285,78 @@ async function applyCorrections() {
 }
 
 /**
+ * Função para aplicar apenas a correção de permissão (pode ser chamada independentemente)
+ */
+async function applyPermissionCorrection() {
+  const client = await require('../config/database').getClient();
+  
+  try {
+    await client.query('BEGIN');
+    
+    console.log('  → Garantindo permissão occurrences:resolve para OPERACIONAL...');
+    
+    // Cria a permissão se não existir
+    const permissionResult = await client.query(`
+      INSERT INTO permissions (entity_type, action, description) 
+      VALUES ('occurrences', 'resolve', 'Resolver ocorrências')
+      ON CONFLICT (entity_type, action) DO UPDATE SET description = EXCLUDED.description
+      RETURNING id
+    `);
+
+    // Obtém o ID da permissão (pode ter sido criada agora ou já existia)
+    let permissionId;
+    if (permissionResult.rows.length > 0) {
+      permissionId = permissionResult.rows[0].id;
+    } else {
+      const existingPermission = await client.query(`
+        SELECT id FROM permissions 
+        WHERE entity_type = 'occurrences' AND action = 'resolve'
+      `);
+      permissionId = existingPermission.rows[0].id;
+    }
+
+    // Obtém o ID do role OPERACIONAL
+    const roleResult = await client.query(`
+      SELECT id FROM roles WHERE name = 'OPERACIONAL'
+    `);
+
+    if (roleResult.rows.length === 0) {
+      throw new Error('Role OPERACIONAL não encontrado');
+    }
+
+    const roleId = roleResult.rows[0].id;
+
+    // Atribui a permissão ao role OPERACIONAL
+    await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      VALUES ($1, $2)
+      ON CONFLICT (role_id, permission_id) DO NOTHING
+    `, [roleId, permissionId]);
+
+    // Garante que a transição ABERTA → RESOLVIDA existe
+    console.log('  → Garantindo transição ABERTA → RESOLVIDA para ocorrências...');
+    await client.query(`
+      INSERT INTO state_transitions (entity_type, from_state, to_state, required_permission, description) 
+      VALUES ('occurrences', 'ABERTA', 'RESOLVIDA', 'occurrences:resolve', 'Ocorrência resolvida diretamente pelo operacional')
+      ON CONFLICT (entity_type, from_state, to_state) 
+      DO UPDATE SET required_permission = EXCLUDED.required_permission, description = EXCLUDED.description
+    `);
+
+    await client.query('COMMIT');
+    console.log('  ✅ Permissão occurrences:resolve atribuída ao OPERACIONAL');
+    console.log('  ✅ Transição ABERTA → RESOLVIDA garantida');
+    
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Erro ao aplicar correção de permissão:', error.message);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Função principal: verifica e aplica correções se necessário
  */
 async function ensureCorrectionsApplied() {
@@ -225,7 +365,12 @@ async function ensureCorrectionsApplied() {
     
     const status = await checkIfCorrectionsApplied();
     
-    if (status.allApplied) {
+    // SEMPRE aplica a correção de permissão (é idempotente e segura)
+    // Isso garante que a permissão estará sempre presente
+    console.log('  → Verificando e garantindo permissão occurrences:resolve para OPERACIONAL...');
+    await applyPermissionCorrection();
+    
+    if (status.allApplied && status.permissionExists) {
       console.log('✅ Todas as correções já foram aplicadas anteriormente.');
       return false; // Não aplicou nada (já estava tudo OK)
     }
@@ -263,5 +408,6 @@ if (require.main === module) {
 module.exports = {
   ensureCorrectionsApplied,
   checkIfCorrectionsApplied,
-  applyCorrections
+  applyCorrections,
+  applyPermissionCorrection
 };

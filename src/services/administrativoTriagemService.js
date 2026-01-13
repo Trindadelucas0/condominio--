@@ -109,7 +109,12 @@ const triageOccurrence = async (occurrenceId, triagemData, userId, condominiumId
       userAgent: userAgent,
     });
 
-    return { occurrence: updated, task };
+    // Retorna resultado com informação sobre tarefa criada
+    return {
+      occurrence: updated,
+      taskCreated: !!task,
+      task: task || null,
+    };
   } catch (error) {
     console.error('Erro ao triar ocorrência:', error);
     throw error;

@@ -383,6 +383,7 @@ const showOcorrencias = async (req, res) => {
       user: req.user,
       occurrences,
       filters,
+      query: req.query, // Para mensagens de sucesso
     });
   } catch (error) {
     console.error('Erro ao listar ocorrências:', error);
