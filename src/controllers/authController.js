@@ -18,7 +18,9 @@ const showLogin = (req, res) => {
     errorMessages: {
       not_authenticated: 'Você precisa fazer login para acessar o sistema',
       invalid_token: 'Sua sessão expirou. Faça login novamente',
+      token_expired: 'Sua sessão expirou. Faça login novamente',
       user_inactive: 'Usuário inativo. Entre em contato com o administrador',
+      condominium_inactive: 'Condomínio inativo. Entre em contato com o administrador do sistema',
       invalid_credentials: 'Usuário ou senha incorretos',
     },
   });

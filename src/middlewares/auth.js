@@ -80,9 +80,12 @@ const authenticate = async (req, res, next) => {
     }
 
     // Busca dados atualizados do usuário no banco (pode ter sido desativado)
+    // Também verifica se o condomínio está ativo
     const userResult = await query(
-      `SELECT u.id, u.username, u.email, u.full_name, u.condominium_id, u.active
+      `SELECT u.id, u.username, u.email, u.full_name, u.condominium_id, u.active,
+              c.active as condominium_active
        FROM users u
+       LEFT JOIN condominiums c ON u.condominium_id = c.id
        WHERE u.id = $1 AND u.active = TRUE`,
       [decoded.userId]
     );
@@ -93,6 +96,17 @@ const authenticate = async (req, res, next) => {
       res.clearCookie('refreshToken');
       res.clearCookie('token');
       return res.status(401).redirect('/auth/login?error=user_inactive');
+    }
+
+    const user = userResult.rows[0];
+
+    // Se usuário tem condomínio e o condomínio está INATIVO, bloqueia acesso
+    // (exceto SUPER_MASTER que não tem condomínio_id)
+    if (user.condominium_id && user.condominium_active === false) {
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
+      res.clearCookie('token');
+      return res.status(403).redirect('/auth/login?error=condominium_inactive');
     }
 
     // Busca perfis (roles) do usuário

@@ -1,7 +1,7 @@
 // Service do módulo SUPER_MASTER
 // Gerencia lógica de negócio para condomínios e usuários
 
-const { query } = require('../config/database');
+const { query, getClient } = require('../config/database');
 const masterServiceEnhanced = require('./masterServiceEnhanced');
 
 // Função para obter estatísticas do dashboard
@@ -116,15 +116,35 @@ const getCondominiumById = async (id) => {
 // Função para atualizar condomínio
 // Recebe: id e dados do condomínio
 // Retorna: condomínio atualizado
+// REGRA: Se condomínio for inativado, inativa todos os usuários desse condomínio
 const updateCondominium = async (id, data, userId, ipAddress, userAgent) => {
+  const client = await require('../config/database').getClient();
+  
   try {
+    await client.query('BEGIN'); // Inicia transação
+
     const { name, address, cnpj, phone, email, active } = data;
 
     // Busca condomínio atual para log
     const current = await getCondominiumById(id);
 
+    // Converte active para boolean
+    // Se vier como string "true" ou "false", converte
+    let activeValue = current.active;
+    if (active !== undefined) {
+      if (typeof active === 'string') {
+        activeValue = active === 'true' || active === '1';
+      } else if (typeof active === 'boolean') {
+        activeValue = active;
+      } else {
+        activeValue = Boolean(active);
+      }
+    }
+
+    console.log('🔍 [DEBUG] Service - Active recebido:', active, 'Tipo:', typeof active, 'Valor final:', activeValue);
+
     // Atualiza condomínio
-    const result = await query(
+    const result = await client.query(
       `UPDATE condominiums 
        SET name = $1, address = $2, cnpj = $3, phone = $4, email = $5, active = $6, updated_at = NOW()
        WHERE id = $7
@@ -135,12 +155,44 @@ const updateCondominium = async (id, data, userId, ipAddress, userAgent) => {
         cnpj ? cnpj.trim() : current.cnpj,
         phone ? phone.trim() : current.phone,
         email ? email.trim().toLowerCase() : current.email,
-        active !== undefined ? active : current.active,
+        activeValue,
         id
       ]
     );
 
     const updated = result.rows[0];
+
+    // Se condomínio foi INATIVADO, inativa todos os usuários desse condomínio
+    if (current.active === true && activeValue === false) {
+      console.log(`🔒 Inativando condomínio ${id} - inativando todos os usuários...`);
+      
+      const usersInactivated = await client.query(
+        `UPDATE users 
+         SET active = FALSE, updated_at = NOW()
+         WHERE condominium_id = $1 AND active = TRUE
+         RETURNING id, username`,
+        [id]
+      );
+
+      console.log(`✅ ${usersInactivated.rows.length} usuários inativados do condomínio ${id}`);
+    }
+
+    // Se condomínio foi ATIVADO novamente, reativa todos os usuários desse condomínio
+    if (current.active === false && activeValue === true) {
+      console.log(`🔓 Reativando condomínio ${id} - reativando todos os usuários...`);
+      
+      const usersReactivated = await client.query(
+        `UPDATE users 
+         SET active = TRUE, updated_at = NOW()
+         WHERE condominium_id = $1 AND active = FALSE
+         RETURNING id, username`,
+        [id]
+      );
+
+      console.log(`✅ ${usersReactivated.rows.length} usuários reativados do condomínio ${id}`);
+    }
+
+    await client.query('COMMIT'); // Confirma transação
 
     // Registra no log
     const { logAction } = require('../utils/logger');
@@ -159,8 +211,11 @@ const updateCondominium = async (id, data, userId, ipAddress, userAgent) => {
 
     return updated;
   } catch (error) {
+    await client.query('ROLLBACK'); // Reverte transação em caso de erro
     console.error('Erro ao atualizar condomínio:', error);
     throw error;
+  } finally {
+    client.release(); // Libera conexão
   }
 };
 

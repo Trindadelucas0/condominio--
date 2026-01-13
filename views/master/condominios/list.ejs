@@ -8,9 +8,20 @@
       <h1 class="text-3xl font-bold text-gray-800">Condomínios</h1>
       <p class="text-gray-600 mt-2">Gerencie todos os condomínios do sistema</p>
     </div>
-    <a href="/master/condominios/novo" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
-      Novo Condomínio
-    </a>
+    <div class="flex items-center space-x-4">
+      <!-- Filtro Ativos/Inativos -->
+      <div class="flex items-center space-x-2">
+        <a 
+          href="/master/condominios<%= includeInactive ? '' : '?includeInactive=true' %>" 
+          class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition <%= includeInactive ? 'bg-gray-100' : '' %>"
+        >
+          <%= includeInactive ? 'Mostrar Apenas Ativos' : 'Mostrar Todos' %>
+        </a>
+      </div>
+      <a href="/master/condominios/novo" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+        Novo Condomínio
+      </a>
+    </div>
   </div>
 
   <!-- Mensagem de sucesso -->

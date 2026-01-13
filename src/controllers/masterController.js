@@ -26,12 +26,15 @@ const showDashboard = async (req, res) => {
 // GET /master/condominios
 const listCondominios = async (req, res) => {
   try {
-    const condominios = await masterService.listCondominios();
+    // Verifica se deve incluir inativos (query parameter ?includeInactive=true)
+    const includeInactive = req.query.includeInactive === 'true';
+    const condominios = await masterService.listCondominios(includeInactive);
 
     res.render('master/condominios/list', {
       title: 'Condomínios',
       user: req.user,
       condominios: condominios,
+      includeInactive: includeInactive,
       query: req.query,
     });
   } catch (error) {
@@ -108,9 +111,24 @@ const updateCondominio = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
+    // Converte active para boolean
+    // O campo hidden sempre envia "true" ou "false" como string
+    let active = false;
+    if (req.body.active !== undefined) {
+      if (typeof req.body.active === 'string') {
+        active = req.body.active === 'true' || req.body.active === '1';
+      } else if (typeof req.body.active === 'boolean') {
+        active = req.body.active;
+      } else {
+        active = Boolean(req.body.active);
+      }
+    }
+
+    console.log('🔍 [DEBUG] Active recebido:', req.body.active, 'Tipo:', typeof req.body.active, 'Convertido:', active);
+
     await masterService.updateCondominium(
       req.params.id,
-      req.body,
+      { ...req.body, active },
       req.user.id,
       ipAddress,
       userAgent

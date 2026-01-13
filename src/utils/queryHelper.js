@@ -99,9 +99,35 @@ const validateJoinSecurity = (sql) => {
   return true;
 };
 
+// Função para validar se condomínio está ativo
+// Recebe: condominiumId
+// Retorna: boolean (true se ativo, false se inativo ou não existe)
+const validateCondominiumActive = async (condominiumId) => {
+  try {
+    if (!condominiumId) {
+      return false; // Sem condomínio = não pode acessar
+    }
+
+    const result = await query(
+      `SELECT active FROM condominiums WHERE id = $1`,
+      [condominiumId]
+    );
+
+    if (result.rows.length === 0) {
+      return false; // Condomínio não existe
+    }
+
+    return result.rows[0].active === true;
+  } catch (error) {
+    console.error('Erro ao validar condomínio ativo:', error);
+    return false;
+  }
+};
+
 module.exports = {
   validateCondominiumOwnership,
   validateUserBelongsToCondominium,
+  validateCondominiumActive,
   buildSecureQuery,
   validateJoinSecurity,
 };

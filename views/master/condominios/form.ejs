@@ -99,14 +99,36 @@
           <label class="flex items-center">
             <input
               type="checkbox"
-              name="active"
-              value="true"
+              id="active_checkbox"
               <%= condominio.active ? 'checked' : '' %>
               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span class="ml-2 text-sm text-gray-700">Condomínio ativo</span>
           </label>
+          <p class="text-xs text-gray-500 mt-1">
+            ⚠️ Ao inativar, todos os usuários deste condomínio serão inativados automaticamente e o acesso será bloqueado.
+          </p>
         </div>
+        <!-- Campo hidden para garantir que sempre envia valor -->
+        <!-- IMPORTANTE: Checkbox não tem name, apenas o hidden tem -->
+        <input type="hidden" name="active" value="<%= condominio.active ? 'true' : 'false' %>" id="active_hidden" />
+        <script>
+          // Garante que o campo hidden sempre reflete o estado do checkbox
+          // Atualiza imediatamente ao carregar a página
+          (function() {
+            const checkbox = document.getElementById('active_checkbox');
+            const hidden = document.getElementById('active_hidden');
+            
+            // Atualiza quando checkbox muda
+            checkbox.addEventListener('change', function() {
+              hidden.value = this.checked ? 'true' : 'false';
+              console.log('Active atualizado para:', hidden.value);
+            });
+            
+            // Garante valor inicial correto
+            hidden.value = checkbox.checked ? 'true' : 'false';
+          })();
+        </script>
       <% } %>
 
       <!-- Botões -->
