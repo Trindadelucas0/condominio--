@@ -111,6 +111,11 @@ const listBudgetRequests = async (condominiumId, filters = {}) => {
       params.push(filters.status);
     }
 
+    if (filters.requestedBy) {
+      sql += ` AND br.requested_by = $${paramCount++}`;
+      params.push(filters.requestedBy);
+    }
+
     sql += ` ORDER BY br.created_at DESC LIMIT 100`;
 
     const result = await query(sql, params);

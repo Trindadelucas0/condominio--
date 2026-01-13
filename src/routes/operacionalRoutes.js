@@ -75,4 +75,27 @@ router.post('/manutencoes/:id/iniciar', authorize('OPERACIONAL'), manutencaoCont
 router.get('/manutencoes/:id/concluir', authorize('OPERACIONAL'), manutencaoController.showCompleteManutencao);
 router.post('/manutencoes/:id/concluir', authorize('OPERACIONAL'), manutencaoController.completeManutencao);
 
+// Orçamentos liberados - apenas OPERACIONAL
+router.get('/orcamentos', authorize('OPERACIONAL'), async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const orcamentoService = require('../services/orcamentoService');
+    const budgets = await orcamentoService.listBudgetRequests(req.user.condominiumId, { 
+      status: 'LIBERATED',
+      requestedBy: req.user.id 
+    });
+    res.render('operacional/orcamentos', {
+      title: 'Orçamentos Liberados',
+      user: req.user,
+      budgets: budgets || [],
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao listar orçamentos:', error);
+    res.status(500).send('Erro ao carregar orçamentos');
+  }
+});
+
 module.exports = router;

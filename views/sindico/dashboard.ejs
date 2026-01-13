@@ -114,11 +114,9 @@
           </svg>
         </div>
       </div>
-      <% if (stats.pendingExpenses && stats.pendingExpenses > 0) { %>
       <a href="/sindico/saidas-pendentes" class="text-blue-600 text-sm mt-4 inline-block hover:underline">
         Ver saídas pendentes →
       </a>
-      <% } %>
     </div>
 
     <!-- Tarefas Atrasadas -->
@@ -220,11 +218,12 @@
       <a href="/sindico/logs" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
         Logs de Auditoria
       </a>
-      <% if (stats.pendingEntries !== undefined && stats.pendingEntries > 0) { %>
       <a href="/sindico/entradas-pendentes" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition text-center">
-        Analisar Entradas (<%= stats.pendingEntries %>)
+        Analisar Entradas<% if (stats.pendingEntries !== undefined && stats.pendingEntries > 0) { %> (<%= stats.pendingEntries %>)<% } %>
       </a>
-      <% } %>
+      <a href="/sindico/saidas-pendentes" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition text-center">
+        Aprovar Saídas<% if (stats.pendingExpenses !== undefined && stats.pendingExpenses > 0) { %> (<%= stats.pendingExpenses %>)<% } %>
+      </a>
       <% if (stats.pendingOccurrencesApproval !== undefined && stats.pendingOccurrencesApproval > 0) { %>
       <a href="/sindico/ocorrencias-pendentes-aprovacao" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition text-center">
         Aprovar Ocorrências (<%= stats.pendingOccurrencesApproval %>)
