@@ -82,10 +82,12 @@ router.get('/orcamentos', authorize('OPERACIONAL'), async (req, res) => {
       return res.status(400).send('Usuário não está associado a um condomínio');
     }
     const orcamentoService = require('../services/orcamentoService');
-    const budgets = await orcamentoService.listBudgetRequests(req.user.condominiumId, { 
-      status: 'LIBERATED',
-      requestedBy: req.user.id 
+    // Lista todos os orçamentos liberados do condomínio (operacional pode ver os seus)
+    const allBudgets = await orcamentoService.listBudgetRequests(req.user.condominiumId, { 
+      status: 'LIBERATED'
     });
+    // Filtra apenas os orçamentos solicitados pelo usuário atual
+    const budgets = allBudgets.filter(b => b.requested_by === req.user.id);
     res.render('operacional/orcamentos', {
       title: 'Orçamentos Liberados',
       user: req.user,
