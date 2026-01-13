@@ -381,6 +381,96 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
   }
 };
 
+// Função para rejeitar saída financeira
+// Recebe: exitId, condominiumId, userId, motivo da rejeição
+// Retorna: saída atualizada
+const rejectExit = async (exitId, condominiumId, userId, rejectionReason, ipAddress, userAgent) => {
+  try {
+    if (!rejectionReason || !rejectionReason.trim()) {
+      throw new Error('Motivo da rejeição é obrigatório');
+    }
+
+    // Busca saída atual
+    const currentResult = await query(
+      `SELECT * FROM financial_exits WHERE id = $1 AND condominium_id = $2`,
+      [exitId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Saída não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida ownership
+    const owns = await validateCondominiumOwnership('financial_exits', exitId, condominiumId);
+    if (!owns) {
+      throw new Error('Saída não pertence a este condomínio');
+    }
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    // Valida estado atual
+    if (current.payment_status !== 'PENDING') {
+      throw new Error('Saída já foi processada');
+    }
+
+    // Atualiza status para rejeitado
+    const updateResult = await query(
+      `UPDATE financial_exits 
+       SET payment_status = 'REJECTED', 
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND condominium_id = $2 AND payment_status = 'PENDING'
+       RETURNING *`,
+      [exitId, condominiumId]
+    );
+
+    if (updateResult.rows.length === 0) {
+      throw new Error('Saída não encontrada, não pertence a este condomínio ou já foi processada');
+    }
+
+    const updated = updateResult.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'REJECT',
+      module: 'FINANCIAL',
+      entityType: 'financial_exits',
+      entityId: exitId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+      notes: `Motivo: ${rejectionReason.trim()}`,
+    });
+
+    // Notifica financeiro que criou a saída
+    if (current.created_by) {
+      const notificationService = require('./notificationService');
+      await notificationService.createNotification(
+        current.created_by,
+        condominiumId,
+        'Saída Financeira Rejeitada',
+        `A saída financeira "${current.description}" foi rejeitada pelo síndico. Motivo: ${rejectionReason.trim()}`,
+        'EXIT_REJECTED',
+        'financial_exits',
+        exitId
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao rejeitar saída financeira:', error);
+    throw error;
+  }
+};
+
 // Função para marcar saída como paga (com validação de comprovante)
 // Recebe: exitId, condominiumId, userId, dados do pagamento
 // Retorna: saída atualizada
@@ -1668,10 +1758,109 @@ const listRejectedEntries = async (condominiumId) => {
   }
 };
 
+// Função para marcar entrada como recebida
+// Recebe: entryId, condominiumId, userId, dados do recebimento
+// Retorna: entrada atualizada
+const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, ipAddress, userAgent) => {
+  try {
+    const { receiptMethod, receiptPdfPath, receiptDetails, receiptNotes } = receiptData;
+
+    // Validações
+    if (!receiptMethod || !receiptMethod.trim()) {
+      throw new Error('Método de recebimento é obrigatório');
+    }
+
+    if (!receiptPdfPath || !receiptPdfPath.trim()) {
+      throw new Error('Comprovante em PDF é obrigatório');
+    }
+
+    if (!receiptDetails || !receiptDetails.trim()) {
+      throw new Error('Detalhes do recebimento são obrigatórios');
+    }
+
+    // Busca entrada atual
+    const currentResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida ownership
+    const owns = await validateCondominiumOwnership('financial_entries', entryId, condominiumId);
+    if (!owns) {
+      throw new Error('Entrada não pertence a este condomínio');
+    }
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    // Valida que não está já recebida
+    if (current.received === true) {
+      throw new Error('Entrada já foi marcada como recebida');
+    }
+
+    // Atualiza entrada como recebida
+    const updateResult = await query(
+      `UPDATE financial_entries 
+       SET received = TRUE, 
+           received_at = CURRENT_TIMESTAMP,
+           receipt_pdf_path = $1,
+           receipt_method = $2,
+           receipt_details = $3,
+           receipt_notes = $4,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 AND condominium_id = $6 AND received = FALSE
+       RETURNING *`,
+      [
+        receiptPdfPath.trim(),
+        receiptMethod.trim(),
+        receiptDetails.trim(),
+        receiptNotes ? receiptNotes.trim() : null,
+        entryId,
+        condominiumId
+      ]
+    );
+
+    if (updateResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada, não pertence a este condomínio ou já foi recebida');
+    }
+
+    const updated = updateResult.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'MARK_RECEIVED',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao marcar entrada como recebida:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   createExit,
   updateExit,
   approveExit,
+  rejectExit,
   markExitAsPaid,
   listExits,
   getDashboardStats,
@@ -1684,6 +1873,7 @@ module.exports = {
   rejectEntry,
   listPendingEntries,
   listRejectedEntries,
+  markEntryAsReceived,
   createAccount,
   listAccounts,
   createConsumption,

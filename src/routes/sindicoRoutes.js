@@ -71,6 +71,28 @@ router.get('/entradas-pendentes', async (req, res) => {
     res.status(500).send('Erro ao carregar entradas');
   }
 });
+
+// Aprovação de saídas financeiras
+router.get('/saidas-pendentes', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const exits = await financeiroService.listExits(req.user.condominiumId, { 
+      paymentStatus: 'PENDING',
+      limit: 1000 
+    });
+    res.render('sindico/saidas-pendentes', {
+      title: 'Saídas Aguardando Aprovação',
+      user: req.user,
+      exits: exits,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao listar saídas pendentes:', error);
+    res.status(500).send('Erro ao carregar saídas');
+  }
+});
 router.post('/entradas/:id/aprovar', async (req, res) => {
   try {
     if (!req.user.condominiumId) {
@@ -111,6 +133,55 @@ router.post('/entradas/:id/rejeitar', async (req, res) => {
   } catch (error) {
     console.error('Erro ao rejeitar entrada:', error);
     res.redirect('/sindico/entradas-pendentes?error=' + encodeURIComponent(error.message));
+  }
+});
+
+// Aprovar ou rejeitar saída financeira
+router.post('/saidas/:id/aprovar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const userRoles = [req.user.role];
+    await financeiroService.approveExit(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      userRoles,
+      ipAddress,
+      userAgent
+    );
+    res.redirect('/sindico/saidas-pendentes?success=approved');
+  } catch (error) {
+    console.error('Erro ao aprovar saída:', error);
+    res.redirect('/sindico/saidas-pendentes?error=' + encodeURIComponent(error.message));
+  }
+});
+
+router.post('/saidas/:id/rejeitar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    if (!req.body.rejectionReason || !req.body.rejectionReason.trim()) {
+      return res.redirect('/sindico/saidas-pendentes?error=' + encodeURIComponent('Motivo da rejeição é obrigatório'));
+    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    await financeiroService.rejectExit(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      req.body.rejectionReason,
+      ipAddress,
+      userAgent
+    );
+    res.redirect('/sindico/saidas-pendentes?success=rejected');
+  } catch (error) {
+    console.error('Erro ao rejeitar saída:', error);
+    res.redirect('/sindico/saidas-pendentes?error=' + encodeURIComponent(error.message));
   }
 });
 

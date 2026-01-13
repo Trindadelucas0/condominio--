@@ -106,7 +106,7 @@
       <div class="flex items-center justify-between">
         <div>
           <p class="text-gray-600 text-sm">Despesas Pendentes</p>
-          <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.pendingExpenses %></p>
+          <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.pendingExpenses || 0 %></p>
         </div>
         <div class="bg-blue-100 rounded-full p-4">
           <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,6 +114,11 @@
           </svg>
         </div>
       </div>
+      <% if (stats.pendingExpenses && stats.pendingExpenses > 0) { %>
+      <a href="/sindico/saidas-pendentes" class="text-blue-600 text-sm mt-4 inline-block hover:underline">
+        Ver saídas pendentes →
+      </a>
+      <% } %>
     </div>
 
     <!-- Tarefas Atrasadas -->
