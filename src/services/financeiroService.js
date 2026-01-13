@@ -1401,14 +1401,73 @@ const listConsumption = async (condominiumId, filters = {}) => {
   }
 };
 
+// Função para criar centro de custo
+// Recebe: condominiumId, userId, dados do centro de custo
+// Retorna: centro de custo criado
+const createCostCenter = async (condominiumId, userId, data, ipAddress, userAgent) => {
+  try {
+    const { name, description, active } = data;
+
+    // Validações
+    if (!name || !name.trim()) {
+      throw new Error('Nome do centro de custo é obrigatório');
+    }
+
+    // Verifica se já existe centro de custo com mesmo nome no condomínio
+    const existingResult = await query(
+      `SELECT id FROM cost_centers 
+       WHERE condominium_id = $1 AND LOWER(name) = LOWER($2)`,
+      [condominiumId, name.trim()]
+    );
+
+    if (existingResult.rows.length > 0) {
+      throw new Error('Já existe um centro de custo com este nome');
+    }
+
+    // Cria centro de custo
+    const result = await query(
+      `INSERT INTO cost_centers (condominium_id, name, description, active)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [
+        condominiumId,
+        name.trim(),
+        description ? description.trim() : null,
+        active !== undefined ? (active === 'true' || active === true) : true
+      ]
+    );
+
+    const costCenter = result.rows[0];
+
+    // Registra no log
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'CREATE',
+      module: 'FINANCIAL',
+      entityType: 'cost_centers',
+      entityId: costCenter.id,
+      beforeData: null,
+      afterData: costCenter,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return costCenter;
+  } catch (error) {
+    console.error('Erro ao criar centro de custo:', error);
+    throw error;
+  }
+};
+
 // Função para listar centros de custo
 // Recebe: condominiumId
 // Retorna: lista de centros de custo
 const listCostCenters = async (condominiumId) => {
   try {
     const result = await query(
-      `SELECT * FROM cost_centers 
-       WHERE condominium_id = $1 AND active = TRUE 
+      `SELECT * FROM cost_centers
+       WHERE condominium_id = $1 AND active = TRUE
        ORDER BY name ASC`,
       [condominiumId]
     );
@@ -1629,5 +1688,6 @@ module.exports = {
   listAccounts,
   createConsumption,
   listConsumption,
+  createCostCenter,
   listCostCenters,
 };

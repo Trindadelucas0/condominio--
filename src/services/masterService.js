@@ -77,12 +77,16 @@ const getDashboardStats = async () => {
 };
 
 // Função para listar condomínios
-// Retorna: lista de condomínios
-const listCondominios = async () => {
+// Retorna: lista de condomínios (apenas ativos por padrão)
+const listCondominios = async (includeInactive = false) => {
   try {
-    const result = await query(
-      `SELECT * FROM condominiums ORDER BY name ASC`
-    );
+    let sql = `SELECT * FROM condominiums`;
+    if (!includeInactive) {
+      sql += ` WHERE active = TRUE`;
+    }
+    sql += ` ORDER BY name ASC`;
+    
+    const result = await query(sql);
     return result.rows;
   } catch (error) {
     console.error('Erro ao listar condomínios:', error);
@@ -166,17 +170,20 @@ const listUsuarios = async () => {
   try {
     const result = await query(
       `SELECT u.*, 
+              c.name as condominium_name,
               COALESCE(
-                json_agg(DISTINCT jsonb_build_object('id', r.id, 'name', r.name)) 
+                array_agg(DISTINCT r.name) 
                 FILTER (WHERE r.id IS NOT NULL),
-                '[]'
+                ARRAY[]::text[]
               ) as roles
        FROM users u
+       LEFT JOIN condominiums c ON u.condominium_id = c.id
        LEFT JOIN user_roles ur ON u.id = ur.user_id
        LEFT JOIN roles r ON ur.role_id = r.id
-       GROUP BY u.id
+       GROUP BY u.id, c.name
        ORDER BY u.full_name ASC`
     );
+    
     return result.rows;
   } catch (error) {
     console.error('Erro ao listar usuários:', error);

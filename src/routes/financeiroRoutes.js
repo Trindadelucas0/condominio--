@@ -75,13 +75,32 @@ router.post('/centros-custo', async (req, res) => {
     if (!req.user.condominiumId) {
       return res.status(400).send('Usuário não está associado a um condomínio');
     }
-    // Por enquanto, apenas redireciona de volta (funcionalidade pode ser implementada depois)
+
+    const financeiroService = require('../services/financeiroService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      name: req.body.name,
+      description: req.body.description || null,
+      active: req.body.active !== undefined ? req.body.active : true,
+    };
+
+    await financeiroService.createCostCenter(
+      req.user.condominiumId,
+      req.user.id,
+      data,
+      ipAddress,
+      userAgent
+    );
+
     res.redirect('/financeiro/centros-custo?success=created');
   } catch (error) {
     console.error('Erro ao criar centro de custo:', error);
     res.render('administrativo/financeiro/centros-custo/form', {
       title: 'Novo Centro de Custo',
       user: req.user,
+      centroCusto: req.body,
       error: error.message,
     });
   }

@@ -102,6 +102,22 @@
 
   <!-- Segunda linha - Novas funcionalidades -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Entradas Pendentes de Análise -->
+    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Entradas Pendentes</p>
+          <p class="text-3xl font-bold text-blue-600 mt-2"><%= typeof stats !== 'undefined' && stats.pendingEntries !== undefined ? stats.pendingEntries : 0 %></p>
+        </div>
+        <div class="bg-blue-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">Aguardando aprovação do síndico</p>
+    </div>
+
     <!-- Entradas Rejeitadas -->
     <% if (typeof stats !== 'undefined' && stats.rejectedEntries !== undefined && stats.rejectedEntries > 0) { %>
     <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-red-500">

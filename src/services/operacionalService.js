@@ -486,10 +486,11 @@ const listOccurrences = async (userId, condominiumId, filters = {}) => {
   try {
     let sql = `
       SELECT * FROM occurrences 
-      WHERE reported_by = $1 AND condominium_id = $2 
+      WHERE condominium_id = $1 
+        AND (reported_by = $2 OR assigned_to = $2)
         AND (occurrence_type = 'ZELADORIA' OR occurrence_type IS NULL)
     `;
-    const params = [userId, condominiumId];
+    const params = [condominiumId, userId];
     let paramCount = 3;
 
     if (filters.status) {
