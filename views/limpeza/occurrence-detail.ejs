@@ -80,38 +80,17 @@
       </div>
     </div>
 
-    <!-- Ocorrência de Zeladoria vinculada (se convertida) -->
-    <% if (zeladoriaOccurrence) { %>
-      <div class="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
+    <!-- Informação sobre necessidade de zeladoria -->
+    <% if (occurrence.needs_zeladoria) { %>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-          <span class="mr-2">🔧</span>
-          Ocorrência de Zeladoria Criada Automaticamente
+          <span class="mr-2">ℹ️</span>
+          Informação
         </h2>
         <div class="bg-white rounded-md p-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Título</label>
-              <p class="text-sm text-gray-900"><%= zeladoriaOccurrence.title %></p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Status</label>
-              <% 
-                const zelStatusColor = statusColors[zeladoriaOccurrence.status] || 'bg-gray-100 text-gray-800';
-              %>
-              <span class="px-3 py-1 inline-flex text-sm font-semibold rounded-full <%= zelStatusColor %>">
-                <%= zeladoriaOccurrence.status %>
-              </span>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-500 mb-1">Descrição</label>
-            <p class="text-sm text-gray-900 whitespace-pre-wrap"><%= zeladoriaOccurrence.description %></p>
-          </div>
-          <div class="mt-4">
-            <a href="/operacional/ocorrencias/<%= zeladoriaOccurrence.id %>" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-              Ver ocorrência de Zeladoria →
-            </a>
-          </div>
+          <p class="text-sm text-gray-700">
+            Esta ocorrência de limpeza requer atenção da zeladoria. O administrativo foi notificado e decidirá se é necessário criar uma ocorrência de zeladoria relacionada.
+          </p>
         </div>
       </div>
     <% } %>

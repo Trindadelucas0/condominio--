@@ -95,7 +95,7 @@ const getDashboardStats = async (condominiumId) => {
     // Conta entradas pendentes de análise
     const pendingEntriesResult = await query(
       `SELECT COUNT(*) as total FROM financial_entries 
-       WHERE condominium_id = $1 AND review_status = 'PENDING_REVIEW'`,
+       WHERE condominium_id = $1 AND review_status = 'PENDING_REVIEW' AND deleted_at IS NULL`,
       [condominiumId]
     );
     const pendingEntries = parseInt(pendingEntriesResult.rows[0].total);

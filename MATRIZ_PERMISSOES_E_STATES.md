@@ -189,14 +189,19 @@ Este documento formaliza o sistema de permissões em nível técnico (AÇÃO x E
 - `APPROVED` → `PAID` (pagamento - FINANCEIRO)
 - `REJECTED` → `PENDING` (reabertura - SINDICO)
 
-#### **FINANCIAL_ENTRIES (received)**
+#### **FINANCIAL_ENTRIES (review_status)**
 | Estado | Display | Inicial | Final | Descrição |
 |--------|---------|---------|-------|-----------|
-| `PENDING` | Pendente | ✅ | ❌ | Aguardando recebimento |
-| `RECEIVED` | Recebida | ❌ | ✅ | Recebida (final) |
+| `PENDING_REVIEW` | Aguardando Análise | ✅ | ❌ | Entrada criada, aguardando análise do síndico |
+| `APPROVED` | Aprovada | ❌ | ❌ | Entrada aprovada, aguardando recebimento |
+| `REJECTED` | Rejeitada | ❌ | ✅ | Entrada rejeitada pelo síndico |
+| `RECEIVED` | Recebida | ❌ | ✅ | Entrada recebida (final) |
 
 **Transições Permitidas:**
-- `PENDING` → `RECEIVED` (marcar como recebida - FINANCEIRO)
+- `PENDING_REVIEW` → `APPROVED` (aprovação - SINDICO)
+- `PENDING_REVIEW` → `REJECTED` (rejeição - SINDICO)
+- `APPROVED` → `RECEIVED` (marcar como recebida - FINANCEIRO)
+- `REJECTED` → `PENDING_REVIEW` (reabertura - SINDICO)
 
 #### **CHECKLISTS**
 | Estado | Display | Inicial | Final | Descrição |

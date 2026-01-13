@@ -545,7 +545,7 @@ const getDashboardStats = async (condominiumId) => {
     // Saldo financeiro (entradas recebidas - saídas pagas - saídas aprovadas mas não pagas)
     const entriesResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
-       WHERE condominium_id = $1 AND received = TRUE`,
+       WHERE condominium_id = $1 AND received = TRUE AND deleted_at IS NULL`,
       [condominiumId]
     );
     const totalEntries = parseFloat(entriesResult.rows[0].total);
@@ -572,7 +572,7 @@ const getDashboardStats = async (condominiumId) => {
        WHERE condominium_id = $1 
        AND EXTRACT(YEAR FROM entry_date) = $2 
        AND EXTRACT(MONTH FROM entry_date) = $3
-       AND received = TRUE`,
+       AND received = TRUE AND deleted_at IS NULL`,
       [condominiumId, currentYear, currentMonth]
     );
     const currentMonthEntries = parseFloat(currentMonthEntriesResult.rows[0].total);
@@ -598,7 +598,7 @@ const getDashboardStats = async (condominiumId) => {
        WHERE condominium_id = $1 
        AND EXTRACT(YEAR FROM entry_date) = $2 
        AND EXTRACT(MONTH FROM entry_date) = $3
-       AND received = TRUE`,
+       AND received = TRUE AND deleted_at IS NULL`,
       [condominiumId, prevYear, prevMonth]
     );
     const prevMonthEntries = parseFloat(prevMonthEntriesResult.rows[0].total);
@@ -711,7 +711,7 @@ const getDashboardStats = async (condominiumId) => {
     // Conta entradas rejeitadas (para financeiro corrigir)
     const rejectedEntriesResult = await query(
       `SELECT COUNT(*) as total FROM financial_entries 
-       WHERE condominium_id = $1 AND review_status = 'REJECTED'`,
+       WHERE condominium_id = $1 AND review_status = 'REJECTED' AND deleted_at IS NULL`,
       [condominiumId]
     );
     const rejectedEntries = parseInt(rejectedEntriesResult.rows[0].total);
@@ -1067,16 +1067,34 @@ const deleteEntry = async (entryId, condominiumId, userId, ipAddress, userAgent)
       throw new Error('Usuário não pertence a este condomínio');
     }
 
+    // Verifica se já foi deletada (soft delete)
+    if (current.deleted_at) {
+      throw new Error('Entrada já foi excluída');
+    }
+
     // Só pode excluir se estiver rejeitada ou pendente
     if (current.review_status === 'APPROVED' && current.received) {
       throw new Error('Não é possível excluir uma entrada já aprovada e recebida');
     }
 
-    // Exclui a entrada
+    // Soft delete: marca deleted_at, deleted_by
+    const deleteReason = current.review_status === 'REJECTED' 
+      ? 'Entrada rejeitada excluída' 
+      : 'Entrada pendente excluída';
+
     await query(
-      `DELETE FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      `UPDATE financial_entries 
+       SET deleted_at = CURRENT_TIMESTAMP, deleted_by = $1, delete_reason = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND condominium_id = $4`,
+      [userId, deleteReason, entryId, condominiumId]
+    );
+
+    // Busca entrada atualizada para log
+    const updatedResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
       [entryId, condominiumId]
     );
+    const updated = updatedResult.rows[0];
 
     // Registra no log
     await logAction({
@@ -1087,7 +1105,7 @@ const deleteEntry = async (entryId, condominiumId, userId, ipAddress, userAgent)
       entityType: 'financial_entries',
       entityId: entryId,
       beforeData: current,
-      afterData: null,
+      afterData: updated,
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
@@ -1109,7 +1127,7 @@ const listEntries = async (condominiumId, filters = {}) => {
       FROM financial_entries fe
       LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id AND cc.condominium_id = $1
       LEFT JOIN users u ON fe.created_by = u.id
-      WHERE fe.condominium_id = $1
+      WHERE fe.condominium_id = $1 AND fe.deleted_at IS NULL
     `;
     const params = [condominiumId];
     let paramCount = 2;
@@ -1579,7 +1597,7 @@ const listRejectedEntries = async (condominiumId) => {
        FROM financial_entries fe
        LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id
        LEFT JOIN users u ON fe.reviewed_by = u.id
-       WHERE fe.condominium_id = $1 AND fe.review_status = 'REJECTED'
+       WHERE fe.condominium_id = $1 AND fe.review_status = 'REJECTED' AND fe.deleted_at IS NULL
        ORDER BY fe.reviewed_at DESC`,
       [condominiumId]
     );

@@ -1,10 +1,10 @@
 // Serviço de ocorrências de LIMPEZA
 // Gerencia ocorrências específicas da equipe de limpeza
-// REGRA: LIMPEZA pode reportar, mas problemas técnicos viram ocorrências de ZELADORIA automaticamente
+// REGRA: LIMPEZA reporta, ADMINISTRATIVO decide se cria ocorrência de ZELADORIA
 
 const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
-const operacionalService = require('./operacionalService');
+const notificationService = require('./notificationService');
 
 // Tipos de ocorrência de LIMPEZA
 const LIMPEZA_TYPES = {
@@ -54,46 +54,17 @@ const createLimpezaOccurrence = async (data, userId, condominiumId, ipAddress, u
 
     const limpezaOccurrence = result.rows[0];
 
-    // Se precisa de zeladoria, cria ocorrência de ZELADORIA automaticamente
-    let zeladoriaOccurrence = null;
+    // Se precisa de zeladoria, notifica ADMINISTRATIVO (não cria automaticamente)
     if (needsZeladoria) {
-      // Busca usuário de zeladoria (OPERACIONAL) para atribuir
-      const zeladoriaUser = await query(
-        `SELECT u.id FROM users u
-         INNER JOIN user_roles ur ON u.id = ur.user_id
-         INNER JOIN roles r ON ur.role_id = r.id
-         WHERE u.condominium_id = $1 AND r.name = 'OPERACIONAL' AND u.active = TRUE
-         LIMIT 1`,
-        [condominiumId]
-      );
-
-      const assignedTo = zeladoriaUser.rows.length > 0 ? zeladoriaUser.rows[0].id : null;
-
-      // Cria ocorrência de ZELADORIA vinculada
-      const zeladoriaResult = await query(
-        `INSERT INTO occurrences (
-          condominium_id, reported_by, title, description, location,
-          occurrence_type, converted_from_limpeza_id, auto_converted, status, priority, assigned_to
-        )
-         VALUES ($1, $2, $3, $4, $5, 'ZELADORIA', $6, TRUE, 'ABERTA', 'ALTA', $7)
-         RETURNING *`,
-        [
-          condominiumId,
-          userId, // Mantém quem reportou originalmente
-          `[CONVERTIDO] ${title.trim()}`,
-          `Ocorrência convertida automaticamente de LIMPEZA.\n\nDescrição original: ${description.trim()}`,
-          location || null,
-          limpezaOccurrence.id,
-          assignedTo,
-        ]
-      );
-
-      zeladoriaOccurrence = zeladoriaResult.rows[0];
-
-      // Atualiza ocorrência de limpeza com referência
-      await query(
-        `UPDATE occurrences SET needs_zeladoria = TRUE WHERE id = $1`,
-        [limpezaOccurrence.id]
+      // Notifica ADMINISTRATIVO para decidir se cria ocorrência de ZELADORIA
+      await notificationService.createNotificationForRole(
+        'ADMINISTRATIVO',
+        condominiumId,
+        'Equipamento de Limpeza com Defeito Reportado',
+        `A equipe de limpeza reportou um equipamento com defeito: "${title}". Verifique se é necessário criar uma ocorrência de zeladoria.`,
+        'OCCURRENCE_REQUIRES_ATTENTION',
+        'occurrences',
+        limpezaOccurrence.id
       );
     }
 
@@ -108,8 +79,8 @@ const createLimpezaOccurrence = async (data, userId, condominiumId, ipAddress, u
       beforeData: null,
       afterData: {
         limpeza_occurrence: limpezaOccurrence,
-        zeladoria_occurrence: zeladoriaOccurrence,
-        auto_converted: needsZeladoria,
+        needs_zeladoria: needsZeladoria,
+        notification_sent: needsZeladoria,
       },
       ipAddress: ipAddress,
       userAgent: userAgent,
@@ -117,8 +88,7 @@ const createLimpezaOccurrence = async (data, userId, condominiumId, ipAddress, u
 
     return {
       limpezaOccurrence,
-      zeladoriaOccurrence,
-      autoConverted: needsZeladoria,
+      notificationSent: needsZeladoria,
     };
   } catch (error) {
     console.error('Erro ao criar ocorrência de limpeza:', error);

@@ -50,7 +50,7 @@
 tasks (
   id,
   title,
-  assigned_to,
+  assigned_to, 
   due_date,        -- Data única e específica
   task_type,       -- CHECKLIST, MANUTENCAO, OUTRA
   checklist_items  -- Itens criados junto com a tarefa

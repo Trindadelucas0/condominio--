@@ -85,8 +85,8 @@ const createOccurrence = async (req, res) => {
     );
 
     let message = 'Ocorrência de limpeza criada com sucesso';
-    if (result.autoConverted) {
-      message += '. Uma ocorrência de zeladoria foi criada automaticamente.';
+    if (result.notificationSent) {
+      message += '. O administrativo foi notificado para verificar se é necessário criar ocorrência de zeladoria.';
     }
 
     res.redirect(`/limpeza/ocorrencias?success=${encodeURIComponent(message)}`);
@@ -119,20 +119,6 @@ const showOccurrence = async (req, res) => {
       return renderError(res, 404, 'Ocorrência não encontrada');
     }
 
-    // Verifica se foi convertida para zeladoria
-    let zeladoriaOccurrence = null;
-    if (occurrence.needs_zeladoria) {
-      const zeladoriaResult = await query(
-        `SELECT * FROM occurrences 
-         WHERE converted_from_limpeza_id = $1 AND occurrence_type = 'ZELADORIA'`,
-        [id]
-      );
-
-      if (zeladoriaResult.rows.length > 0) {
-        zeladoriaOccurrence = zeladoriaResult.rows[0];
-      }
-    }
-
     const limpezaTypes = limpezaService.getLimpezaTypes();
     const limpezaTypeInfo = limpezaTypes.find((t) => t.value === occurrence.limpeza_type);
 
@@ -140,7 +126,6 @@ const showOccurrence = async (req, res) => {
       title: `Ocorrência: ${occurrence.title}`,
       user: req.user,
       occurrence,
-      zeladoriaOccurrence,
       limpezaTypeInfo,
     });
   } catch (error) {
