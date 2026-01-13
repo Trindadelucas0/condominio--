@@ -235,12 +235,22 @@ const showEditDocumento = async (req, res) => {
       return res.status(404).send('Documento não encontrado');
     }
 
+    // Garante que campos opcionais existam
+    const documentoCompleto = {
+      ...documento,
+      status: documento.status || 'ACTIVE',
+      document_type: documento.document_type || 'DOCUMENT',
+      category_id: documento.category_id || null,
+      expiry_date: documento.expiry_date || null,
+      description: documento.description || '',
+    };
+
     const categories = await administrativoService.listDocumentCategories(req.user.condominiumId);
 
     res.render('administrativo/documentos/form', {
       title: 'Editar Documento',
       user: req.user,
-      documento: documento,
+      documento: documentoCompleto,
       categories: categories,
     });
   } catch (error) {
