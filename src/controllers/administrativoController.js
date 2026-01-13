@@ -448,7 +448,7 @@ const triarOcorrencia = async (req, res) => {
       } : null,
     };
 
-    await triagemService.triageOccurrence(
+    const result = await triagemService.triageOccurrence(
       parseInt(req.params.id),
       triagemData,
       req.user.id,
@@ -457,7 +457,12 @@ const triarOcorrencia = async (req, res) => {
       userAgent
     );
 
-    res.redirect('/administrativo/ocorrencias?success=triaged');
+    // Se foi convertida em tarefa, mostra mensagem específica
+    if (triagemData.convertToTask && result.taskCreated) {
+      res.redirect('/administrativo/ocorrencias?success=triaged_and_task_created');
+    } else {
+      res.redirect('/administrativo/ocorrencias?success=triaged');
+    }
   } catch (error) {
     console.error('Erro ao triar ocorrência:', error);
     res.redirect(`/administrativo/ocorrencias/${req.params.id}/triar?error=${encodeURIComponent(error.message)}`);
