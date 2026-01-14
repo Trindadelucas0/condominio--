@@ -1,173 +1,363 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Logs de Auditoria</h1>
-    <p class="text-gray-600 mt-2">Histórico completo de ações do sistema</p>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .table-row-hover {
+    transition: all 0.2s ease;
+  }
+  
+  .table-row-hover:hover {
+    background-color: #f9fafb;
+    transform: scale(1.001);
+  }
+</style>
 
-  <!-- Filtros -->
-  <div class="bg-white rounded-lg shadow p-6 mb-6">
-    <h2 class="text-lg font-bold text-gray-800 mb-4">Filtros</h2>
-    <form method="GET" action="/sindico/logs" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-      <!-- Módulo -->
-      <div>
-        <label for="module" class="block text-sm font-medium text-gray-700 mb-1">Módulo</label>
-        <select id="module" name="module" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
-          <option value="">Todos</option>
-          <% if (typeof modules !== 'undefined') { %>
-            <% modules.forEach(module => { %>
-              <option value="<%= module %>" <%= filters.module === module ? 'selected' : '' %>><%= module %></option>
-            <% }); %>
-          <% } %>
-        </select>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex items-center space-x-3 mb-2">
+        <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent">
+            Logs de Auditoria
+          </h1>
+          <p class="text-gray-600 mt-1">Histórico completo de ações do sistema</p>
+        </div>
       </div>
+    </div>
 
-      <!-- Ação -->
-      <div>
-        <label for="action" class="block text-sm font-medium text-gray-700 mb-1">Ação</label>
-        <select id="action" name="action" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
-          <option value="">Todas</option>
-          <% if (typeof actions !== 'undefined') { %>
-            <% actions.forEach(action => { %>
-              <option value="<%= action %>" <%= filters.action === action ? 'selected' : '' %>><%= action %></option>
-            <% }); %>
-          <% } %>
-        </select>
+    <!-- Filtros Modernos -->
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 animate-slide-in">
+      <div class="flex items-center space-x-2 mb-4">
+        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+        </svg>
+        <h2 class="text-lg font-bold text-gray-800">Filtros</h2>
       </div>
+      <form method="GET" action="/sindico/logs" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <!-- Módulo -->
+        <div>
+          <label for="module" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+            </svg>
+            Módulo
+          </label>
+          <select id="module" name="module" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200">
+            <option value="">Todos</option>
+            <% if (typeof modules !== 'undefined') { %>
+              <% modules.forEach(module => { %>
+                <option value="<%= module %>" <%= filters.module === module ? 'selected' : '' %>><%= module %></option>
+              <% }); %>
+            <% } %>
+          </select>
+        </div>
 
-      <!-- Usuário -->
-      <div>
-        <label for="userId" class="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
-        <select id="userId" name="userId" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
-          <option value="">Todos</option>
-          <% if (typeof users !== 'undefined') { %>
-            <% users.forEach(u => { %>
-              <option value="<%= u.id %>" <%= filters.userId === u.id ? 'selected' : '' %>><%= u.full_name %></option>
-            <% }); %>
-          <% } %>
-        </select>
-      </div>
+        <!-- Ação -->
+        <div>
+          <label for="action" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+            Ação
+          </label>
+          <select id="action" name="action" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200">
+            <option value="">Todas</option>
+            <% if (typeof actions !== 'undefined') { %>
+              <% actions.forEach(action => { %>
+                <option value="<%= action %>" <%= filters.action === action ? 'selected' : '' %>><%= action %></option>
+              <% }); %>
+            <% } %>
+          </select>
+        </div>
 
-      <!-- Data Inicial -->
-      <div>
-        <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
-        <input type="date" id="startDate" name="startDate" value="<%= filters.startDate || '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
-      </div>
+        <!-- Usuário -->
+        <div>
+          <label for="userId" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+            Usuário
+          </label>
+          <select id="userId" name="userId" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200">
+            <option value="">Todos</option>
+            <% if (typeof users !== 'undefined') { %>
+              <% users.forEach(u => { %>
+                <option value="<%= u.id %>" <%= filters.userId === u.id ? 'selected' : '' %>><%= u.full_name %></option>
+              <% }); %>
+            <% } %>
+          </select>
+        </div>
 
-      <!-- Data Final -->
-      <div>
-        <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
-        <input type="date" id="endDate" name="endDate" value="<%= filters.endDate || '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
-      </div>
+        <!-- Data Inicial -->
+        <div>
+          <label for="startDate" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            Data Inicial
+          </label>
+          <input type="date" id="startDate" name="startDate" value="<%= filters.startDate || '' %>" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200">
+        </div>
 
-      <!-- Botões -->
-      <div class="flex items-end space-x-2">
-        <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition">
-          Filtrar
-        </button>
-        <a href="/sindico/logs" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition">
-          Limpar
-        </a>
-      </div>
-    </form>
-  </div>
+        <!-- Data Final -->
+        <div>
+          <label for="endDate" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            Data Final
+          </label>
+          <input type="date" id="endDate" name="endDate" value="<%= filters.endDate || '' %>" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200">
+        </div>
 
-  <!-- Tabela de logs -->
-  <div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data/Hora</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuário</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ação</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Módulo</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entidade</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Detalhes</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <% if (logs.length === 0) { %>
+        <!-- Botões -->
+        <div class="flex items-end gap-2">
+          <button type="submit" class="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 inline-flex items-center justify-center space-x-2 w-full">
+            <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+            <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+            <span class="relative z-10">Filtrar</span>
+          </button>
+          <a href="/sindico/logs" class="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-all duration-200 inline-flex items-center justify-center space-x-2 w-full">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            <span>Limpar</span>
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabela de Logs Moderna -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-slide-in">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gradient-to-r from-purple-50 to-pink-50">
             <tr>
-              <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                Nenhum log encontrado.
-              </td>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <span>Data/Hora</span>
+                </div>
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  <span>Usuário</span>
+                </div>
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  </svg>
+                  <span>Ação</span>
+                </div>
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                  </svg>
+                  <span>Módulo</span>
+                </div>
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                  </svg>
+                  <span>Entidade</span>
+                </div>
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                  <span>Detalhes</span>
+                </div>
+              </th>
             </tr>
-          <% } else { %>
-            <% logs.forEach(log => { %>
-              <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <%= new Date(log.created_at).toLocaleString('pt-BR') %>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900"><%= log.user_name || log.username || 'Sistema' %></div>
-                  <% if (log.ip_address) { %>
-                    <div class="text-xs text-gray-500"><%= log.ip_address %></div>
-                  <% } %>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">
-                    <%= log.action %>
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <%= log.module %>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <%= log.entity_type %> #<%= log.entity_id || '-' %>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <button 
-                    type="button"
-                    onclick="toggleDetails(<%= log.id %>)"
-                    class="text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Ver Detalhes
-                  </button>
-                </td>
-              </tr>
-              <!-- Linha de detalhes (oculta) -->
-              <tr id="details-<%= log.id %>" class="hidden bg-gray-50">
-                <td colspan="6" class="px-6 py-4">
-                  <div class="space-y-4">
-                    <% if (log.before_data || log.after_data) { %>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <% if (log.before_data) { %>
-                          <div>
-                            <h4 class="font-semibold text-gray-700 mb-2">Estado Antes</h4>
-                            <pre class="bg-white p-3 rounded border text-xs overflow-auto max-h-64"><%= JSON.stringify(log.before_data, null, 2) %></pre>
-                          </div>
-                        <% } %>
-                        <% if (log.after_data) { %>
-                          <div>
-                            <h4 class="font-semibold text-gray-700 mb-2">Estado Depois</h4>
-                            <pre class="bg-white p-3 rounded border text-xs overflow-auto max-h-64"><%= JSON.stringify(log.after_data, null, 2) %></pre>
-                          </div>
-                        <% } %>
-                      </div>
-                    <% } %>
-                    <% if (log.user_agent) { %>
-                      <div>
-                        <h4 class="font-semibold text-gray-700 mb-1">Navegador/Dispositivo</h4>
-                        <p class="text-sm text-gray-600"><%= log.user_agent %></p>
-                      </div>
-                    <% } %>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% if (logs.length === 0) { %>
+              <tr>
+                <td colspan="6" class="px-6 py-12 text-center">
+                  <div class="flex flex-col items-center">
+                    <div class="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full p-6 w-20 h-20 mb-4 flex items-center justify-center">
+                      <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                    </div>
+                    <p class="text-lg font-semibold text-gray-700">Nenhum log encontrado.</p>
+                    <p class="text-sm text-gray-500 mt-1">Tente ajustar os filtros para encontrar mais resultados</p>
                   </div>
                 </td>
               </tr>
-            <% }); %>
-          <% } %>
-        </tbody>
-      </table>
+            <% } else { %>
+              <% logs.forEach((log, index) => { %>
+                <tr class="table-row-hover" style="animation: fadeInUp 0.3s ease-out <%= index * 0.02 %>s both">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center space-x-2">
+                      <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      <span class="text-sm font-medium text-gray-900"><%= new Date(log.created_at).toLocaleString('pt-BR') %></span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center space-x-2">
+                      <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-full w-8 h-8 flex items-center justify-center text-white text-xs font-bold">
+                        <%= (log.user_name || log.username || 'S').charAt(0).toUpperCase() %>
+                      </div>
+                      <div>
+                        <div class="text-sm font-medium text-gray-900"><%= log.user_name || log.username || 'Sistema' %></div>
+                        <% if (log.ip_address) { %>
+                          <div class="text-xs text-gray-500 flex items-center space-x-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                            </svg>
+                            <span><%= log.ip_address %></span>
+                          </div>
+                        <% } %>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <% 
+                      let actionColor = 'from-blue-500 to-blue-600';
+                      if (log.action === 'CREATE') actionColor = 'from-green-500 to-emerald-600';
+                      else if (log.action === 'UPDATE') actionColor = 'from-yellow-500 to-amber-600';
+                      else if (log.action === 'DELETE') actionColor = 'from-red-500 to-red-600';
+                      else if (log.action === 'APPROVE') actionColor = 'from-green-500 to-emerald-600';
+                      else if (log.action === 'REJECT') actionColor = 'from-red-500 to-red-600';
+                      else if (log.action === 'LOGIN') actionColor = 'from-purple-500 to-pink-600';
+                    %>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r <%= actionColor %> text-white shadow-md">
+                      <%= log.action %>
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm font-medium text-gray-700"><%= log.module %></span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-800">
+                      <%= log.entity_type %> #<%= log.entity_id || '-' %>
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <button 
+                      type="button"
+                      onclick="toggleDetails(<%= log.id %>)"
+                      class="group inline-flex items-center space-x-1 text-purple-600 hover:text-purple-800 text-sm font-semibold transition-colors"
+                    >
+                      <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                      </svg>
+                      <span>Ver Detalhes</span>
+                    </button>
+                  </td>
+                </tr>
+                <!-- Linha de detalhes (oculta) -->
+                <tr id="details-<%= log.id %>" class="hidden bg-gradient-to-r from-gray-50 to-purple-50/30">
+                  <td colspan="6" class="px-6 py-6">
+                    <div class="space-y-4">
+                      <% if (log.before_data || log.after_data) { %>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <% if (log.before_data) { %>
+                            <div class="bg-white rounded-xl p-4 border-2 border-red-200 shadow-md">
+                              <div class="flex items-center space-x-2 mb-3">
+                                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+                                </svg>
+                                <h4 class="font-bold text-gray-800">Estado Antes</h4>
+                              </div>
+                              <pre class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs overflow-auto max-h-64 font-mono"><%= JSON.stringify(log.before_data, null, 2) %></pre>
+                            </div>
+                          <% } %>
+                          <% if (log.after_data) { %>
+                            <div class="bg-white rounded-xl p-4 border-2 border-green-200 shadow-md">
+                              <div class="flex items-center space-x-2 mb-3">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                </svg>
+                                <h4 class="font-bold text-gray-800">Estado Depois</h4>
+                              </div>
+                              <pre class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs overflow-auto max-h-64 font-mono"><%= JSON.stringify(log.after_data, null, 2) %></pre>
+                            </div>
+                          <% } %>
+                        </div>
+                      <% } %>
+                      <% if (log.user_agent) { %>
+                        <div class="bg-white rounded-xl p-4 border-2 border-purple-200 shadow-md">
+                          <div class="flex items-center space-x-2 mb-2">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                            <h4 class="font-bold text-gray-800">Navegador/Dispositivo</h4>
+                          </div>
+                          <p class="text-sm text-gray-700 font-mono"><%= log.user_agent %></p>
+                        </div>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
 
-  <!-- Informação sobre quantidade -->
-  <div class="mt-4 text-sm text-gray-500 text-center">
-    Exibindo até <%= filters.limit || 100 %> logs mais recentes
+    <!-- Informação sobre quantidade -->
+    <div class="mt-6 bg-white rounded-xl shadow-md p-4 text-center animate-slide-in">
+      <div class="flex items-center justify-center space-x-2 text-sm text-gray-600">
+        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <span>Exibindo até <strong class="text-gray-900"><%= filters.limit || 100 %></strong> logs mais recentes</span>
+      </div>
+    </div>
   </div>
 </div>
 
