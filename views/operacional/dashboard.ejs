@@ -1,149 +1,279 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="page-title">Dashboard Operacional</h1>
-    <p class="page-subtitle">Painel de operações</p>
-  </div>
+<style>
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  
+  .card-elevate {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-elevate:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .stat-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%);
+    backdrop-filter: blur(10px);
+  }
+  
+  .pulse-animation {
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  .shimmer-effect {
+    background: linear-gradient(90deg, #f0f0f0 0%, #e0e0e0 50%, #f0f0f0 100%);
+    background-size: 2000px 100%;
+    animation: shimmer 2s infinite;
+  }
+</style>
 
-  <!-- Cards de estatísticas -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-    <!-- Tarefas Pendentes -->
-    <div class="card card-hover">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm font-medium">Tarefas Pendentes</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2"><%= stats.pendingTasks %></p>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-amber-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-fade-in-up">
+      <div class="flex items-center space-x-4 mb-4">
+        <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-4 shadow-lg">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
         </div>
-        <div class="bg-primary-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div>
+          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-gray-900 bg-clip-text text-transparent">
+            Dashboard Operacional
+          </h1>
+          <p class="text-gray-600 mt-1">Painel de operações e atividades</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards de Estatísticas - Primeira Linha -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <!-- Tarefas Pendentes -->
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 card-elevate animate-fade-in-up" style="animation-delay: 0.1s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Tarefas Pendentes</p>
+            <p class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+              <%= stats.pendingTasks %>
+            </p>
+          </div>
+          <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 shadow-md">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+        </div>
+        <a href="/operacional/checklist" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 group">
+          Ver checklist
+          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Tarefas Atrasadas -->
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-red-500 card-elevate animate-fade-in-up <%= stats.overdueTasks > 0 ? 'pulse-animation' : '' %>" style="animation-delay: 0.2s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Tarefas Atrasadas</p>
+            <p class="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
+              <%= stats.overdueTasks %>
+            </p>
+          </div>
+          <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 shadow-md">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+        <% if (stats.overdueTasks > 0) { %>
+          <span class="inline-flex items-center text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-800">
+            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            Requer atenção
+          </span>
+        <% } %>
+      </div>
+
+      <!-- Ocorrências Abertas -->
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500 card-elevate animate-fade-in-up" style="animation-delay: 0.3s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Ocorrências Abertas</p>
+            <p class="text-4xl font-bold bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">
+              <%= stats.openOccurrences %>
+            </p>
+          </div>
+          <div class="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl p-4 shadow-md">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+        </div>
+        <a href="/operacional/ocorrencias" class="inline-flex items-center text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors duration-200 group">
+          Ver ocorrências
+          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Cards de Estatísticas - Segunda Linha -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <!-- Manutenções Pendentes -->
+      <% if (stats.pendingMaintenances !== undefined) { %>
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-indigo-500 card-elevate animate-fade-in-up" style="animation-delay: 0.4s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Manutenções Pendentes</p>
+            <p class="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 bg-clip-text text-transparent">
+              <%= stats.pendingMaintenances %>
+            </p>
+          </div>
+          <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl p-4 shadow-md">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </div>
+        </div>
+        <a href="/operacional/manutencoes?status=PENDING" class="inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors duration-200 group">
+          Ver manutenções
+          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+      <% } %>
+
+      <!-- Manutenções em Andamento -->
+      <% if (stats.inProgressMaintenances !== undefined) { %>
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-cyan-500 card-elevate animate-fade-in-up" style="animation-delay: 0.5s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Manutenções em Andamento</p>
+            <p class="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-cyan-700 bg-clip-text text-transparent">
+              <%= stats.inProgressMaintenances %>
+            </p>
+          </div>
+          <div class="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl p-4 shadow-md">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+        <a href="/operacional/manutencoes?status=IN_PROGRESS" class="inline-flex items-center text-sm font-semibold text-cyan-600 hover:text-cyan-700 transition-colors duration-200 group">
+          Ver manutenções
+          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+      <% } %>
+
+      <!-- Orçamentos Liberados -->
+      <% if (stats.releasedBudgets !== undefined) { %>
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-green-500 card-elevate animate-fade-in-up" style="animation-delay: 0.6s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Orçamentos Liberados</p>
+            <p class="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              <%= stats.releasedBudgets %>
+            </p>
+          </div>
+          <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 shadow-md">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+          </div>
+        </div>
+        <a href="/operacional/orcamentos" class="inline-flex items-center text-sm font-semibold text-green-600 hover:text-green-700 transition-colors duration-200 group">
+          Ver orçamentos
+          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="bg-white rounded-2xl shadow-xl p-8 animate-fade-in-up" style="animation-delay: 0.7s">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg p-2">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900">Ações Rápidas</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <a href="/operacional/checklist" class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
           </svg>
-        </div>
-      </div>
-      <a href="/operacional/checklist" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
-        Ver checklist →
-      </a>
-    </div>
-
-    <!-- Tarefas Atrasadas -->
-    <div class="card card-hover">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm font-medium">Tarefas Atrasadas</p>
-          <p class="text-3xl font-bold text-red-600 mt-2"><%= stats.overdueTasks %></p>
-        </div>
-        <div class="bg-red-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          <span class="relative z-10">Ver Checklist</span>
+        </a>
+        
+        <a href="/operacional/ocorrencias/nova" class="group relative overflow-hidden bg-gradient-to-r from-yellow-600 to-amber-600 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
           </svg>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ocorrências Abertas -->
-    <div class="card card-hover">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm font-medium">Ocorrências Abertas</p>
-          <p class="text-3xl font-bold text-yellow-600 mt-2"><%= stats.openOccurrences %></p>
-        </div>
-        <div class="bg-yellow-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-          </svg>
-        </div>
-      </div>
-      <a href="/operacional/ocorrencias" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
-        Ver ocorrências →
-      </a>
-    </div>
-  </div>
-
-  <!-- Segunda linha - Manutenções e Orçamentos -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-    <!-- Manutenções Pendentes -->
-    <% if (stats.pendingMaintenances !== undefined) { %>
-    <div class="card card-hover">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm font-medium">Manutenções Pendentes</p>
-          <p class="text-3xl font-bold text-primary-600 mt-2"><%= stats.pendingMaintenances %></p>
-        </div>
-        <div class="bg-primary-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <span class="relative z-10">Nova Ocorrência</span>
+        </a>
+        
+        <% if (stats.pendingMaintenances !== undefined && stats.pendingMaintenances > 0) { %>
+        <a href="/operacional/manutencoes?status=PENDING" class="group relative overflow-hidden bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
           </svg>
-        </div>
+          <span class="relative z-10">Ver Manutenções (<%= stats.pendingMaintenances %>)</span>
+        </a>
+        <% } %>
       </div>
-      <a href="/operacional/manutencoes?status=PENDING" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
-        Ver manutenções →
-      </a>
-    </div>
-    <% } %>
-
-    <!-- Manutenções em Andamento -->
-    <% if (stats.inProgressMaintenances !== undefined) { %>
-    <div class="card card-hover">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm font-medium">Manutenções em Andamento</p>
-          <p class="text-3xl font-bold text-yellow-600 mt-2"><%= stats.inProgressMaintenances %></p>
-        </div>
-        <div class="bg-yellow-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-        </div>
-      </div>
-      <a href="/operacional/manutencoes?status=IN_PROGRESS" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
-        Ver manutenções →
-      </a>
-    </div>
-    <% } %>
-
-    <!-- Orçamentos Liberados -->
-    <% if (stats.releasedBudgets !== undefined) { %>
-    <div class="card card-hover">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm font-medium">Orçamentos Liberados</p>
-          <p class="text-3xl font-bold text-green-600 mt-2"><%= stats.releasedBudgets %></p>
-        </div>
-        <div class="bg-green-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-          </svg>
-        </div>
-      </div>
-      <a href="/operacional/orcamentos" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
-        Ver orçamentos →
-      </a>
-    </div>
-    <% } %>
-  </div>
-
-  <!-- Ações rápidas -->
-  <div class="card">
-    <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <a href="/operacional/checklist" class="btn-primary text-center">
-        Ver Checklist
-      </a>
-      <a href="/operacional/ocorrencias/nova" class="btn-primary text-center bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500">
-        Nova Ocorrência
-      </a>
-      <% if (stats.pendingMaintenances !== undefined && stats.pendingMaintenances > 0) { %>
-      <a href="/operacional/manutencoes?status=PENDING" class="btn-primary text-center">
-        Ver Manutenções (<%= stats.pendingMaintenances %>)
-      </a>
-      <% } %>
     </div>
   </div>
 </div>
-</main>
 
 <%- include('../partials/footer') %>
