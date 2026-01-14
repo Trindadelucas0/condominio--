@@ -64,26 +64,37 @@
         <!-- Logo -->
         <div class="flex items-center space-x-3">
           <div class="relative">
-            <!-- Círculo verde glossy com efeito 3D -->
-            <div class="w-12 h-12 rounded-full relative overflow-hidden shadow-xl" style="background: radial-gradient(circle at 30% 30%, #4ade80, #22a329, #15803d);">
-              <!-- Highlight para efeito glossy -->
-              <div class="absolute top-1 left-2 w-4 h-4 bg-white/40 rounded-full blur-sm"></div>
-              <!-- Logo 'e' estilizado branco dentro - formato euro com barra extra no topo -->
-              <svg class="w-8 h-8 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <!-- Linha vertical esquerda -->
-                <line x1="6" y1="7" x2="6" y2="17" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Barra horizontal superior (barra extra) -->
-                <line x1="6" y1="7" x2="16" y2="7" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Curva superior (incompleta, estilo euro) -->
-                <path d="M6 7 Q12 7 16 10" stroke="currentColor" fill="none" stroke-width="2.5"/>
-                <!-- Linha horizontal do meio -->
-                <line x1="6" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Curva do meio (incompleta) -->
-                <path d="M6 12 Q12 12 16 14" stroke="currentColor" fill="none" stroke-width="2.5"/>
-                <!-- Linha horizontal inferior -->
-                <line x1="6" y1="17" x2="16" y2="17" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Curva inferior (incompleta) -->
-                <path d="M6 17 Q12 17 16 14" stroke="currentColor" fill="none" stroke-width="2.5"/>
+            <!-- Logo usando imagem direta - tenta vários formatos -->
+            <img 
+              id="logo-navbar"
+              src="/logo.png" 
+              alt="Logo Êxito" 
+              class="w-16 h-16 md:w-20 md:h-20 object-contain"
+              onerror="
+                var img = this;
+                var formats = ['/logo.jpg', '/logo.jpeg', '/logo.svg', '/logo.webp'];
+                var currentIndex = formats.indexOf(img.src) + 1;
+                if (currentIndex < formats.length) {
+                  img.src = formats[currentIndex];
+                } else {
+                  img.style.display='none';
+                  if (img.nextElementSibling) img.nextElementSibling.classList.remove('hidden');
+                }
+              "
+              style="object-fit: contain;"
+            />
+            <!-- Fallback SVG caso a imagem não carregue -->
+            <div class="w-12 h-12 rounded-full relative overflow-hidden hidden" style="background: radial-gradient(ellipse at 20% 20%, #b8f5d0 0%, #6ee7b7 25%, #34d399 50%, #10b981 75%, #059669 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3);">
+              <div class="absolute top-0 left-0 w-10 h-7 bg-white/70 rounded-full blur-lg" style="transform: rotate(-25deg); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;"></div>
+              <div class="absolute top-0.5 left-1 w-7 h-5 bg-white/80 rounded-full blur-md" style="transform: rotate(-25deg);"></div>
+              <div class="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/20 to-transparent"></div>
+              <div class="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-white/20 to-transparent"></div>
+              <div class="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gradient-to-tl from-black/15 via-transparent to-transparent rounded-full"></div>
+              <svg class="w-8 h-8 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+                <line x1="6.5" y1="7.5" x2="6.5" y2="16.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M6.5 7.5 L13.5 7.5 Q15 7.5 15.2 8.2" stroke="white" fill="none" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="6.5" y1="12" x2="15.5" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M6.5 16.5 L13.5 16.5 Q15 16.5 15.2 15.8" stroke="white" fill="none" stroke-width="2.5" stroke-linecap="round"/>
               </svg>
             </div>
           </div>
@@ -195,26 +206,38 @@
         <div class="mb-8 inline-block">
           <!-- Logo com círculo verde glossy e 'e' estilizado -->
           <div class="relative">
-            <div class="w-40 h-40 rounded-full relative overflow-hidden shadow-2xl mx-auto animate-float" style="background: radial-gradient(circle at 30% 30%, #4ade80, #22a329, #15803d);">
-              <!-- Highlight para efeito glossy -->
-              <div class="absolute top-4 left-8 w-16 h-16 bg-white/40 rounded-full blur-xl"></div>
-              <div class="absolute top-6 left-10 w-12 h-12 bg-white/30 rounded-full blur-md"></div>
-              <!-- Logo 'e' estilizado branco dentro - formato euro com barra extra no topo -->
-              <svg class="w-24 h-24 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <!-- Linha vertical esquerda -->
-                <line x1="6" y1="7" x2="6" y2="17" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Barra horizontal superior (barra extra) -->
-                <line x1="6" y1="7" x2="16" y2="7" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Curva superior (incompleta, estilo euro) -->
-                <path d="M6 7 Q12 7 16 10" stroke="currentColor" fill="none" stroke-width="2.5"/>
-                <!-- Linha horizontal do meio -->
-                <line x1="6" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Curva do meio (incompleta) -->
-                <path d="M6 12 Q12 12 16 14" stroke="currentColor" fill="none" stroke-width="2.5"/>
-                <!-- Linha horizontal inferior -->
-                <line x1="6" y1="17" x2="16" y2="17" stroke="currentColor" stroke-width="2.5"/>
-                <!-- Curva inferior (incompleta) -->
-                <path d="M6 17 Q12 17 16 14" stroke="currentColor" fill="none" stroke-width="2.5"/>
+            <!-- Logo usando imagem direta - tenta vários formatos -->
+            <img 
+              id="logo-main"
+              src="/logo.png" 
+              alt="Logo Êxito" 
+              class="w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 object-contain mx-auto animate-float"
+              onerror="
+                var img = this;
+                var formats = ['/logo.jpg', '/logo.jpeg', '/logo.svg', '/logo.webp'];
+                var currentIndex = formats.indexOf(img.src) + 1;
+                if (currentIndex < formats.length) {
+                  img.src = formats[currentIndex];
+                } else {
+                  img.style.display='none';
+                  if (img.nextElementSibling) img.nextElementSibling.classList.remove('hidden');
+                }
+              "
+              style="object-fit: contain; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.25));"
+            />
+            <!-- Fallback SVG caso a imagem não carregue -->
+            <div class="w-40 h-40 rounded-full relative overflow-hidden mx-auto animate-float hidden" style="background: radial-gradient(ellipse at 20% 20%, #b8f5d0 0%, #6ee7b7 25%, #34d399 50%, #10b981 75%, #059669 100%); box-shadow: 0 8px 24px rgba(0,0,0,0.25), 0 4px 8px rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.3);">
+              <div class="absolute top-2 left-2 w-32 h-24 bg-white/70 rounded-full blur-2xl" style="transform: rotate(-25deg); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;"></div>
+              <div class="absolute top-4 left-6 w-24 h-18 bg-white/80 rounded-full blur-xl" style="transform: rotate(-25deg);"></div>
+              <div class="absolute top-6 left-8 w-16 h-12 bg-white/90 rounded-full blur-lg" style="transform: rotate(-25deg);"></div>
+              <div class="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/25 to-transparent"></div>
+              <div class="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-white/25 to-transparent"></div>
+              <div class="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gradient-to-tl from-black/20 via-transparent to-transparent rounded-full"></div>
+              <svg class="w-24 h-24 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+                <line x1="6.5" y1="7.5" x2="6.5" y2="16.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M6.5 7.5 L13.5 7.5 Q15 7.5 15.2 8.2" stroke="white" fill="none" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="6.5" y1="12" x2="15.5" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M6.5 16.5 L13.5 16.5 Q15 16.5 15.2 15.8" stroke="white" fill="none" stroke-width="2.5" stroke-linecap="round"/>
               </svg>
             </div>
           </div>
