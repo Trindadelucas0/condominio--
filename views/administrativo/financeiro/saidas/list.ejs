@@ -1,115 +1,354 @@
 <%- include('../../../partials/header', { title: title }) %>
 <%- include('../../../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Saídas Financeiras</h1>
-      <p class="text-gray-600 mt-2">Despesas do condomínio</p>
-    </div>
-    <a href="/financeiro/saidas/nova" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
-      Nova Saída
-    </a>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .card-hover-effect {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-hover-effect:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .status-badge {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .status-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+  }
+  
+  .status-badge:hover::before {
+    left: 100%;
+  }
+  
+  .table-row-animate {
+    animation: slideIn 0.3s ease-out;
+    animation-fill-mode: both;
+  }
+  
+  .table-row-animate:nth-child(1) { animation-delay: 0.05s; }
+  .table-row-animate:nth-child(2) { animation-delay: 0.1s; }
+  .table-row-animate:nth-child(3) { animation-delay: 0.15s; }
+  .table-row-animate:nth-child(4) { animation-delay: 0.2s; }
+  .table-row-animate:nth-child(5) { animation-delay: 0.25s; }
+</style>
 
-  <!-- Mensagens -->
-  <% if (typeof query !== 'undefined' && query.success === 'created') { %>
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-      Saída criada com sucesso!
-    </div>
-  <% } %>
-  <% if (typeof query !== 'undefined' && query.success === 'paid') { %>
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-      Saída marcada como paga!
-    </div>
-  <% } %>
-  <% if (typeof query !== 'undefined' && query.error) { %>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-      <%= decodeURIComponent(query.error) %>
-    </div>
-  <% } %>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-red-50/30 to-orange-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <div class="flex items-center space-x-3 mb-2">
+            <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 shadow-lg">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                Saídas Financeiras
+              </h1>
+              <p class="text-gray-600 mt-1">Despesas do condomínio</p>
+            </div>
+          </div>
+        </div>
+        <a href="/financeiro/saidas/nova" class="group relative overflow-hidden bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+          </svg>
+          <span class="relative z-10">Nova Saída</span>
+        </a>
+      </div>
 
-  <!-- Lista de saídas -->
-  <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Centro de Custo</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
+      <!-- Mensagens Modernas -->
+      <% if (typeof query !== 'undefined' && query.success === 'created') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-green-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-green-800">Saída criada com sucesso!</p>
+              <p class="text-sm text-green-600">A saída foi registrada e enviada para aprovação se necessário.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+      <% if (typeof query !== 'undefined' && query.success === 'paid') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-green-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-green-800">Saída marcada como paga!</p>
+              <p class="text-sm text-green-600">O registro foi atualizado com sucesso.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+      <% if (typeof query !== 'undefined' && query.error) { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-red-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-red-800">Erro ao processar</p>
+              <p class="text-sm text-red-600"><%= decodeURIComponent(query.error) %></p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Estatísticas Rápidas -->
+      <% 
+        const totalExits = exits.length;
+        const totalValue = exits.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        const paidCount = exits.filter(e => e.payment_status === 'PAID').length;
+        const approvedCount = exits.filter(e => e.payment_status === 'APPROVED').length;
+        const pendingCount = exits.filter(e => e.payment_status === 'PENDING').length;
+      %>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Total de Saídas</p>
+              <p class="text-3xl font-bold text-gray-900"><%= totalExits %></p>
+            </div>
+            <div class="bg-red-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-rose-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Valor Total</p>
+              <p class="text-2xl font-bold text-rose-600">
+                R$ <%= totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+              </p>
+            </div>
+            <div class="bg-rose-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Pagas</p>
+              <p class="text-3xl font-bold text-green-600"><%= paidCount %></p>
+            </div>
+            <div class="bg-green-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-yellow-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Pendentes</p>
+              <p class="text-3xl font-bold text-yellow-600"><%= pendingCount %></p>
+            </div>
+            <div class="bg-yellow-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Saídas Moderna -->
+      <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-slide-in">
+        <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-bold text-gray-900 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Lista de Saídas
+          </h2>
+        </div>
+        
         <% if (exits.length === 0) { %>
-          <tr>
-            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-              Nenhuma saída registrada.
-            </td>
-          </tr>
+          <div class="p-12 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
+              <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhuma saída registrada</h3>
+            <p class="text-gray-500 mb-6">Comece registrando sua primeira saída financeira.</p>
+            <a href="/financeiro/saidas/nova" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+              </svg>
+              Criar Primeira Saída
+            </a>
+          </div>
         <% } else { %>
-          <% exits.forEach(exit => { %>
-            <tr>
-              <td class="px-6 py-4">
-                <div class="text-sm font-medium text-gray-900"><%= exit.description %></div>
-                <div class="text-sm text-gray-500"><%= exit.category %></div>
-                <% if (exit.bill_name) { %>
-                  <div class="text-xs text-blue-600">Conta: <%= exit.bill_name %></div>
-                <% } %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-bold text-red-600">
-                  R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <%= exit.cost_center_name || '-' %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <% if (exit.payment_status === 'PAID') { %>
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                    Paga
-                  </span>
-                <% } else if (exit.payment_status === 'APPROVED') { %>
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                    Aprovada
-                  </span>
-                <% } else { %>
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    Pendente
-                  </span>
-                <% } %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <% if (exit.payment_status === 'APPROVED' && exit.payment_status !== 'PAID') { %>
-                  <a href="/financeiro/saidas/<%= exit.id %>/pagar" class="text-green-600 hover:text-green-900">
-                    Marcar como Paga
-                  </a>
-                <% } else if (exit.payment_status === 'PAID') { %>
-                  <div class="flex flex-col items-end">
-                    <span class="text-gray-400 text-xs">Paga em <%= new Date(exit.paid_at).toLocaleDateString('pt-BR') %></span>
-                    <% if (exit.payment_receipt_pdf_path) { %>
-                      <a href="/financeiro/saidas/<%= exit.id %>/comprovante" target="_blank" class="text-blue-600 hover:text-blue-900 text-xs mt-1">
-                        Ver Comprovante
-                      </a>
-                    <% } %>
-                  </div>
-                <% } else { %>
-                  <span class="text-gray-400">Aguardando aprovação</span>
-                <% } %>
-              </td>
-            </tr>
-          <% }); %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
+                <tr>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Descrição</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Valor</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Data</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Centro de Custo</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% exits.forEach((exit, index) => { %>
+                  <tr class="table-row-animate hover:bg-gradient-to-r hover:from-red-50/50 hover:to-rose-50/50 transition-all duration-200 card-hover-effect">
+                    <td class="px-6 py-5">
+                      <div class="flex items-center space-x-3">
+                        <div class="flex-shrink-0">
+                          <div class="w-10 h-10 bg-gradient-to-br from-red-400 to-rose-500 rounded-lg flex items-center justify-center shadow-md">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-sm font-bold text-gray-900"><%= exit.description %></div>
+                          <div class="text-xs text-gray-500 mt-0.5 flex items-center space-x-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                              <%= exit.category %>
+                            </span>
+                            <% if (exit.bill_name) { %>
+                              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <%= exit.bill_name %>
+                              </span>
+                            <% } %>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <div class="text-lg font-bold text-red-600">
+                        R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <div class="text-sm text-gray-600">
+                        <%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <div class="text-sm text-gray-600">
+                        <%= exit.cost_center_name || '-' %>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <% if (exit.payment_status === 'PAID') { %>
+                        <span class="status-badge inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200 shadow-sm">
+                          <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                          Paga
+                        </span>
+                      <% } else if (exit.payment_status === 'APPROVED') { %>
+                        <span class="status-badge inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-200 shadow-sm">
+                          <span class="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
+                          Aprovada
+                        </span>
+                      <% } else { %>
+                        <span class="status-badge inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border border-yellow-200 shadow-sm">
+                          <span class="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></span>
+                          Pendente
+                        </span>
+                      <% } %>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
+                      <% if (exit.payment_status === 'APPROVED' && exit.payment_status !== 'PAID') { %>
+                        <a href="/financeiro/saidas/<%= exit.id %>/pagar" class="group inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                          <svg class="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                          Marcar como Paga
+                        </a>
+                      <% } else if (exit.payment_status === 'PAID') { %>
+                        <div class="flex flex-col items-end space-y-1">
+                          <span class="text-xs text-gray-500">
+                            Paga em <%= new Date(exit.paid_at).toLocaleDateString('pt-BR') %>
+                          </span>
+                          <% if (exit.payment_receipt_pdf_path) { %>
+                            <a href="/financeiro/saidas/<%= exit.id %>/comprovante" target="_blank" class="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium group">
+                              <svg class="w-4 h-4 mr-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                              </svg>
+                              Ver Comprovante
+                            </a>
+                          <% } %>
+                        </div>
+                      <% } else { %>
+                        <span class="text-gray-400 text-sm">Aguardando aprovação</span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
         <% } %>
-      </tbody>
-    </table>
+      </div>
+    </div>
   </div>
-</div>
 
 <%- include('../../../partials/footer') %>

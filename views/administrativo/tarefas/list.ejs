@@ -1,97 +1,257 @@
 <%- include('../../partials/header', { title: title }) %>
 <%- include('../../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-    <div>
-      <h1 class="page-title">Tarefas</h1>
-      <p class="page-subtitle">Tarefas criadas para a equipe operacional</p>
-    </div>
-    <a href="/administrativo/tarefas/nova" class="btn-primary w-full sm:w-auto text-center">
-      Nova Tarefa
-    </a>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .table-row-animate {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .card-hover-effect {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-hover-effect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  .status-badge {
+    animation: pulse 2s ease-in-out infinite;
+  }
+</style>
 
-  <!-- Mensagem de sucesso -->
-  <% if (typeof query !== 'undefined' && query.success === 'created') { %>
-    <div class="alert-success">
-      Tarefa criada com sucesso!
-    </div>
-  <% } %>
-
-  <!-- Lista de tarefas -->
-  <div class="card overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="table-header">Título</th>
-          <th class="table-header">Responsável</th>
-          <th class="table-header">Vencimento</th>
-          <th class="table-header">Prioridade</th>
-          <th class="table-header">Status</th>
-          <th class="table-header">Criada em</th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
-        <% if (tasks.length === 0) { %>
-          <tr>
-            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-              Nenhuma tarefa criada ainda.
-            </td>
-          </tr>
-        <% } else { %>
-          <% tasks.forEach(task => { %>
-            <tr class="table-row">
-              <td class="table-cell">
-                <div class="text-sm font-medium text-gray-900"><%= task.title %></div>
-                <% if (task.description) { %>
-                  <div class="text-sm text-gray-500"><%= task.description.substring(0, 50) %><%= task.description.length > 50 ? '...' : '' %></div>
-                <% } %>
-              </td>
-              <td class="table-cell">
-                <div class="text-sm text-gray-900"><%= task.assigned_to_name %></div>
-              </td>
-              <td class="table-cell">
-                <div class="text-sm text-gray-900">
-                  <%= new Date(task.due_date).toLocaleDateString('pt-BR') %>
-                  <% if (new Date(task.due_date) < new Date() && task.status !== 'COMPLETED') { %>
-                    <span class="badge-danger ml-2">Atrasado</span>
-                  <% } %>
-                </div>
-              </td>
-              <td class="table-cell">
-                <span class="badge-primary">
-                  <%= task.priority %>
-                </span>
-              </td>
-              <td class="table-cell">
-                <% if (task.status === 'COMPLETED') { %>
-                  <span class="badge-success">
-                    Concluída
-                  </span>
-                <% } else if (task.status === 'IN_PROGRESS') { %>
-                  <span class="badge-info">
-                    Em Andamento
-                  </span>
-                <% } else { %>
-                  <span class="badge-warning">
-                    Pendente
-                  </span>
-                <% } %>
-              </td>
-              <td class="table-cell text-gray-500">
-                <%= new Date(task.created_at).toLocaleDateString('pt-BR') %>
-              </td>
-            </tr>
-          <% }); %>
-        <% } %>
-      </tbody>
-    </table>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-blue-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <div class="flex items-center space-x-3 mb-2">
+            <div class="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl p-3 shadow-lg">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-gray-900 bg-clip-text text-transparent">
+                Tarefas
+              </h1>
+              <p class="text-gray-600 mt-1">Tarefas criadas para a equipe operacional</p>
+            </div>
+          </div>
+        </div>
+        <a href="/administrativo/tarefas/nova" class="group relative overflow-hidden bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          <span class="relative z-10">Nova Tarefa</span>
+        </a>
       </div>
+    </div>
+
+    <!-- Mensagem de Sucesso -->
+    <% if (typeof query !== 'undefined' && query.success === 'created') { %>
+      <div class="mb-6 animate-slide-in">
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+          <div class="bg-green-500 rounded-full p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="font-semibold text-green-800">Tarefa criada com sucesso!</p>
+          </div>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Estatísticas Rápidas -->
+    <% 
+      const totalTasks = tasks ? tasks.length : 0;
+      const completedTasks = tasks ? tasks.filter(t => t.status === 'COMPLETED').length : 0;
+      const pendingTasks = tasks ? tasks.filter(t => t.status === 'PENDING').length : 0;
+      const inProgressTasks = tasks ? tasks.filter(t => t.status === 'IN_PROGRESS').length : 0;
+      const overdueTasks = tasks ? tasks.filter(t => new Date(t.due_date) < new Date() && t.status !== 'COMPLETED').length : 0;
+    %>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-indigo-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Total</p>
+            <p class="text-3xl font-bold text-gray-900"><%= totalTasks %></p>
+          </div>
+          <div class="bg-indigo-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Concluídas</p>
+            <p class="text-3xl font-bold text-green-600"><%= completedTasks %></p>
+          </div>
+          <div class="bg-green-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-yellow-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Pendentes</p>
+            <p class="text-3xl font-bold text-yellow-600"><%= pendingTasks %></p>
+          </div>
+          <div class="bg-yellow-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Atrasadas</p>
+            <p class="text-3xl font-bold text-red-600"><%= overdueTasks %></p>
+          </div>
+          <div class="bg-red-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de Tarefas Moderna -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-slide-in">
+      <% if (!tasks || tasks.length === 0) { %>
+        <div class="p-12 text-center">
+          <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
+            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-2">Nenhuma tarefa encontrada</h3>
+          <p class="text-gray-500 mb-6">Comece criando sua primeira tarefa para a equipe operacional.</p>
+          <a href="/administrativo/tarefas/nova" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Criar Primeira Tarefa
+          </a>
+        </div>
+      <% } else { %>
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Título</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Responsável</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Vencimento</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Prioridade</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Criada em</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% tasks.forEach((task, index) => { %>
+              <tr class="table-row-animate hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-blue-50/50 transition-all duration-200 card-hover-effect" style="animation-delay: <%= index * 0.05 %>s">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm font-bold text-gray-900"><%= task.title %></div>
+                  <% if (task.description) { %>
+                    <div class="text-sm text-gray-500 mt-1"><%= task.description.substring(0, 50) %><%= task.description.length > 50 ? '...' : '' %></div>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm font-medium text-gray-900"><%= task.assigned_to_name || '-' %></div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center space-x-2">
+                    <div class="text-sm text-gray-900">
+                      <%= new Date(task.due_date).toLocaleDateString('pt-BR') %>
+                    </div>
+                    <% if (new Date(task.due_date) < new Date() && task.status !== 'COMPLETED') { %>
+                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md status-badge">
+                        Atrasado
+                      </span>
+                    <% } %>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% 
+                    let priorityColor = 'from-gray-400 to-gray-500';
+                    if (task.priority === 'URGENTE') priorityColor = 'from-red-500 to-rose-500';
+                    else if (task.priority === 'ALTA') priorityColor = 'from-orange-500 to-amber-500';
+                    else if (task.priority === 'NORMAL') priorityColor = 'from-blue-500 to-cyan-500';
+                    else if (task.priority === 'BAIXA') priorityColor = 'from-green-500 to-emerald-500';
+                  %>
+                  <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r <%= priorityColor %> text-white shadow-md">
+                    <%= task.priority %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% if (task.status === 'COMPLETED') { %>
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md">
+                      <span class="w-2 h-2 bg-white rounded-full mr-2"></span>
+                      Concluída
+                    </span>
+                  <% } else if (task.status === 'IN_PROGRESS') { %>
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md status-badge">
+                      <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                      Em Andamento
+                    </span>
+                  <% } else { %>
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-md">
+                      <span class="w-2 h-2 bg-white rounded-full mr-2"></span>
+                      Pendente
+                    </span>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= new Date(task.created_at).toLocaleDateString('pt-BR') %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
     </div>
   </div>
 </div>
-</main>
 
 <%- include('../../partials/footer') %>

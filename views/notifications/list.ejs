@@ -1,116 +1,360 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="mb-6 flex justify-between items-center">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Notificações</h1>
-      <p class="text-gray-600 mt-2">Suas notificações do sistema</p>
-    </div>
-    <% if (unreadCount > 0) { %>
-    <form method="POST" action="/notifications/read-all" class="inline">
-      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-        Marcar todas como lidas
-      </button>
-    </form>
-    <% } %>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .notification-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .notification-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+    transition: left 0.5s;
+  }
+  
+  .notification-card:hover::before {
+    left: 100%;
+  }
+  
+  .notification-card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  .notification-unread {
+    position: relative;
+  }
+  
+  .notification-unread::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  .badge-pulse {
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  .filter-btn {
+    transition: all 0.2s ease;
+  }
+  
+  .filter-btn:hover {
+    transform: translateY(-2px);
+  }
+</style>
 
-  <!-- Mensagens de sucesso/erro -->
-  <% if (typeof req !== 'undefined' && req.query.success === 'all_read') { %>
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-      Todas as notificações foram marcadas como lidas!
-    </div>
-  <% } %>
-  <% if (typeof req !== 'undefined' && req.query.error) { %>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-      <%= decodeURIComponent(req.query.error) %>
-    </div>
-  <% } %>
-
-  <!-- Filtros -->
-  <div class="bg-white rounded-lg shadow p-4 mb-6">
-    <div class="flex space-x-4">
-      <a href="/notifications" class="px-4 py-2 rounded <%= !filters.read ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' %>">
-        Todas
-      </a>
-      <a href="/notifications?read=false" class="px-4 py-2 rounded <%= filters.read === false ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' %>">
-        Não lidas (<%= unreadCount %>)
-      </a>
-      <a href="/notifications?read=true" class="px-4 py-2 rounded <%= filters.read === true ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' %>">
-        Lidas
-      </a>
-    </div>
-  </div>
-
-  <!-- Lista de notificações -->
-  <div class="space-y-4">
-    <% if (notifications && notifications.length > 0) { %>
-      <% notifications.forEach(notification => { %>
-        <div class="bg-white rounded-lg shadow p-6 <%= !notification.read ? 'border-l-4 border-blue-500' : '' %>">
-          <div class="flex justify-between items-start">
-            <div class="flex-1">
-              <div class="flex items-center space-x-2 mb-2">
-                <h3 class="text-lg font-semibold text-gray-800"><%= notification.title %></h3>
-                <% if (!notification.read) { %>
-                  <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">Nova</span>
-                <% } %>
-              </div>
-              <p class="text-gray-600 mb-2"><%= notification.message %></p>
-              <p class="text-xs text-gray-400">
-                <%= new Date(notification.created_at).toLocaleString('pt-BR') %>
-                <% if (notification.entity_type && notification.entity_id) { %>
-                  <% 
-                    let detailUrl = null;
-                    if (notification.entity_type === 'maintenances') {
-                      // Verifica se o usuário é síndico ou operacional
-                      if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) {
-                        detailUrl = `/sindico/manutencoes/${notification.entity_id}`;
-                      } else if (user.roles && user.roles.includes('OPERACIONAL')) {
-                        detailUrl = `/operacional/manutencoes/${notification.entity_id}`;
-                      }
-                    } else if (notification.entity_type === 'financial_entries') {
-                      detailUrl = `/financeiro/entradas`;
-                    } else if (notification.entity_type === 'budget_requests') {
-                      detailUrl = `/administrativo/orcamentos`;
-                    } else if (notification.entity_type === 'occurrences') {
-                      if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) {
-                        detailUrl = `/sindico/ocorrencias/${notification.entity_id}`;
-                      } else if (user.roles && user.roles.includes('OPERACIONAL')) {
-                        detailUrl = `/operacional/ocorrencias/${notification.entity_id}`;
-                      }
-                    }
-                  %>
-                  <% if (detailUrl) { %>
-                    | <a href="<%= detailUrl %>" class="text-blue-600 hover:underline">Ver detalhes</a>
-                  <% } %>
-                <% } %>
-              </p>
-            </div>
-            <div class="ml-4">
-              <% if (!notification.read) { %>
-                <form method="POST" action="/notifications/<%= notification.id %>/read" class="inline">
-                  <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm">
-                    Marcar como lida
-                  </button>
-                </form>
-              <% } else { %>
-                <span class="text-gray-400 text-sm">Lida</span>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <div class="flex items-center space-x-3 mb-2">
+            <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg relative">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+              </svg>
+              <% if (unreadCount > 0) { %>
+                <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center badge-pulse shadow-lg">
+                  <%= unreadCount %>
+                </span>
               <% } %>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                Notificações
+              </h1>
+              <p class="text-gray-600 mt-1">Suas notificações do sistema</p>
             </div>
           </div>
         </div>
-      <% }); %>
-    <% } else { %>
-      <div class="bg-white rounded-lg shadow p-12 text-center">
-        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-        </svg>
-        <p class="text-gray-500 text-lg">Nenhuma notificação encontrada</p>
+        <% if (unreadCount > 0) { %>
+        <form method="POST" action="/notifications/read-all" class="inline">
+          <button type="submit" class="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+            <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+            <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="relative z-10">Marcar todas como lidas</span>
+          </button>
+        </form>
+        <% } %>
       </div>
-    <% } %>
+    </div>
+
+      <!-- Mensagens Modernas -->
+      <% if (typeof req !== 'undefined' && req.query.success === 'all_read') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-green-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-green-800">Todas as notificações foram marcadas como lidas!</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+      <% if (typeof req !== 'undefined' && req.query.error) { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-red-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-red-800">Erro</p>
+              <p class="text-sm text-red-600"><%= decodeURIComponent(req.query.error) %></p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Estatísticas Rápidas -->
+      <% 
+        const totalNotifications = notifications ? notifications.length : 0;
+        const readCount = notifications ? notifications.filter(n => n.read).length : 0;
+      %>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-purple-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Total de Notificações</p>
+              <p class="text-3xl font-bold text-gray-900"><%= totalNotifications %></p>
+            </div>
+            <div class="bg-purple-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-blue-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Não Lidas</p>
+              <p class="text-3xl font-bold text-blue-600"><%= unreadCount %></p>
+            </div>
+            <div class="bg-blue-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Lidas</p>
+              <p class="text-3xl font-bold text-green-600"><%= readCount %></p>
+            </div>
+            <div class="bg-green-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros Modernos -->
+      <div class="bg-white rounded-xl shadow-lg p-4 mb-8 animate-slide-in">
+        <div class="flex flex-wrap gap-3">
+          <a href="/notifications" class="filter-btn px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 <%= !filters.read ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' %>">
+            Todas
+          </a>
+          <a href="/notifications?read=false" class="filter-btn px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2 <%= filters.read === false ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' %>">
+            <span>Não lidas</span>
+            <% if (unreadCount > 0) { %>
+              <span class="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 badge-pulse">
+                <%= unreadCount %>
+              </span>
+            <% } %>
+          </a>
+          <a href="/notifications?read=true" class="filter-btn px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 <%= filters.read === true ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' %>">
+            Lidas
+          </a>
+        </div>
+      </div>
+
+      <!-- Lista de Notificações Moderna -->
+      <div class="space-y-4">
+        <% if (notifications && notifications.length > 0) { %>
+          <% notifications.forEach((notification, index) => { %>
+            <div class="notification-card bg-white rounded-xl shadow-lg p-6 <%= !notification.read ? 'notification-unread border-l-4 border-blue-500' : 'border-l-4 border-gray-200' %> animate-slide-in" style="animation-delay: <%= index * 0.05 %>s">
+              <div class="flex justify-between items-start">
+                <div class="flex-1">
+                  <div class="flex items-start space-x-4">
+                    <!-- Ícone da Notificação -->
+                    <div class="flex-shrink-0">
+                      <% 
+                        let iconColor = 'from-blue-400 to-cyan-500';
+                        let iconPath = 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9';
+                        
+                        if (notification.entity_type === 'financial_entries') {
+                          iconColor = 'from-green-400 to-emerald-500';
+                          iconPath = 'M12 4v16m8-8H4';
+                        } else if (notification.entity_type === 'budget_requests') {
+                          iconColor = 'from-yellow-400 to-amber-500';
+                          iconPath = 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z';
+                        } else if (notification.entity_type === 'occurrences') {
+                          iconColor = 'from-red-400 to-rose-500';
+                          iconPath = 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
+                        } else if (notification.entity_type === 'maintenances') {
+                          iconColor = 'from-purple-400 to-pink-500';
+                          iconPath = 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z';
+                        }
+                      %>
+                      <div class="bg-gradient-to-br <%= iconColor %> rounded-xl p-3 shadow-md">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= iconPath %>"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <!-- Conteúdo -->
+                    <div class="flex-1">
+                      <div class="flex items-center space-x-3 mb-2">
+                        <h3 class="text-lg font-bold text-gray-900"><%= notification.title %></h3>
+                        <% if (!notification.read) { %>
+                          <span class="badge-pulse inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md">
+                            <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                            Nova
+                          </span>
+                        <% } %>
+                      </div>
+                      <p class="text-gray-700 mb-3 leading-relaxed"><%= notification.message %></p>
+                      <div class="flex items-center space-x-4 text-xs text-gray-500">
+                        <div class="flex items-center space-x-1">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                          <span><%= new Date(notification.created_at).toLocaleString('pt-BR') %></span>
+                        </div>
+                        <% if (notification.entity_type && notification.entity_id) { %>
+                          <% 
+                            let detailUrl = null;
+                            if (notification.entity_type === 'maintenances') {
+                              if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) {
+                                detailUrl = `/sindico/manutencoes/${notification.entity_id}`;
+                              } else if (user.roles && user.roles.includes('OPERACIONAL')) {
+                                detailUrl = `/operacional/manutencoes/${notification.entity_id}`;
+                              }
+                            } else if (notification.entity_type === 'financial_entries') {
+                              detailUrl = `/financeiro/entradas`;
+                            } else if (notification.entity_type === 'budget_requests') {
+                              detailUrl = `/administrativo/orcamentos`;
+                            } else if (notification.entity_type === 'occurrences') {
+                              if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) {
+                                detailUrl = `/sindico/ocorrencias/${notification.entity_id}`;
+                              } else if (user.roles && user.roles.includes('OPERACIONAL')) {
+                                detailUrl = `/operacional/ocorrencias/${notification.entity_id}`;
+                              }
+                            }
+                          %>
+                          <% if (detailUrl) { %>
+                            <a href="<%= detailUrl %>" class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-semibold transition-colors">
+                              <span>Ver detalhes</span>
+                              <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                              </svg>
+                            </a>
+                          <% } %>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Ações -->
+                <div class="ml-6 flex-shrink-0">
+                  <% if (!notification.read) { %>
+                    <form method="POST" action="/notifications/<%= notification.id %>/read" class="inline">
+                      <button type="submit" class="group inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                        <svg class="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Marcar como lida
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <div class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium">
+                      <svg class="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Lida
+                    </div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <div class="bg-white rounded-2xl shadow-xl p-12 text-center animate-slide-in">
+            <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
+              <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+              </svg>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Nenhuma notificação encontrada</h3>
+            <p class="text-gray-500">Você está em dia! Não há notificações no momento.</p>
+          </div>
+        <% } %>
+      </div>
+    </div>
   </div>
-</div>
 
 <%- include('../partials/footer') %>

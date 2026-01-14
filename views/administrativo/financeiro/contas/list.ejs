@@ -1,70 +1,302 @@
 <%- include('../../../partials/header', { title: title }) %>
 <%- include('../../../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Contas (Água, Luz, Gás)</h1>
-      <p class="text-gray-600 mt-2">Gerenciar contas recorrentes</p>
-    </div>
-    <a href="/financeiro/contas/nova" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
-      Nova Conta
-    </a>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .card-hover-effect {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-hover-effect:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .status-badge {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .status-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+  }
+  
+  .status-badge:hover::before {
+    left: 100%;
+  }
+  
+  .table-row-animate {
+    animation: slideIn 0.3s ease-out;
+    animation-fill-mode: both;
+  }
+  
+  .table-row-animate:nth-child(1) { animation-delay: 0.05s; }
+  .table-row-animate:nth-child(2) { animation-delay: 0.1s; }
+  .table-row-animate:nth-child(3) { animation-delay: 0.15s; }
+  .table-row-animate:nth-child(4) { animation-delay: 0.2s; }
+  .table-row-animate:nth-child(5) { animation-delay: 0.25s; }
+  
+  .type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+</style>
 
-  <!-- Mensagens -->
-  <% if (typeof query !== 'undefined' && query.success === 'created') { %>
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-      Conta criada com sucesso!
-    </div>
-  <% } %>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-cyan-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <div class="flex items-center space-x-3 mb-2">
+            <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-3 shadow-lg">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                Contas Recorrentes
+              </h1>
+              <p class="text-gray-600 mt-1">Gerenciar contas de água, luz, gás e outras</p>
+            </div>
+          </div>
+        </div>
+        <a href="/financeiro/contas/nova" class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          <span class="relative z-10">Nova Conta</span>
+        </a>
+      </div>
 
-  <!-- Lista de contas -->
-  <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fornecedor</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Número da Conta</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Centro de Custo</th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
+      <!-- Mensagens Modernas -->
+      <% if (typeof query !== 'undefined' && query.success === 'created') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-green-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-green-800">Conta criada com sucesso!</p>
+              <p class="text-sm text-green-600">A conta foi cadastrada e está disponível para uso.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Estatísticas Rápidas -->
+      <% 
+        const totalAccounts = accounts ? accounts.length : 0;
+        const typeCounts = {};
+        if (accounts) {
+          accounts.forEach(bill => {
+            typeCounts[bill.bill_type] = (typeCounts[bill.bill_type] || 0) + 1;
+          });
+        }
+        const activeAccounts = accounts ? accounts.filter(a => a.active !== false).length : 0;
+      %>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-blue-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Total de Contas</p>
+              <p class="text-3xl font-bold text-gray-900"><%= totalAccounts %></p>
+            </div>
+            <div class="bg-blue-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-cyan-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Contas Ativas</p>
+              <p class="text-3xl font-bold text-cyan-600"><%= activeAccounts %></p>
+            </div>
+            <div class="bg-cyan-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-indigo-500 card-hover-effect">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm font-medium mb-1">Tipos Diferentes</p>
+              <p class="text-3xl font-bold text-indigo-600"><%= Object.keys(typeCounts).length %></p>
+            </div>
+            <div class="bg-indigo-100 rounded-lg p-3">
+              <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Contas Moderna -->
+      <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-slide-in">
+        <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-bold text-gray-900 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Lista de Contas
+          </h2>
+        </div>
+        
         <% if (!accounts || accounts.length === 0) { %>
-          <tr>
-            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-              Nenhuma conta cadastrada.
-            </td>
-          </tr>
+          <div class="p-12 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
+              <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhuma conta cadastrada</h3>
+            <p class="text-gray-500 mb-6">Comece cadastrando sua primeira conta recorrente.</p>
+            <a href="/financeiro/contas/nova" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Cadastrar Primeira Conta
+            </a>
+          </div>
         <% } else { %>
-          <% accounts.forEach(bill => { %>
-            <tr>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900"><%= bill.name %></div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">
-                  <%= bill.bill_type %>
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <%= bill.provider || '-' %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <%= bill.account_number || '-' %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <%= bill.cost_center_name || '-' %>
-              </td>
-            </tr>
-          <% }); %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
+                <tr>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nome</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipo</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Fornecedor</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Número da Conta</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Centro de Custo</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% accounts.forEach((bill, index) => { %>
+                  <tr class="table-row-animate hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-cyan-50/50 transition-all duration-200 card-hover-effect">
+                    <td class="px-6 py-5">
+                      <div class="flex items-center space-x-3">
+                        <div class="flex-shrink-0">
+                          <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg flex items-center justify-center shadow-md">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-sm font-bold text-gray-900"><%= bill.name %></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <% 
+                        const typeColors = {
+                          'AGUA': 'from-blue-100 to-blue-200 text-blue-800 border-blue-300',
+                          'LUZ': 'from-yellow-100 to-yellow-200 text-yellow-800 border-yellow-300',
+                          'GAS': 'from-orange-100 to-orange-200 text-orange-800 border-orange-300',
+                          'TELEFONE': 'from-purple-100 to-purple-200 text-purple-800 border-purple-300',
+                          'INTERNET': 'from-indigo-100 to-indigo-200 text-indigo-800 border-indigo-300',
+                          'OUTRA': 'from-gray-100 to-gray-200 text-gray-800 border-gray-300'
+                        };
+                        const typeLabels = {
+                          'AGUA': 'Água',
+                          'LUZ': 'Energia',
+                          'GAS': 'Gás',
+                          'TELEFONE': 'Telefone',
+                          'INTERNET': 'Internet',
+                          'OUTRA': 'Outra'
+                        };
+                        const colors = typeColors[bill.bill_type] || typeColors['OUTRA'];
+                        const label = typeLabels[bill.bill_type] || bill.bill_type;
+                      %>
+                      <span class="status-badge inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r <%= colors %> border shadow-sm">
+                        <%= label %>
+                      </span>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <div class="text-sm text-gray-600">
+                        <%= bill.provider || '-' %>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <div class="text-sm text-gray-600 font-mono">
+                        <%= bill.account_number || '-' %>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <div class="text-sm text-gray-600">
+                        <%= bill.cost_center_name || '-' %>
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap">
+                      <% if (bill.active !== false) { %>
+                        <span class="status-badge inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200 shadow-sm">
+                          <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                          Ativa
+                        </span>
+                      <% } else { %>
+                        <span class="status-badge inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300 shadow-sm">
+                          <span class="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                          Inativa
+                        </span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
         <% } %>
-      </tbody>
-    </table>
+      </div>
+    </div>
   </div>
-</div>
 
 <%- include('../../../partials/footer') %>

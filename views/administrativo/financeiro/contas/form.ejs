@@ -1,127 +1,223 @@
 <%- include('../../../partials/header', { title: title }) %>
 <%- include('../../../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Nova Conta</h1>
-    <p class="text-gray-600 mt-2">Cadastre uma conta recorrente (água, luz, gás, etc)</p>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .input-focus:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .card-glow {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .card-glow:hover {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  }
+  
+  .icon-bounce:hover {
+    animation: bounce 0.5s;
+  }
+</style>
 
-  <!-- Mensagem de erro -->
-  <% if (typeof error !== 'undefined' && error) { %>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-      <%= error %>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-cyan-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex items-center space-x-4 mb-4">
+        <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-4 shadow-lg">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+            Nova Conta Recorrente
+          </h1>
+          <p class="text-gray-600 mt-1">Cadastre uma conta recorrente (água, luz, gás, etc)</p>
+        </div>
+      </div>
     </div>
-  <% } %>
 
-  <!-- Formulário -->
-  <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form method="POST" action="/financeiro/contas">
-      <!-- Nome -->
-      <div class="mb-4">
-        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-          Nome da Conta <span class="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          required
-          value="<%= conta ? conta.name : '' %>"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Ex: Conta de Água"
-        />
+    <!-- Mensagem de erro moderna -->
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="mb-6 animate-slide-in">
+        <div class="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+          <div class="bg-red-500 rounded-full p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="font-semibold text-red-800">Erro ao processar</p>
+            <p class="text-sm text-red-600"><%= error %></p>
+          </div>
+        </div>
       </div>
+    <% } %>
 
-      <!-- Tipo -->
-      <div class="mb-4">
-        <label for="billType" class="block text-sm font-medium text-gray-700 mb-1">
-          Tipo <span class="text-red-500">*</span>
-        </label>
-        <select
-          id="billType"
-          name="billType"
-          required
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="AGUA" <%= !conta || conta.billType === 'AGUA' ? 'selected' : '' %>>Água</option>
-          <option value="LUZ" <%= conta && conta.billType === 'LUZ' ? 'selected' : '' %>>Luz</option>
-          <option value="GAS" <%= conta && conta.billType === 'GAS' ? 'selected' : '' %>>Gás</option>
-          <option value="TELEFONE" <%= conta && conta.billType === 'TELEFONE' ? 'selected' : '' %>>Telefone</option>
-          <option value="INTERNET" <%= conta && conta.billType === 'INTERNET' ? 'selected' : '' %>>Internet</option>
-          <option value="OUTRA" <%= conta && conta.billType === 'OUTRA' ? 'selected' : '' %>>Outra</option>
-        </select>
-      </div>
+    <!-- Formulário Moderno -->
+    <div class="max-w-3xl mx-auto">
+      <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in">
+        <form method="POST" action="/financeiro/contas" class="space-y-6">
+          <!-- Nome -->
+          <div>
+            <label for="name" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+              </svg>
+              Nome da Conta
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              value="<%= conta ? conta.name : '' %>"
+              class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-400"
+              placeholder="Ex: Conta de Água"
+            />
+          </div>
 
-      <!-- Fornecedor -->
-      <div class="mb-4">
-        <label for="provider" class="block text-sm font-medium text-gray-700 mb-1">
-          Fornecedor
-        </label>
-        <input
-          type="text"
-          id="provider"
-          name="provider"
-          value="<%= conta ? conta.provider : '' %>"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Ex: Companhia de Água e Esgoto"
-        />
-      </div>
+          <!-- Tipo e Fornecedor em Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Tipo -->
+            <div>
+              <label for="billType" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                </svg>
+                Tipo
+                <span class="text-red-500 ml-1">*</span>
+              </label>
+              <select
+                id="billType"
+                name="billType"
+                required
+                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
+              >
+                <option value="AGUA" <%= !conta || conta.billType === 'AGUA' ? 'selected' : '' %>>Água</option>
+                <option value="LUZ" <%= conta && conta.billType === 'LUZ' ? 'selected' : '' %>>Energia</option>
+                <option value="GAS" <%= conta && conta.billType === 'GAS' ? 'selected' : '' %>>Gás</option>
+                <option value="TELEFONE" <%= conta && conta.billType === 'TELEFONE' ? 'selected' : '' %>>Telefone</option>
+                <option value="INTERNET" <%= conta && conta.billType === 'INTERNET' ? 'selected' : '' %>>Internet</option>
+                <option value="OUTRA" <%= conta && conta.billType === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+              </select>
+            </div>
 
-      <!-- Número da Conta -->
-      <div class="mb-4">
-        <label for="accountNumber" class="block text-sm font-medium text-gray-700 mb-1">
-          Número da Conta/Cliente
-        </label>
-        <input
-          type="text"
-          id="accountNumber"
-          name="accountNumber"
-          value="<%= conta ? conta.accountNumber : '' %>"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Ex: 123456789"
-        />
-      </div>
+            <!-- Fornecedor -->
+            <div>
+              <label for="provider" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Fornecedor
+              </label>
+              <input
+                type="text"
+                id="provider"
+                name="provider"
+                value="<%= conta ? conta.provider : '' %>"
+                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-400"
+                placeholder="Ex: Companhia de Água e Esgoto"
+              />
+            </div>
+          </div>
 
-      <!-- Centro de Custo -->
-      <div class="mb-4">
-        <label for="costCenterId" class="block text-sm font-medium text-gray-700 mb-1">
-          Centro de Custo
-        </label>
-        <select
-          id="costCenterId"
-          name="costCenterId"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Sem centro de custo</option>
-          <% costCenters.forEach(cc => { %>
-            <option
-              value="<%= cc.id %>"
-              <%= conta && conta.costCenterId == cc.id ? 'selected' : '' %>
+          <!-- Número da Conta e Centro de Custo em Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Número da Conta -->
+            <div>
+              <label for="accountNumber" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                </svg>
+                Número da Conta/Cliente
+              </label>
+              <input
+                type="text"
+                id="accountNumber"
+                name="accountNumber"
+                value="<%= conta ? conta.accountNumber : '' %>"
+                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-400 font-mono"
+                placeholder="Ex: 123456789"
+              />
+            </div>
+
+            <!-- Centro de Custo -->
+            <div>
+              <label for="costCenterId" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Centro de Custo
+              </label>
+              <select
+                id="costCenterId"
+                name="costCenterId"
+                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
+              >
+                <option value="">Sem centro de custo</option>
+                <% costCenters.forEach(cc => { %>
+                  <option
+                    value="<%= cc.id %>"
+                    <%= conta && conta.costCenterId == cc.id ? 'selected' : '' %>
+                  >
+                    <%= cc.name %>
+                  </option>
+                <% }); %>
+              </select>
+            </div>
+          </div>
+
+          <!-- Botões Modernos -->
+          <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200">
+            <a
+              href="/financeiro/contas"
+              class="px-8 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-all duration-200 text-center icon-bounce"
             >
-              <%= cc.name %>
-            </option>
-          <% }); %>
-        </select>
+              Cancelar
+            </a>
+            <button
+              type="submit"
+              class="group relative overflow-hidden px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2"
+            >
+              <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+              <svg class="w-5 h-5 relative z-10 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="relative z-10">Criar Conta</span>
+            </button>
+          </div>
+        </form>
       </div>
-
-      <!-- Botões -->
-      <div class="flex justify-end space-x-4">
-        <a
-          href="/financeiro/contas"
-          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
-        >
-          Cancelar
-        </a>
-        <button
-          type="submit"
-          class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-        >
-          Criar Conta
-        </button>
-      </div>
-    </form>
+    </div>
   </div>
 </div>
 

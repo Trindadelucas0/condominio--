@@ -1,120 +1,317 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="mb-6 flex justify-between items-center">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Ocorrências de Limpeza</h1>
-      <p class="text-gray-600 mt-2">Gerencie suas ocorrências de limpeza</p>
-    </div>
-    <a href="/limpeza/ocorrencias/nova" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition">
-      + Nova Ocorrência
-    </a>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .table-row-animate {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .card-hover-effect {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-hover-effect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  .status-badge {
+    animation: pulse 2s ease-in-out infinite;
+  }
+</style>
 
-  <!-- Filtros -->
-  <div class="bg-white rounded-lg shadow p-6 mb-6">
-    <form method="GET" action="/limpeza/ocorrencias" class="flex flex-wrap gap-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-        <select name="status" class="border border-gray-300 rounded-md px-4 py-2">
-          <option value="">Todos</option>
-          <option value="ABERTA" <%= filters.status === 'ABERTA' ? 'selected' : '' %>>Aberta</option>
-          <option value="EM_ATENDIMENTO" <%= filters.status === 'EM_ATENDIMENTO' ? 'selected' : '' %>>Em Atendimento</option>
-          <option value="RESOLVIDA" <%= filters.status === 'RESOLVIDA' ? 'selected' : '' %>>Resolvida</option>
-          <option value="ENCERRADA" <%= filters.status === 'ENCERRADA' ? 'selected' : '' %>>Encerrada</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-        <select name="limpezaType" class="border border-gray-300 rounded-md px-4 py-2">
-          <option value="">Todos</option>
-          <% limpezaTypes.forEach(type => { %>
-            <option value="<%= type.value %>" <%= filters.limpezaType === type.value ? 'selected' : '' %>>
-              <%= type.label %>
-            </option>
-          <% }); %>
-        </select>
-      </div>
-      <div class="flex items-end">
-        <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition">
-          Filtrar
-        </button>
-        <a href="/limpeza/ocorrencias" class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-semibold transition">
-          Limpar
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-cyan-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <div class="flex items-center space-x-3 mb-2">
+            <div class="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-3 shadow-lg">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-teal-900 to-gray-900 bg-clip-text text-transparent">
+                Ocorrências de Limpeza
+              </h1>
+              <p class="text-gray-600 mt-1">Gerencie suas ocorrências de limpeza</p>
+            </div>
+          </div>
+        </div>
+        <a href="/limpeza/ocorrencias/nova" class="group relative overflow-hidden bg-gradient-to-r from-teal-600 to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          <span class="relative z-10">Nova Ocorrência</span>
         </a>
       </div>
-    </form>
-  </div>
+    </div>
 
-  <!-- Lista de ocorrências -->
-  <div class="bg-white rounded-lg shadow">
-    <div class="p-6">
-      <% if (occurrences.length === 0) { %>
-        <p class="text-gray-500 text-center py-8">Nenhuma ocorrência encontrada.</p>
+    <!-- Mensagem de Sucesso -->
+    <% if (typeof query !== 'undefined' && query.success) { %>
+      <div class="mb-6 animate-slide-in">
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+          <div class="bg-green-500 rounded-full p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="font-semibold text-green-800"><%= decodeURIComponent(query.success) %></p>
+          </div>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Estatísticas Rápidas -->
+    <% 
+      const totalOccurrences = occurrences ? occurrences.length : 0;
+      const openOccurrences = occurrences ? occurrences.filter(o => o.status === 'ABERTA').length : 0;
+      const inProgressOccurrences = occurrences ? occurrences.filter(o => o.status === 'EM_ATENDIMENTO').length : 0;
+      const resolvedOccurrences = occurrences ? occurrences.filter(o => o.status === 'RESOLVIDA').length : 0;
+    %>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-teal-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Total</p>
+            <p class="text-3xl font-bold text-gray-900"><%= totalOccurrences %></p>
+          </div>
+          <div class="bg-teal-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-yellow-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Abertas</p>
+            <p class="text-3xl font-bold text-yellow-600"><%= openOccurrences %></p>
+          </div>
+          <div class="bg-yellow-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-cyan-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Em Atendimento</p>
+            <p class="text-3xl font-bold text-cyan-600"><%= inProgressOccurrences %></p>
+          </div>
+          <div class="bg-cyan-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500 card-hover-effect">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">Resolvidas</p>
+            <p class="text-3xl font-bold text-green-600"><%= resolvedOccurrences %></p>
+          </div>
+          <div class="bg-green-100 rounded-lg p-3">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros Modernos -->
+    <div class="bg-white rounded-xl shadow-lg p-4 mb-8 animate-slide-in">
+      <form method="GET" action="/limpeza/ocorrencias" class="flex flex-wrap gap-4 items-end">
+        <div class="flex-1 min-w-[200px]">
+          <label class="flex items-center text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-teal-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+            Status
+          </label>
+          <select name="status" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200">
+            <option value="">Todos</option>
+            <option value="ABERTA" <%= filters.status === 'ABERTA' ? 'selected' : '' %>>Aberta</option>
+            <option value="EM_ATENDIMENTO" <%= filters.status === 'EM_ATENDIMENTO' ? 'selected' : '' %>>Em Atendimento</option>
+            <option value="RESOLVIDA" <%= filters.status === 'RESOLVIDA' ? 'selected' : '' %>>Resolvida</option>
+            <option value="ENCERRADA" <%= filters.status === 'ENCERRADA' ? 'selected' : '' %>>Encerrada</option>
+          </select>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <label class="flex items-center text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-teal-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+            </svg>
+            Tipo
+          </label>
+          <select name="limpezaType" class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200">
+            <option value="">Todos</option>
+            <% limpezaTypes.forEach(type => { %>
+              <option value="<%= type.value %>" <%= filters.limpezaType === type.value ? 'selected' : '' %>>
+                <%= type.label %>
+              </option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" class="bg-gradient-to-r from-teal-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+            <span>Filtrar</span>
+          </button>
+          <a href="/limpeza/ocorrencias" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 inline-flex items-center">
+            Limpar
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de Ocorrências Moderna -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-slide-in">
+      <% if (!occurrences || occurrences.length === 0) { %>
+        <div class="p-12 text-center">
+          <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
+            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-2">Nenhuma ocorrência encontrada</h3>
+          <p class="text-gray-500 mb-6">Comece registrando sua primeira ocorrência de limpeza.</p>
+          <a href="/limpeza/ocorrencias/nova" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Criar Primeira Ocorrência
+          </a>
+        </div>
       <% } else { %>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localização</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <% occurrences.forEach(occurrence => { %>
-                <tr>
-                  <td class="px-6 py-4">
-                    <div class="text-sm font-medium text-gray-900"><%= occurrence.title %></div>
-                    <div class="text-sm text-gray-500 mt-1"><%= occurrence.description.substring(0, 50) %>...</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Título</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipo</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Localização</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Data</th>
+              <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% occurrences.forEach((occurrence, index) => { %>
+              <tr class="table-row-animate hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-200 card-hover-effect" style="animation-delay: <%= index * 0.05 %>s">
+                <td class="px-6 py-4">
+                  <div class="text-sm font-bold text-gray-900"><%= occurrence.title %></div>
+                  <% if (occurrence.description) { %>
+                    <div class="text-sm text-gray-500 mt-1"><%= occurrence.description.substring(0, 50) %><%= occurrence.description.length > 50 ? '...' : '' %></div>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex flex-col space-y-2">
                     <% 
                       const typeInfo = limpezaTypes.find(t => t.value === occurrence.limpeza_type);
                       const typeLabel = typeInfo ? typeInfo.label : occurrence.limpeza_type;
                     %>
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md">
                       <%= typeLabel %>
                     </span>
                     <% if (occurrence.needs_zeladoria) { %>
-                      <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800" title="Convertida para Zeladoria">
-                        🔧 Zeladoria
+                      <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md" title="Convertida para Zeladoria">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Zeladoria
                       </span>
                     <% } %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <%= occurrence.location || '-' %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <% 
-                      const statusColors = {
-                        'ABERTA': 'bg-yellow-100 text-yellow-800',
-                        'EM_ATENDIMENTO': 'bg-blue-100 text-blue-800',
-                        'RESOLVIDA': 'bg-green-100 text-green-800',
-                        'ENCERRADA': 'bg-gray-100 text-gray-800'
-                      };
-                      const statusColor = statusColors[occurrence.status] || 'bg-gray-100 text-gray-800';
-                    %>
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= statusColor %>">
-                      <%= occurrence.status %>
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <%= new Date(occurrence.created_at).toLocaleDateString('pt-BR') %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <a href="/limpeza/ocorrencias/<%= occurrence.id %>" class="text-blue-600 hover:text-blue-900">Ver detalhes</a>
-                  </td>
-                </tr>
-              <% }); %>
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% if (occurrence.location) { %>
+                    <div class="flex items-center text-sm text-gray-900">
+                      <svg class="w-4 h-4 text-teal-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      </svg>
+                      <%= occurrence.location %>
+                    </div>
+                  <% } else { %>
+                    <span class="text-sm text-gray-400">-</span>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% 
+                    let statusColor = 'from-gray-400 to-gray-500';
+                    let statusText = occurrence.status;
+                    if (occurrence.status === 'ABERTA') {
+                      statusColor = 'from-yellow-500 to-amber-500';
+                    } else if (occurrence.status === 'EM_ATENDIMENTO') {
+                      statusColor = 'from-cyan-500 to-blue-500';
+                    } else if (occurrence.status === 'RESOLVIDA') {
+                      statusColor = 'from-green-500 to-emerald-500';
+                    } else if (occurrence.status === 'ENCERRADA') {
+                      statusColor = 'from-gray-400 to-gray-500';
+                    }
+                  %>
+                  <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r <%= statusColor %> text-white shadow-md <%= occurrence.status === 'EM_ATENDIMENTO' ? 'status-badge' : '' %>">
+                    <span class="w-2 h-2 bg-white rounded-full mr-2"></span>
+                    <%= statusText %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= new Date(occurrence.created_at).toLocaleDateString('pt-BR') %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <a href="/limpeza/ocorrencias/<%= occurrence.id %>" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    Ver detalhes
+                  </a>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
       <% } %>
     </div>
   </div>

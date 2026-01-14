@@ -1,183 +1,301 @@
 <%- include('../../../partials/header', { title: title }) %>
 <%- include('../../../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Nova Saída Financeira</h1>
-    <p class="text-gray-600 mt-2">Registre uma despesa</p>
-  </div>
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .input-focus:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+  
+  .card-glow {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .card-glow:hover {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  }
+  
+  .icon-bounce:hover {
+    animation: bounce 0.5s;
+  }
+</style>
 
-  <!-- Mensagem de erro -->
-  <% if (typeof error !== 'undefined' && error) { %>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-      <%= error %>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-red-50/30 to-rose-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-slide-in">
+      <div class="flex items-center space-x-4 mb-4">
+        <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-4 shadow-lg">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+            Nova Saída Financeira
+          </h1>
+          <p class="text-gray-600 mt-1">Registre uma despesa</p>
+        </div>
+      </div>
     </div>
-  <% } %>
 
-  <!-- Formulário -->
-  <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form method="POST" action="/financeiro/saidas">
-      <!-- Descrição -->
-      <div class="mb-4">
-        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-          Descrição <span class="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="description"
-          name="description"
-          required
-          value="<%= saida ? saida.description : '' %>"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-          placeholder="Ex: Manutenção do elevador"
-        />
+    <!-- Mensagem de erro moderna -->
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="mb-6 animate-slide-in">
+        <div class="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+          <div class="bg-red-500 rounded-full p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="font-semibold text-red-800">Erro ao processar</p>
+            <p class="text-sm text-red-600"><%= error %></p>
+          </div>
+        </div>
       </div>
+    <% } %>
 
-      <!-- Valor -->
-      <div class="mb-4">
-        <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">
-          Valor (R$) <span class="text-red-500">*</span>
-        </label>
-        <input
-          type="number"
-          id="amount"
-          name="amount"
-          step="0.01"
-          min="0"
-          required
-          value="<%= saida ? saida.amount : '' %>"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-          placeholder="0.00"
-        />
-      </div>
+    <!-- Formulário Moderno -->
+    <div class="max-w-3xl mx-auto">
+      <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in">
+        <form method="POST" action="/financeiro/saidas" class="space-y-6">
+          <!-- Descrição -->
+          <div>
+            <label for="description" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Descrição
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <input
+              type="text"
+              id="description"
+              name="description"
+              required
+              value="<%= saida ? saida.description : '' %>"
+              class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-400"
+              placeholder="Ex: Manutenção do elevador"
+            />
+          </div>
 
-      <!-- Data -->
-      <div class="mb-4">
-        <label for="exitDate" class="block text-sm font-medium text-gray-700 mb-1">
-          Data <span class="text-red-500">*</span>
-        </label>
-        <input
-          type="date"
-          id="exitDate"
-          name="exitDate"
-          required
-          value="<%= saida ? saida.exitDate : '' %>"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-        />
-      </div>
+          <!-- Valor e Data em Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Valor -->
+            <div>
+              <label for="amount" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Valor (R$)
+                <span class="text-red-500 ml-1">*</span>
+              </label>
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">R$</span>
+                <input
+                  type="number"
+                  id="amount"
+                  name="amount"
+                  step="0.01"
+                  min="0"
+                  required
+                  value="<%= saida ? saida.amount : '' %>"
+                  class="input-focus w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-400"
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
 
-      <!-- Conta (Bill) -->
-      <div class="mb-4">
-        <label for="billId" class="block text-sm font-medium text-gray-700 mb-1">
-          Conta (Opcional)
-        </label>
-        <select
-          id="billId"
-          name="billId"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-        >
-          <option value="">Sem conta vinculada</option>
-          <% if (bills && bills.length > 0) { %>
-            <% bills.forEach(bill => { %>
-              <option
-                value="<%= bill.id %>"
-                <%= saida && saida.billId == bill.id ? 'selected' : '' %>
+            <!-- Data -->
+            <div>
+              <label for="exitDate" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Data
+                <span class="text-red-500 ml-1">*</span>
+              </label>
+              <input
+                type="date"
+                id="exitDate"
+                name="exitDate"
+                required
+                value="<%= saida ? saida.exitDate : '' %>"
+                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900"
+              />
+            </div>
+          </div>
+
+          <!-- Conta e Centro de Custo em Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Conta (Bill) -->
+            <div>
+              <label for="billId" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Conta (Opcional)
+              </label>
+              <select
+                id="billId"
+                name="billId"
+                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
               >
-                <%= bill.name %> (<%= bill.bill_type %>)
-              </option>
-            <% }); %>
-          <% } %>
-        </select>
-      </div>
+                <option value="">Sem conta vinculada</option>
+                <% if (bills && bills.length > 0) { %>
+                  <% bills.forEach(bill => { %>
+                    <option
+                      value="<%= bill.id %>"
+                      <%= saida && saida.billId == bill.id ? 'selected' : '' %>
+                    >
+                      <%= bill.name %> (<%= bill.bill_type %>)
+                    </option>
+                  <% }); %>
+                <% } %>
+              </select>
+            </div>
 
-      <!-- Centro de Custo -->
-      <div class="mb-4">
-        <label for="costCenterId" class="block text-sm font-medium text-gray-700 mb-1">
-          Centro de Custo
-        </label>
-        <select
-          id="costCenterId"
-          name="costCenterId"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-        >
-          <option value="">Sem centro de custo</option>
-          <% costCenters.forEach(cc => { %>
-            <option
-              value="<%= cc.id %>"
-              <%= saida && saida.costCenterId == cc.id ? 'selected' : '' %>
+            <!-- Centro de Custo -->
+            <div>
+              <label for="costCenterId" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Centro de Custo
+              </label>
+              <select
+                id="costCenterId"
+                name="costCenterId"
+                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
+              >
+                <option value="">Sem centro de custo</option>
+                <% costCenters.forEach(cc => { %>
+                  <option
+                    value="<%= cc.id %>"
+                    <%= saida && saida.costCenterId == cc.id ? 'selected' : '' %>
+                  >
+                    <%= cc.name %>
+                  </option>
+                <% }); %>
+              </select>
+            </div>
+          </div>
+
+          <!-- Categoria -->
+          <div>
+            <label for="category" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+              </svg>
+              Categoria
+            </label>
+            <select
+              id="category"
+              name="category"
+              class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
             >
-              <%= cc.name %>
-            </option>
-          <% }); %>
-        </select>
-      </div>
+              <option value="MANUTENCAO" <%= !saida || saida.category === 'MANUTENCAO' ? 'selected' : '' %>>Manutenção</option>
+              <option value="CONTA" <%= saida && saida.category === 'CONTA' ? 'selected' : '' %>>Conta</option>
+              <option value="CONTRATO" <%= saida && saida.category === 'CONTRATO' ? 'selected' : '' %>>Contrato</option>
+              <option value="OUTRA" <%= saida && saida.category === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+            </select>
+          </div>
 
-      <!-- Categoria -->
-      <div class="mb-4">
-        <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
-          Categoria
-        </label>
-        <select
-          id="category"
-          name="category"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-        >
-          <option value="MANUTENCAO" <%= !saida || saida.category === 'MANUTENCAO' ? 'selected' : '' %>>Manutenção</option>
-          <option value="CONTA" <%= saida && saida.category === 'CONTA' ? 'selected' : '' %>>Conta</option>
-          <option value="CONTRATO" <%= saida && saida.category === 'CONTRATO' ? 'selected' : '' %>>Contrato</option>
-          <option value="OUTRA" <%= saida && saida.category === 'OUTRA' ? 'selected' : '' %>>Outra</option>
-        </select>
-      </div>
+          <!-- Requer Aprovação e Limite -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Requer Aprovação -->
+            <div class="flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  type="checkbox"
+                  name="requiresApproval"
+                  value="true"
+                  id="requiresApproval"
+                  <%= saida && saida.requiresApproval ? 'checked' : '' %>
+                  class="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500 focus:ring-2"
+                />
+              </div>
+              <div class="ml-3">
+                <label for="requiresApproval" class="text-sm font-medium text-gray-700">
+                  Requer aprovação do síndico
+                </label>
+                <p class="text-xs text-gray-500 mt-1">Se valor acima do limite</p>
+              </div>
+            </div>
 
-      <!-- Requer Aprovação -->
-      <div class="mb-4">
-        <label class="flex items-center">
-          <input
-            type="checkbox"
-            name="requiresApproval"
-            value="true"
-            <%= saida && saida.requiresApproval ? 'checked' : '' %>
-            class="rounded border-gray-300 text-red-600 focus:ring-red-500"
-          />
-          <span class="ml-2 text-sm text-gray-700">Requer aprovação do síndico (se valor acima do limite)</span>
-        </label>
-      </div>
+            <!-- Limite de Aprovação -->
+            <div>
+              <label for="approvalLimit" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                Limite de Aprovação (R$)
+              </label>
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">R$</span>
+                <input
+                  type="number"
+                  id="approvalLimit"
+                  name="approvalLimit"
+                  step="0.01"
+                  min="0"
+                  value="<%= saida ? saida.approvalLimit : '1000.00' %>"
+                  class="input-focus w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-400"
+                  placeholder="1000.00"
+                />
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Valores acima deste limite precisam de aprovação</p>
+            </div>
+          </div>
 
-      <!-- Limite de Aprovação -->
-      <div class="mb-4">
-        <label for="approvalLimit" class="block text-sm font-medium text-gray-700 mb-1">
-          Limite de Aprovação (R$)
-        </label>
-        <input
-          type="number"
-          id="approvalLimit"
-          name="approvalLimit"
-          step="0.01"
-          min="0"
-          value="<%= saida ? saida.approvalLimit : '1000.00' %>"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-          placeholder="1000.00"
-        />
-        <p class="text-xs text-gray-500 mt-1">Valores acima deste limite precisam de aprovação do síndico</p>
+          <!-- Botões Modernos -->
+          <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200">
+            <a
+              href="/financeiro/saidas"
+              class="px-8 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-all duration-200 text-center icon-bounce"
+            >
+              Cancelar
+            </a>
+            <button
+              type="submit"
+              class="group relative overflow-hidden px-8 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2"
+            >
+              <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+              <svg class="w-5 h-5 relative z-10 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="relative z-10">Criar Saída</span>
+            </button>
+          </div>
+        </form>
       </div>
-
-      <!-- Botões -->
-      <div class="flex justify-end space-x-4">
-        <a
-          href="/financeiro/saidas"
-          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
-        >
-          Cancelar
-        </a>
-        <button
-          type="submit"
-          class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-        >
-          Criar Saída
-        </button>
-      </div>
-    </form>
+    </div>
   </div>
 </div>
 
