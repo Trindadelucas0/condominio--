@@ -4,35 +4,35 @@
 <div class="container mx-auto px-4 py-8">
   <!-- Cabeçalho -->
   <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Dashboard Patrimonial</h1>
-    <p class="text-gray-600 mt-2">Gestão de ativos do condomínio</p>
+    <h1 class="page-title">Dashboard Patrimonial</h1>
+    <p class="page-subtitle">Gestão de ativos do condomínio</p>
   </div>
 
   <!-- Cards de estatísticas -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Total de Ativos -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Total de Ativos</p>
-          <p class="text-3xl font-bold text-purple-600 mt-2"><%= stats.totalAssets %></p>
+          <p class="text-gray-600 text-sm font-medium">Total de Ativos</p>
+          <p class="text-3xl font-bold text-primary-600 mt-2"><%= stats.totalAssets %></p>
         </div>
-        <div class="bg-purple-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-primary-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
           </svg>
         </div>
       </div>
-      <a href="/patrimonio/ativos" class="text-purple-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/patrimonio/ativos" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ver ativos →
       </a>
     </div>
 
     <!-- Valor Total de Aquisição -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Valor Total de Aquisição</p>
+          <p class="text-gray-600 text-sm font-medium">Valor Total de Aquisição</p>
           <p class="text-3xl font-bold text-blue-600 mt-2">
             R$ <%= stats.totalAcquisitionValue.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
           </p>
@@ -46,10 +46,10 @@
     </div>
 
     <!-- Valor Atual (Depreciado) -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Valor Atual (Depreciado)</p>
+          <p class="text-gray-600 text-sm font-medium">Valor Atual (Depreciado)</p>
           <p class="text-3xl font-bold text-green-600 mt-2">
             R$ <%= stats.totalCurrentValue.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
           </p>
@@ -64,14 +64,14 @@
     </div>
 
     <!-- Ativos em Manutenção -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Em Manutenção</p>
-          <p class="text-3xl font-bold text-orange-600 mt-2"><%= stats.assetsInMaintenance %></p>
+          <p class="text-gray-600 text-sm font-medium">Em Manutenção</p>
+          <p class="text-3xl font-bold text-yellow-600 mt-2"><%= stats.assetsInMaintenance %></p>
         </div>
-        <div class="bg-orange-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-yellow-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
           </svg>
@@ -81,17 +81,18 @@
   </div>
 
   <!-- Ações rápidas -->
-  <div class="bg-white rounded-lg shadow p-6">
+  <div class="card">
     <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <a href="/patrimonio/ativos/novo" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition text-center">
+      <a href="/patrimonio/ativos/novo" class="btn-primary text-center">
         Novo Ativo
       </a>
-      <a href="/patrimonio/ativos" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
+      <a href="/patrimonio/ativos" class="btn-secondary text-center">
         Ver Todos os Ativos
       </a>
     </div>
   </div>
 </div>
+</main>
 
 <%- include('../../partials/footer') %>

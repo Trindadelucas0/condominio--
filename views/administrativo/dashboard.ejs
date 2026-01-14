@@ -1,88 +1,152 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
 
+<main class="flex-grow fade-in">
 <div class="container mx-auto px-4 py-8">
   <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Dashboard Administrativo</h1>
-    <p class="text-gray-600 mt-2">Gestão administrativa do condomínio</p>
+  <div class="mb-8 slide-up">
+    <h1 class="page-title">Dashboard <span>Administrativo</span></h1>
+    <p class="page-subtitle">Gestão administrativa do condomínio</p>
   </div>
 
   <!-- Cards de estatísticas -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <!-- Tarefas Ativas -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm">Tarefas Ativas</p>
-          <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.activeTasks %></p>
+    <div class="card-tech card-hover" style="animation-delay: 0.1s;">
+      <div class="card-tech-content">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">Tarefas Ativas</p>
+            <p class="text-3xl sm:text-4xl font-extrabold text-primary-600 mt-2"><%= stats.activeTasks %></p>
+          </div>
+          <div class="icon-container bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-4 shadow-md border border-primary-100">
+            <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
         </div>
-        <div class="bg-blue-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        <a href="/administrativo/tarefas" class="text-primary-600 text-sm font-semibold hover:text-primary-700 transition-all duration-300 inline-flex items-center gap-2 group mt-4">
+          Ver todas
+          <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
-        </div>
+        </a>
       </div>
-      <a href="/administrativo/tarefas" class="text-blue-600 text-sm mt-4 inline-block hover:underline">
-        Ver todas →
-      </a>
     </div>
 
     <!-- Documentos Próximos do Vencimento -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm">Documentos Vencendo (30 dias)</p>
-          <p class="text-3xl font-bold text-yellow-600 mt-2"><%= stats.expiringDocuments %></p>
+    <div class="card-tech card-hover" style="animation-delay: 0.2s;">
+      <div class="card-tech-content">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">Documentos Vencendo (30 dias)</p>
+            <p class="text-3xl sm:text-4xl font-extrabold text-yellow-600 mt-2"><%= stats.expiringDocuments %></p>
+          </div>
+          <div class="icon-container bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4 shadow-md border border-yellow-100">
+            <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
         </div>
-        <div class="bg-yellow-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        <a href="/administrativo/documentos?status=ACTIVE" class="text-primary-600 text-sm font-semibold hover:text-primary-700 transition-all duration-300 inline-flex items-center gap-2 group mt-4">
+          Ver documentos
+          <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
-        </div>
+        </a>
       </div>
-      <a href="/administrativo/documentos?status=ACTIVE" class="text-yellow-600 text-sm mt-4 inline-block hover:underline">
-        Ver documentos →
-      </a>
     </div>
 
     <!-- Documentos Vencidos -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-gray-600 text-sm">Documentos Vencidos</p>
-          <p class="text-3xl font-bold text-red-600 mt-2"><%= stats.expiredDocuments %></p>
+    <div class="card-tech card-hover" style="animation-delay: 0.3s;">
+      <div class="card-tech-content">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">Documentos Vencidos</p>
+            <p class="text-3xl sm:text-4xl font-extrabold text-red-600 mt-2"><%= stats.expiredDocuments %></p>
+          </div>
+          <div class="icon-container bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 shadow-md border border-red-100">
+            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
         </div>
-        <div class="bg-red-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        <a href="/administrativo/documentos?status=ACTIVE" class="text-primary-600 text-sm font-semibold hover:text-primary-700 transition-all duration-300 inline-flex items-center gap-2 group mt-4">
+          Ver documentos
+          <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
-        </div>
+        </a>
       </div>
-      <a href="/administrativo/documentos?status=ACTIVE" class="text-red-600 text-sm mt-4 inline-block hover:underline">
-        Ver documentos →
-      </a>
     </div>
   </div>
 
   <!-- Ações rápidas -->
-  <div class="bg-white rounded-lg shadow p-6">
-    <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <a href="/administrativo/tarefas/nova" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition text-center">
-        Criar Nova Tarefa
+  <div class="slide-up" style="animation-delay: 0.4s;">
+    <div class="mb-6">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">Ações Rápidas</h2>
+      <p class="text-gray-500 text-sm">Acesso rápido às principais funcionalidades</p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Criar Tarefa -->
+      <a href="/administrativo/tarefas/nova" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-primary-50/0 to-primary-100/0 group-hover:from-primary-50/50 group-hover:to-primary-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors duration-300">Criar Tarefa</h3>
+          <p class="text-sm text-gray-500">Nova tarefa para equipe</p>
+        </div>
       </a>
-      <a href="/administrativo/documentos/novo" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center">
-        Adicionar Documento
+
+      <!-- Adicionar Documento -->
+      <a href="/administrativo/documentos/novo" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-green-50/0 to-green-100/0 group-hover:from-green-50/50 group-hover:to-green-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-green-700 transition-colors duration-300">Adicionar Documento</h3>
+          <p class="text-sm text-gray-500">Registrar novo documento</p>
+        </div>
       </a>
-      <a href="/administrativo/tarefas" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
-        Gerenciar Tarefas
+
+      <!-- Gerenciar Tarefas -->
+      <a href="/administrativo/tarefas" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-blue-100/0 group-hover:from-blue-50/50 group-hover:to-blue-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors duration-300">Gerenciar Tarefas</h3>
+          <p class="text-sm text-gray-500">Visualizar e editar</p>
+        </div>
       </a>
-      <a href="/administrativo/documentos" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
-        Gerenciar Documentos
+
+      <!-- Gerenciar Documentos -->
+      <a href="/administrativo/documentos" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-50/0 to-purple-100/0 group-hover:from-purple-50/50 group-hover:to-purple-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-purple-700 transition-colors duration-300">Gerenciar Documentos</h3>
+          <p class="text-sm text-gray-500">Visualizar e editar</p>
+        </div>
       </a>
     </div>
   </div>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

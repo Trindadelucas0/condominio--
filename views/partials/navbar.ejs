@@ -3,16 +3,34 @@
 <!-- Quando uma role é adicionada ao usuário, os menus aparecem automaticamente -->
 <!-- Usa req.user.roles (array) que vem do middleware de autenticação -->
 
-<nav class="bg-blue-600 text-white shadow-lg">
+<nav class="bg-primary-600 text-white shadow-md sticky top-0 z-50">
     <div class="container mx-auto px-4">
-        <div class="flex justify-between items-center py-4">
+        <div class="flex justify-between items-center py-3 sm:py-4">
             <!-- Logo/Título -->
-            <div class="flex items-center">
-                <a href="/" class="text-xl font-bold">Gestão Condominial</a>
+            <div class="flex items-center space-x-3">
+                <!-- Logo Verde -->
+                <div class="bg-white rounded-full p-2 flex-shrink-0">
+                    <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                </div>
+                <a href="/" class="text-lg sm:text-xl font-bold hover:text-primary-100 transition-colors duration-200 hidden sm:block">
+                    <span class="text-white">ÊXITO</span> <span class="text-primary-200">CONDOMÍNIOS</span>
+                </a>
+                <a href="/" class="text-lg font-bold hover:text-primary-100 transition-colors duration-200 sm:hidden">
+                    ÊXITO
+                </a>
             </div>
 
+            <!-- Menu Mobile Toggle -->
+            <button id="mobile-menu-toggle" type="button" class="md:hidden p-2 rounded-lg hover:bg-primary-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300">
+                <svg id="menu-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+
             <!-- Menu de navegação DINÂMICO (baseado em roles) -->
-            <div class="flex items-center space-x-4">
+            <div id="nav-menu" class="hidden md:flex items-center space-x-1 lg:space-x-2">
                 <% 
                 // Verifica se user existe e tem roles
                 if (typeof user !== 'undefined' && user.roles && Array.isArray(user.roles)) {
@@ -20,70 +38,70 @@
                     
                     // SUPER_MASTER
                     if (roles.includes('SUPER_MASTER')) { %>
-                        <a href="/master/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Master - Dashboard</a>
-                        <a href="/master/condominios" class="hover:text-blue-200 px-3 py-2 rounded">Condomínios</a>
-                        <a href="/master/usuarios" class="hover:text-blue-200 px-3 py-2 rounded">Usuários</a>
+                        <a href="/master/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Master - Dashboard</a>
+                        <a href="/master/condominios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Condomínios</a>
+                        <a href="/master/usuarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Usuários</a>
                     <% }
                     
                     // SINDICO / SUBSINDICO
                     if (roles.includes('SINDICO') || roles.includes('SUBSINDICO')) { %>
-                        <a href="/sindico/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Síndico - Dashboard</a>
-                        <a href="/sindico/tarefas" class="hover:text-blue-200 px-3 py-2 rounded">Tarefas</a>
-                        <a href="/sindico/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências</a>
-                        <a href="/sindico/aprovacoes" class="hover:text-blue-200 px-3 py-2 rounded">Aprovações</a>
-                        <a href="/sindico/manutencoes" class="hover:text-blue-200 px-3 py-2 rounded">Manutenções</a>
-                        <a href="/sindico/alertas" class="hover:text-blue-200 px-3 py-2 rounded">Alertas</a>
-                        <a href="/sindico/logs" class="hover:text-blue-200 px-3 py-2 rounded">Logs</a>
+                        <a href="/sindico/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Síndico - Dashboard</a>
+                        <a href="/sindico/tarefas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
+                        <a href="/sindico/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências</a>
+                        <a href="/sindico/aprovacoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Aprovações</a>
+                        <a href="/sindico/manutencoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Manutenções</a>
+                        <a href="/sindico/alertas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Alertas</a>
+                        <a href="/sindico/logs" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Logs</a>
                     <% }
                     
                     // FINANCEIRO (módulo separado)
                     if (roles.includes('FINANCEIRO')) { %>
-                        <a href="/financeiro/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Financeiro - Dashboard</a>
-                        <a href="/financeiro/entradas" class="hover:text-blue-200 px-3 py-2 rounded">Entradas</a>
-                        <a href="/financeiro/saidas" class="hover:text-blue-200 px-3 py-2 rounded">Saídas</a>
-                        <a href="/financeiro/contas" class="hover:text-blue-200 px-3 py-2 rounded">Contas</a>
-                        <a href="/financeiro/orcamentos-pendentes" class="hover:text-blue-200 px-3 py-2 rounded">Orçamentos</a>
-                        <a href="/financeiro/centros-custo" class="hover:text-blue-200 px-3 py-2 rounded">Centros de Custo</a>
+                        <a href="/financeiro/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Financeiro - Dashboard</a>
+                        <a href="/financeiro/entradas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Entradas</a>
+                        <a href="/financeiro/saidas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Saídas</a>
+                        <a href="/financeiro/contas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Contas</a>
+                        <a href="/financeiro/orcamentos-pendentes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Orçamentos</a>
+                        <a href="/financeiro/centros-custo" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Centros de Custo</a>
                     <% }
                     
                     // PATRIMONIO (módulo separado)
                     if (roles.includes('PATRIMONIO')) { %>
-                        <a href="/patrimonio/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Patrimônio - Dashboard</a>
-                        <a href="/patrimonio/ativos" class="hover:text-blue-200 px-3 py-2 rounded">Ativos</a>
+                        <a href="/patrimonio/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Patrimônio - Dashboard</a>
+                        <a href="/patrimonio/ativos" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ativos</a>
                     <% }
                     
                     // ADMINISTRATIVO (NÃO tem mais acesso a financeiro/patrimonio)
                     if (roles.includes('ADMINISTRATIVO')) { %>
-                        <a href="/administrativo/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Admin - Dashboard</a>
-                        <a href="/administrativo/tarefas" class="hover:text-blue-200 px-3 py-2 rounded">Tarefas</a>
-                        <a href="/administrativo/documentos" class="hover:text-blue-200 px-3 py-2 rounded">Documentos</a>
+                        <a href="/administrativo/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Admin - Dashboard</a>
+                        <a href="/administrativo/tarefas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
+                        <a href="/administrativo/documentos" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Documentos</a>
                     <% }
                     
                     // OPERACIONAL
                     if (roles.includes('OPERACIONAL')) { %>
-                        <a href="/operacional/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Operacional - Dashboard</a>
-                        <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
-                        <a href="/operacional/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências</a>
-                        <a href="/operacional/manutencoes" class="hover:text-blue-200 px-3 py-2 rounded">Manutenções</a>
+                        <a href="/operacional/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Operacional - Dashboard</a>
+                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklist</a>
+                        <a href="/operacional/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências</a>
+                        <a href="/operacional/manutencoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Manutenções</a>
                     <% }
                     
                     // LIMPEZA (tem suas próprias rotas de ocorrências)
                     if (roles.includes('LIMPEZA') && !roles.includes('OPERACIONAL')) { %>
-                        <a href="/limpeza/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Limpeza - Dashboard</a>
-                        <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
-                        <a href="/limpeza/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências de Limpeza</a>
+                        <a href="/limpeza/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Limpeza - Dashboard</a>
+                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklist</a>
+                        <a href="/limpeza/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências de Limpeza</a>
                     <% } else if (roles.includes('LIMPEZA') && roles.includes('OPERACIONAL')) { %>
                         <!-- Se tem ambas, mostra ambos os menus -->
-                        <a href="/operacional/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Operacional - Dashboard</a>
-                        <a href="/limpeza/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Limpeza - Dashboard</a>
-                        <a href="/operacional/checklist" class="hover:text-blue-200 px-3 py-2 rounded">Checklist</a>
-                        <a href="/operacional/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências (Zeladoria)</a>
-                        <a href="/limpeza/ocorrencias" class="hover:text-blue-200 px-3 py-2 rounded">Ocorrências (Limpeza)</a>
+                        <a href="/operacional/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Operacional - Dashboard</a>
+                        <a href="/limpeza/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Limpeza - Dashboard</a>
+                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklist</a>
+                        <a href="/operacional/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências (Zeladoria)</a>
+                        <a href="/limpeza/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências (Limpeza)</a>
                     <% }
                     
                     // CONSELHO
                     if (roles.includes('CONSELHO')) { %>
-                        <a href="/conselho/dashboard" class="hover:text-blue-200 px-3 py-2 rounded">Conselho - Dashboard</a>
+                        <a href="/conselho/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Conselho - Dashboard</a>
                     <% }
                 }
                 %>
@@ -91,23 +109,88 @@
                 <!-- Notificações -->
                 <% if (typeof user !== 'undefined' && user.id) { %>
                     <div class="relative">
-                        <a href="/notifications" class="hover:text-blue-200 px-3 py-2 rounded relative">
+                        <a href="/notifications" class="hover:bg-primary-700 px-3 py-2 rounded relative transition-all duration-200">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                             </svg>
-                            <span id="notification-badge" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                            <span id="notification-badge" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden font-semibold">0</span>
                         </a>
                     </div>
                 <% } %>
 
                 <!-- Informações do usuário e logout -->
                 <% if (typeof user !== 'undefined') { %>
-                    <div class="flex items-center space-x-2 border-l pl-4 ml-4">
-                        <span class="text-sm">
+                    <div class="flex items-center space-x-2 sm:space-x-3 border-l border-primary-400 pl-3 sm:pl-4 ml-3 sm:ml-4">
+                        <span class="text-xs sm:text-sm font-medium hidden sm:inline">
                             <%= user.fullName %>
                         </span>
                         <form method="POST" action="/auth/logout" class="inline">
-                            <button type="submit" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded text-sm">Sair</button>
+                            <button type="submit" class="bg-primary-700 hover:bg-primary-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300">Sair</button>
+                        </form>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+        
+        <!-- Menu Mobile -->
+        <div id="mobile-menu" class="hidden md:hidden pb-4 border-t border-primary-500 mt-2 pt-4">
+            <div class="flex flex-col space-y-2">
+                <% 
+                if (typeof user !== 'undefined' && user.roles && Array.isArray(user.roles)) {
+                    const roles = user.roles;
+                    
+                    if (roles.includes('SUPER_MASTER')) { %>
+                        <a href="/master/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Master - Dashboard</a>
+                        <a href="/master/condominios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Condomínios</a>
+                        <a href="/master/usuarios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Usuários</a>
+                    <% }
+                    
+                    if (roles.includes('SINDICO') || roles.includes('SUBSINDICO')) { %>
+                        <a href="/sindico/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Síndico - Dashboard</a>
+                        <a href="/sindico/tarefas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/sindico/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                        <a href="/sindico/aprovacoes" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Aprovações</a>
+                    <% }
+                    
+                    if (roles.includes('FINANCEIRO')) { %>
+                        <a href="/financeiro/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Financeiro - Dashboard</a>
+                        <a href="/financeiro/entradas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Entradas</a>
+                        <a href="/financeiro/saidas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Saídas</a>
+                    <% }
+                    
+                    if (roles.includes('ADMINISTRATIVO')) { %>
+                        <a href="/administrativo/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Admin - Dashboard</a>
+                        <a href="/administrativo/tarefas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/administrativo/documentos" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Documentos</a>
+                    <% }
+                    
+                    if (roles.includes('OPERACIONAL')) { %>
+                        <a href="/operacional/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Operacional - Dashboard</a>
+                        <a href="/operacional/checklist" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Checklist</a>
+                        <a href="/operacional/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                    <% }
+                    
+                    if (roles.includes('LIMPEZA')) { %>
+                        <a href="/limpeza/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Limpeza - Dashboard</a>
+                        <a href="/limpeza/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                    <% }
+                    
+                    if (roles.includes('CONSELHO')) { %>
+                        <a href="/conselho/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Conselho - Dashboard</a>
+                    <% }
+                }
+                %>
+                <% if (typeof user !== 'undefined' && user.id) { %>
+                    <a href="/notifications" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium relative">
+                        Notificações
+                        <span id="notification-badge-mobile" class="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 hidden font-semibold">0</span>
+                    </a>
+                    <div class="border-t border-primary-500/50 my-2 pt-2">
+                        <div class="px-3 py-2 text-xs text-primary-200">
+                            <%= user.fullName %>
+                        </div>
+                        <form method="POST" action="/auth/logout" class="px-3">
+                            <button type="submit" class="w-full bg-primary-700 hover:bg-primary-800 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left">Sair</button>
                         </form>
                     </div>
                 <% } %>
@@ -115,3 +198,69 @@
         </div>
     </div>
 </nav>
+
+<script>
+  // Aguardar o DOM estar pronto
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle menu mobile
+    const toggleButton = document.getElementById('mobile-menu-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+    
+    if (toggleButton && mobileMenu) {
+      toggleButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const isHidden = mobileMenu.classList.contains('hidden');
+        
+        if (isHidden) {
+          mobileMenu.classList.remove('hidden');
+          mobileMenu.classList.add('animate-slideDown');
+        } else {
+          mobileMenu.classList.add('hidden');
+          mobileMenu.classList.remove('animate-slideDown');
+        }
+        
+        // Animar o ícone do botão (hamburger para X)
+        const icon = toggleButton.querySelector('#menu-icon');
+        const path = icon?.querySelector('path');
+        if (path) {
+          if (isHidden) {
+            // Mudar para X
+            path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+          } else {
+            // Mudar para hamburger
+            path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+          }
+        }
+      });
+      
+      // Fechar menu ao clicar fora
+      document.addEventListener('click', function(e) {
+        if (!toggleButton.contains(e.target) && !mobileMenu.contains(e.target)) {
+          mobileMenu.classList.add('hidden');
+          const icon = toggleButton.querySelector('svg');
+          if (icon) {
+            icon.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+          }
+        }
+      });
+    }
+    
+    // Atualizar badge mobile também
+    <% if (typeof user !== 'undefined' && user.id) { %>
+    fetch('/notifications/unread-count')
+      .then(response => response.json())
+      .then(data => {
+        const badgeMobile = document.getElementById('notification-badge-mobile');
+        if (badgeMobile && data.count > 0) {
+          badgeMobile.textContent = data.count > 99 ? '99+' : data.count;
+          badgeMobile.classList.remove('hidden');
+        }
+      })
+      .catch(err => console.error('Erro ao buscar notificações:', err));
+    <% } %>
+  });
+</script>

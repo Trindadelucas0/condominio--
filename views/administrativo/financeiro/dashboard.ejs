@@ -7,8 +7,8 @@
 <div class="container mx-auto px-4 py-8">
   <!-- Cabeçalho -->
   <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Dashboard Financeiro</h1>
-    <p class="text-gray-600 mt-2">Visão geral e análise financeira do condomínio</p>
+    <h1 class="page-title">Dashboard Financeiro</h1>
+    <p class="page-subtitle">Visão geral e análise financeira do condomínio</p>
   </div>
 
   <!-- Cards de KPIs principais -->
@@ -18,7 +18,7 @@
       const balance = stats.balance !== undefined ? stats.balance : (stats.saldo !== undefined ? stats.saldo : 0);
       const balanceValue = typeof balance === 'number' ? balance : 0;
     %>
-    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 <%= balanceValue >= 0 ? 'border-green-500' : 'border-red-500' %>">
+    <div class="card card-hover border-l-4 <%= balanceValue >= 0 ? 'border-green-500' : 'border-red-500' %>">
       <div class="flex items-center justify-between">
         <div>
           <p class="text-gray-600 text-sm font-medium">Saldo Atual</p>
@@ -35,11 +35,11 @@
     </div>
 
     <!-- Entradas do Mês -->
-    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
-      <div class="flex items-center justify-between">
+    <div class="card-tech card-hover border-l-4 border-green-500">
+      <div class="flex items-center justify-between relative z-10">
         <div>
-          <p class="text-gray-600 text-sm font-medium">Entradas (Mês Atual)</p>
-          <p class="text-3xl font-bold text-green-600 mt-2">
+          <p class="text-gray-600 text-xs sm:text-sm font-medium uppercase tracking-wide">Entradas (Mês Atual)</p>
+          <p class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent mt-2">
             R$ <%= typeof kpis !== 'undefined' && kpis.currentMonth ? kpis.currentMonth.entries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
           </p>
           <% if (typeof kpis !== 'undefined' && kpis.variations && kpis.variations.entries !== 0) { %>
@@ -70,7 +70,7 @@
             </p>
           <% } %>
         </div>
-        <div class="bg-red-100 rounded-full p-4">
+        <div class="icon-container bg-gradient-to-br from-red-100 to-red-200 rounded-xl p-4 shadow-lg">
           <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
           </svg>
@@ -79,11 +79,11 @@
     </div>
 
     <!-- Média Mensal -->
-    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
-      <div class="flex items-center justify-between">
+    <div class="card-tech card-hover border-l-4 border-blue-500">
+      <div class="flex items-center justify-between relative z-10">
         <div>
-          <p class="text-gray-600 text-sm font-medium">Média Mensal (6 meses)</p>
-          <p class="text-2xl font-bold text-blue-600 mt-2">
+          <p class="text-gray-600 text-xs sm:text-sm font-medium uppercase tracking-wide">Média Mensal (6 meses)</p>
+          <p class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent mt-2">
             R$ <%= typeof kpis !== 'undefined' && kpis.averages ? kpis.averages.entries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
           </p>
           <p class="text-xs text-gray-500 mt-1">Entradas / Saídas</p>
@@ -101,26 +101,26 @@
   </div>
 
   <!-- Segunda linha - Novas funcionalidades -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
     <!-- Entradas Pendentes de Análise -->
     <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between relative z-10">
         <div>
-          <p class="text-gray-600 text-sm font-medium">Entradas Pendentes</p>
-          <p class="text-3xl font-bold text-blue-600 mt-2"><%= typeof stats !== 'undefined' && stats.pendingEntries !== undefined ? stats.pendingEntries : 0 %></p>
+          <p class="text-gray-600 text-xs sm:text-sm font-medium uppercase tracking-wide">Entradas Pendentes</p>
+          <p class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent mt-2"><%= typeof stats !== 'undefined' && stats.pendingEntries !== undefined ? stats.pendingEntries : 0 %></p>
+          <p class="text-xs text-gray-500 mt-1">Aguardando aprovação</p>
         </div>
-        <div class="bg-blue-100 rounded-full p-4">
+        <div class="icon-container bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl p-4 shadow-lg">
           <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
       </div>
-      <p class="text-xs text-gray-500 mt-1">Aguardando aprovação do síndico</p>
     </div>
 
     <!-- Entradas Rejeitadas -->
     <% if (typeof stats !== 'undefined' && stats.rejectedEntries !== undefined && stats.rejectedEntries > 0) { %>
-    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-red-500">
+    <div class="card card-hover border-l-4 border-red-500">
       <div class="flex items-center justify-between">
         <div>
           <p class="text-gray-600 text-sm font-medium">Entradas Rejeitadas</p>
@@ -152,7 +152,7 @@
           </svg>
         </div>
       </div>
-      <a href="/financeiro/orcamentos-pendentes" class="text-yellow-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/financeiro/orcamentos-pendentes" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Analisar →
       </a>
     </div>
@@ -160,7 +160,7 @@
 
     <!-- Orçamentos Aprovados -->
     <% if (typeof stats !== 'undefined' && stats.approvedBudgets !== undefined && stats.approvedBudgets > 0) { %>
-    <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
+    <div class="card card-hover border-l-4 border-green-500">
       <div class="flex items-center justify-between">
         <div>
           <p class="text-gray-600 text-sm font-medium">Orçamentos Aprovados</p>
@@ -192,7 +192,7 @@
           </svg>
         </div>
       </div>
-      <a href="/administrativo/orcamentos?status=REJECTED" class="text-orange-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/administrativo/orcamentos?status=REJECTED" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ajustar →
       </a>
     </div>
@@ -200,17 +200,21 @@
   </div>
 
   <!-- Gráficos -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
     <!-- Gráfico de Evolução (Últimos 6 meses) -->
-    <div class="bg-white rounded-lg shadow-lg p-6">
-      <h2 class="text-xl font-bold text-gray-800 mb-4">Evolução Financeira (6 meses)</h2>
-      <canvas id="evolutionChart" height="300"></canvas>
+    <div class="card">
+      <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4">Evolução Financeira (6 meses)</h2>
+      <div class="chart-container">
+        <canvas id="evolutionChart"></canvas>
+      </div>
     </div>
 
     <!-- Gráfico de Consumo de Contas -->
-    <div class="bg-white rounded-lg shadow-lg p-6">
-      <h2 class="text-xl font-bold text-gray-800 mb-4">Consumo de Contas</h2>
-      <canvas id="consumptionChart" height="300"></canvas>
+    <div class="card">
+      <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4">Consumo de Contas</h2>
+      <div class="chart-container">
+        <canvas id="consumptionChart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -236,19 +240,19 @@
         <tbody class="bg-white divide-y divide-gray-200">
           <% if (typeof kpis !== 'undefined' && kpis.consumption && kpis.consumption.length > 0) { %>
             <% kpis.consumption.forEach(cons => { %>
-              <tr>
-                <td class="px-4 py-3 text-sm font-medium text-gray-900"><%= cons.billName %></td>
-                <td class="px-4 py-3 text-sm text-gray-500">
+              <tr class="table-row">
+                <td class="table-cell font-medium"><%= cons.billName %></td>
+                <td class="table-cell text-gray-500">
                   <%= cons.month %>/<%= cons.year %>
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-500">
+                <td class="table-cell text-gray-500">
                   <%= cons.consumptionValue ? cons.consumptionValue.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ' ' + cons.consumptionUnit : '-' %>
                 </td>
-                <td class="px-4 py-3 text-sm font-bold text-gray-900">
+                <td class="table-cell font-bold">
                   R$ <%= cons.billAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
                 </td>
-                <td class="px-4 py-3 text-sm">
-                  <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                <td class="table-cell">
+                  <span class="badge-success">
                     Registrado
                   </span>
                 </td>
@@ -257,49 +261,51 @@
           <% } else { %>
             <tr>
               <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                Nenhum consumo registrado ainda. <a href="/financeiro/consumo/novo" class="text-blue-600 hover:underline">Registre o primeiro consumo</a>
+                Nenhum consumo registrado ainda. <a href="/financeiro/consumo/novo" class="text-primary-600 hover:text-primary-700 transition-colors duration-200">Registre o primeiro consumo</a>
               </td>
             </tr>
           <% } %>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 
   <!-- Ações rápidas -->
-  <div class="bg-white rounded-lg shadow-lg p-6">
-    <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <a href="/financeiro/entradas/nova" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center font-medium">
+  <div class="card">
+    <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <a href="/financeiro/entradas/nova" class="btn-primary text-center bg-green-600 hover:bg-green-700 focus:ring-green-500">
         Nova Entrada
       </a>
-      <a href="/financeiro/saidas/nova" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition text-center font-medium">
+      <a href="/financeiro/saidas/nova" class="btn-danger text-center">
         Nova Saída
       </a>
-      <a href="/financeiro/contas/nova" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition text-center font-medium">
+      <a href="/financeiro/contas/nova" class="btn-primary text-center">
         Nova Conta
       </a>
-      <a href="/financeiro/consumo/novo" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition text-center font-medium">
+      <a href="/financeiro/consumo/novo" class="btn-primary text-center bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">
         Registrar Consumo
       </a>
       <% if (typeof stats !== 'undefined' && stats.rejectedEntries !== undefined && stats.rejectedEntries > 0) { %>
-      <a href="/financeiro/entradas-rejeitadas" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition text-center font-medium">
+      <a href="/financeiro/entradas-rejeitadas" class="btn-danger text-center">
         Corrigir Entradas (<%= stats.rejectedEntries %>)
       </a>
       <% } %>
       <% if (typeof stats !== 'undefined' && stats.pendingBudgetFinanceiro !== undefined && stats.pendingBudgetFinanceiro > 0) { %>
-      <a href="/financeiro/orcamentos-pendentes" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition text-center font-medium">
+      <a href="/financeiro/orcamentos-pendentes" class="btn-primary text-center bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500">
         Analisar Orçamentos (<%= stats.pendingBudgetFinanceiro %>)
       </a>
       <% } %>
       <% if (typeof stats !== 'undefined' && stats.approvedBudgets !== undefined && stats.approvedBudgets > 0) { %>
-      <a href="/financeiro/orcamentos-aprovados" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center font-medium">
+      <a href="/financeiro/orcamentos-aprovados" class="btn-primary text-center bg-green-600 hover:bg-green-700 focus:ring-green-500">
         Liberar Orçamentos (<%= stats.approvedBudgets %>)
       </a>
       <% } %>
     </div>
   </div>
 </div>
+</main>
 
 <script>
   // Dados para gráficos
@@ -321,26 +327,44 @@
           {
             label: 'Entradas',
             data: last6MonthsData.map(d => d.entries),
-            borderColor: 'rgb(34, 197, 94)',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            borderColor: '#2CB930',
+            backgroundColor: 'rgba(44, 185, 48, 0.15)',
+            borderWidth: 3,
             tension: 0.4,
-            fill: true
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#2CB930',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2
           },
           {
             label: 'Saídas',
             data: last6MonthsData.map(d => d.exits),
-            borderColor: 'rgb(239, 68, 68)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            borderWidth: 3,
             tension: 0.4,
-            fill: true
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#ef4444',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2
           },
           {
             label: 'Saldo',
             data: last6MonthsData.map(d => d.balance),
-            borderColor: 'rgb(59, 130, 246)',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            borderWidth: 3,
             tension: 0.4,
-            fill: true
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2
           }
         ]
       },
@@ -396,33 +420,70 @@
           {
             label: 'Média de Valor (R$)',
             data: consumptionData.map(d => d.avgAmount),
-            backgroundColor: 'rgba(59, 130, 246, 0.8)',
-            borderColor: 'rgb(59, 130, 246)',
-            borderWidth: 1
+            backgroundColor: [
+              '#2CB930',
+              '#3b82f6',
+              '#8b5cf6',
+              '#f59e0b',
+              '#ef4444',
+              '#06b6d4'
+            ],
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            borderRadius: 8,
+            borderSkipped: false
           }
         ]
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 2,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: true,
-            position: 'top'
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: 1,
+            cornerRadius: 8
           }
         },
         scales: {
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: {
+                size: 11
+              }
+            }
+          },
           y: {
             beginAtZero: true,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            },
             max: function(context) {
               const values = context.chart.data.datasets.flatMap(d => d.data);
               const max = Math.max(...values);
-              return max > 0 ? max * 1.1 : 1000; // Adiciona 10% de margem ou mínimo de 1000
+              return max > 0 ? max * 1.1 : 1000;
             },
             ticks: {
               callback: function(value) {
                 return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+              },
+              font: {
+                size: 11
               }
             }
           }

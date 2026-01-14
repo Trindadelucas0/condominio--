@@ -4,38 +4,38 @@
 <div class="container mx-auto px-4 py-8">
   <!-- Cabeçalho -->
   <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Dashboard Síndico</h1>
-    <p class="text-gray-600 mt-2">Visão executiva do condomínio</p>
+    <h1 class="page-title">Dashboard Síndico</h1>
+    <p class="page-subtitle">Visão executiva do condomínio</p>
   </div>
 
   <!-- Cards de estatísticas principais -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Aprovações Pendentes -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Aprovações Pendentes</p>
-          <p class="text-3xl font-bold text-orange-600 mt-2"><%= stats.pendingApprovals %></p>
+          <p class="text-gray-600 text-sm font-medium">Aprovações Pendentes</p>
+          <p class="text-3xl font-bold text-yellow-600 mt-2"><%= stats.pendingApprovals %></p>
           <% if (stats.pendingAmount > 0) { %>
             <p class="text-xs text-gray-500 mt-1">R$ <%= stats.pendingAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
           <% } %>
         </div>
-        <div class="bg-orange-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-yellow-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
       </div>
-      <a href="/sindico/aprovacoes" class="text-orange-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/sindico/aprovacoes" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ver todas →
       </a>
     </div>
 
     <!-- Alertas Críticos -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Alertas Críticos</p>
+          <p class="text-gray-600 text-sm font-medium">Alertas Críticos</p>
           <p class="text-3xl font-bold text-red-600 mt-2"><%= stats.criticalAlerts %></p>
         </div>
         <div class="bg-red-100 rounded-full p-4">
@@ -44,13 +44,13 @@
           </svg>
         </div>
       </div>
-      <a href="/sindico/alertas?severity=CRITICAL" class="text-red-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/sindico/alertas?severity=CRITICAL" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ver todos →
       </a>
     </div>
 
     <!-- Alertas de Aviso -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
           <p class="text-gray-600 text-sm">Alertas de Aviso</p>
@@ -71,7 +71,7 @@
     <div class="bg-white rounded-lg shadow p-6">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Saldo Atual</p>
+          <p class="text-gray-600 text-sm font-medium">Saldo Atual</p>
           <% if (stats.balance >= 0) { %>
             <p class="text-3xl font-bold text-green-600 mt-2">
               R$ <%= stats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
@@ -102,10 +102,10 @@
   <!-- Segunda linha de cards -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Despesas Pendentes -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Despesas Pendentes</p>
+          <p class="text-gray-600 text-sm font-medium">Despesas Pendentes</p>
           <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.pendingExpenses || 0 %></p>
         </div>
         <div class="bg-blue-100 rounded-full p-4">
@@ -114,16 +114,16 @@
           </svg>
         </div>
       </div>
-      <a href="/sindico/saidas-pendentes" class="text-blue-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/sindico/saidas-pendentes" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ver saídas pendentes →
       </a>
     </div>
 
     <!-- Tarefas Atrasadas -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Tarefas Atrasadas</p>
+          <p class="text-gray-600 text-sm font-medium">Tarefas Atrasadas</p>
           <p class="text-3xl font-bold text-red-600 mt-2"><%= stats.overdueTasks %></p>
         </div>
         <div class="bg-red-100 rounded-full p-4">
@@ -132,49 +132,49 @@
           </svg>
         </div>
       </div>
-      <a href="/sindico/tarefas" class="text-red-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/sindico/tarefas" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ver todas as tarefas →
       </a>
     </div>
 
     <!-- Ocorrências Abertas -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Ocorrências Abertas</p>
-          <p class="text-3xl font-bold text-purple-600 mt-2"><%= stats.openOccurrences %></p>
+          <p class="text-gray-600 text-sm font-medium">Ocorrências Abertas</p>
+          <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.openOccurrences %></p>
         </div>
-        <div class="bg-purple-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-blue-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
         </div>
       </div>
-      <a href="/sindico/ocorrencias" class="text-purple-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/sindico/ocorrencias" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ver todas as ocorrências →
       </a>
     </div>
 
     <!-- Orçamentos Aguardando Aprovação -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card card-hover">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Orçamentos Pendentes</p>
-          <p class="text-3xl font-bold text-indigo-600 mt-2"><%= stats.pendingBudgets || 0 %></p>
+          <p class="text-gray-600 text-sm font-medium">Orçamentos Pendentes</p>
+          <p class="text-3xl font-bold text-primary-600 mt-2"><%= stats.pendingBudgets || 0 %></p>
         </div>
-        <div class="bg-indigo-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-primary-100 rounded-full p-4">
+          <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
         </div>
       </div>
-      <a href="/sindico/orcamentos-pendentes" class="text-indigo-600 text-sm mt-4 inline-block hover:underline">
+      <a href="/sindico/orcamentos-pendentes" class="text-primary-600 text-sm mt-4 inline-block hover:text-primary-700 transition-colors duration-200">
         Ver orçamentos →
       </a>
     </div>
 
     <!-- Resumo Financeiro -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="card">
       <div>
         <p class="text-gray-600 text-sm mb-3">Resumo Financeiro</p>
         <div class="space-y-2">
@@ -200,40 +200,41 @@
   </div>
 
   <!-- Ações rápidas -->
-  <div class="bg-white rounded-lg shadow p-6">
+  <div class="card">
     <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-      <a href="/sindico/tarefas" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition text-center">
+      <a href="/sindico/tarefas" class="btn-primary text-center">
         Ver Tarefas
       </a>
-      <a href="/sindico/ocorrencias" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition text-center">
+      <a href="/sindico/ocorrencias" class="btn-primary text-center bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">
         Ver Ocorrências
       </a>
-      <a href="/sindico/aprovacoes" class="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition text-center">
+      <a href="/sindico/aprovacoes" class="btn-primary text-center bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500">
         Revisar Aprovações
       </a>
-      <a href="/sindico/alertas" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition text-center">
+      <a href="/sindico/alertas" class="btn-danger text-center">
         Ver Alertas
       </a>
-      <a href="/sindico/logs" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
+      <a href="/sindico/logs" class="btn-secondary text-center">
         Logs de Auditoria
       </a>
-      <a href="/sindico/entradas-pendentes" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition text-center">
+      <a href="/sindico/entradas-pendentes" class="btn-primary text-center bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500">
         Analisar Entradas<% if (stats.pendingEntries !== undefined && stats.pendingEntries > 0) { %> (<%= stats.pendingEntries %>)<% } %>
       </a>
-      <a href="/sindico/saidas-pendentes" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition text-center">
+      <a href="/sindico/saidas-pendentes" class="btn-danger text-center">
         Aprovar Saídas<% if (stats.pendingExpenses !== undefined && stats.pendingExpenses > 0) { %> (<%= stats.pendingExpenses %>)<% } %>
       </a>
       <% if (stats.pendingOccurrencesApproval !== undefined && stats.pendingOccurrencesApproval > 0) { %>
-      <a href="/sindico/ocorrencias-pendentes-aprovacao" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition text-center">
+      <a href="/sindico/ocorrencias-pendentes-aprovacao" class="btn-primary text-center bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">
         Aprovar Ocorrências (<%= stats.pendingOccurrencesApproval %>)
       </a>
       <% } %>
-      <a href="/sindico/manutencoes" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition text-center">
+      <a href="/sindico/manutencoes" class="btn-primary text-center">
         Manutenções
       </a>
     </div>
   </div>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

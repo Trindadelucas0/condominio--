@@ -1,74 +1,75 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
 
+<main class="flex-grow fade-in">
 <div class="container mx-auto px-4 py-8">
   <!-- Título da página -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Dashboard Master</h1>
-    <p class="text-gray-600 mt-2">Visão geral do sistema</p>
+  <div class="mb-8 slide-up">
+    <h1 class="page-title">Dashboard <span>Master</span></h1>
+    <p class="page-subtitle">Visão geral do sistema</p>
   </div>
 
   <!-- Cards de estatísticas principais -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Total de Condomínios -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex items-center justify-between">
+    <div class="card-tech card-hover" style="animation-delay: 0.1s;">
+      <div class="card-tech-content flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Condomínios Ativos</p>
-          <p class="text-3xl font-bold text-blue-600 mt-2"><%= stats.totalCondominios %></p>
+          <p class="text-gray-500 text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">Condomínios Ativos</p>
+          <p class="text-3xl sm:text-4xl font-extrabold text-primary-600 mt-2"><%= stats.totalCondominios %></p>
           <% if (stats.totalCondominiosInativos > 0) { %>
-            <p class="text-xs text-gray-500 mt-1"><%= stats.totalCondominiosInativos %> inativos</p>
+            <p class="text-xs text-gray-500 mt-2 font-medium"><%= stats.totalCondominiosInativos %> inativos</p>
           <% } %>
         </div>
-        <div class="bg-blue-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+        <div class="icon-container bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-4 shadow-md border border-primary-100">
+          <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
           </svg>
         </div>
       </div>
     </div>
 
     <!-- Total de Usuários -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex items-center justify-between">
+    <div class="card-tech card-hover" style="animation-delay: 0.2s;">
+      <div class="card-tech-content flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Usuários Ativos</p>
-          <p class="text-3xl font-bold text-green-600 mt-2"><%= stats.totalUsuarios %></p>
+          <p class="text-gray-500 text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">Usuários Ativos</p>
+          <p class="text-3xl sm:text-4xl font-extrabold text-green-600 mt-2"><%= stats.totalUsuarios %></p>
         </div>
-        <div class="bg-green-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+        <div class="icon-container bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 shadow-md border border-green-100">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
           </svg>
         </div>
       </div>
     </div>
 
     <!-- Logs 24h -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex items-center justify-between">
+    <div class="card-tech card-hover" style="animation-delay: 0.3s;">
+      <div class="card-tech-content flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Logs (24h)</p>
-          <p class="text-3xl font-bold text-purple-600 mt-2"><%= stats.logs24h %></p>
-          <p class="text-xs text-gray-500 mt-1"><%= stats.logs7d %> nos últimos 7 dias</p>
+          <p class="text-gray-600 text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">Logs (24h)</p>
+          <p class="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 via-blue-500 to-blue-700 bg-clip-text text-transparent mt-2 drop-shadow-sm"><%= stats.logs24h %></p>
+          <p class="text-xs text-gray-500 mt-2 font-medium"><%= stats.logs7d %> nos últimos 7 dias</p>
         </div>
-        <div class="bg-purple-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        <div class="icon-container bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 rounded-2xl p-5 shadow-xl border border-blue-200/50">
+          <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
         </div>
       </div>
     </div>
 
     <!-- Aprovações Pendentes -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex items-center justify-between">
+    <div class="card-tech card-hover" style="animation-delay: 0.4s;">
+      <div class="card-tech-content flex items-center justify-between">
         <div>
-          <p class="text-gray-600 text-sm">Aprovações Pendentes</p>
-          <p class="text-3xl font-bold text-orange-600 mt-2"><%= stats.aprovaçõesPendentes %></p>
+          <p class="text-gray-500 text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">Aprovações Pendentes</p>
+          <p class="text-3xl sm:text-4xl font-extrabold text-yellow-600 mt-2"><%= stats.aprovaçõesPendentes %></p>
         </div>
-        <div class="bg-orange-100 rounded-full p-4">
-          <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        <div class="icon-container bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4 shadow-md border border-yellow-100">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
       </div>
@@ -78,52 +79,114 @@
   <!-- Segunda linha de estatísticas -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
     <!-- Usuários por Perfil -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold text-gray-800 mb-4">Usuários por Perfil</h2>
+    <div class="card slide-up" style="animation-delay: 0.3s;">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+        </div>
+        <h2 class="text-xl font-extrabold text-gray-900">Usuários por Perfil</h2>
+      </div>
       <div class="space-y-3">
         <% if (stats.usuariosPorPerfil && stats.usuariosPorPerfil.length > 0) { %>
           <% stats.usuariosPorPerfil.forEach(perfil => { %>
-            <div class="flex items-center justify-between">
-              <span class="text-gray-700"><%= perfil.name %></span>
-              <span class="text-blue-600 font-bold text-lg"><%= perfil.total || 0 %></span>
+            <div class="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-gray-50 transition-colors duration-200 border-b border-gray-100 last:border-0">
+              <span class="text-gray-700 font-medium"><%= perfil.name %></span>
+              <span class="text-primary-600 font-extrabold text-lg bg-primary-50 px-3 py-1 rounded-lg"><%= perfil.total || 0 %></span>
             </div>
           <% }); %>
         <% } else { %>
-          <p class="text-gray-500 text-sm">Nenhum usuário cadastrado</p>
+          <p class="text-gray-500 text-sm text-center py-4">Nenhum usuário cadastrado</p>
         <% } %>
       </div>
     </div>
 
     <!-- Alertas Críticos -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold text-gray-800 mb-4">Alertas do Sistema</h2>
+    <div class="card slide-up" style="animation-delay: 0.4s;">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+        </div>
+        <h2 class="text-xl font-extrabold text-gray-900">Alertas do Sistema</h2>
+      </div>
       <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <span class="text-gray-700">Alertas Críticos</span>
-          <span class="text-red-600 font-bold text-lg"><%= stats.alertasCriticos %></span>
+        <div class="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+          <span class="text-gray-700 font-medium">Alertas Críticos</span>
+          <span class="text-red-600 font-extrabold text-lg bg-red-50 px-3 py-1 rounded-lg"><%= stats.alertasCriticos %></span>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Ações rápidas -->
-  <div class="bg-white rounded-lg shadow p-6">
-    <h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <a href="/master/condominios/novo" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition text-center">
-        Criar Novo Condomínio
+  <div class="slide-up" style="animation-delay: 0.5s;">
+    <div class="mb-6">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">Ações Rápidas</h2>
+      <p class="text-gray-500 text-sm">Acesso rápido às principais funcionalidades</p>
+    </div>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Criar Condomínio -->
+      <a href="/master/condominios/novo" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-primary-50/0 to-primary-100/0 group-hover:from-primary-50/50 group-hover:to-primary-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors duration-300">Criar Condomínio</h3>
+          <p class="text-sm text-gray-500">Adicionar novo condomínio</p>
+        </div>
       </a>
-      <a href="/master/usuarios/novo" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center">
-        Criar Novo Usuário
+
+      <!-- Criar Usuário -->
+      <a href="/master/usuarios/novo" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-green-50/0 to-green-100/0 group-hover:from-green-50/50 group-hover:to-green-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-green-700 transition-colors duration-300">Criar Usuário</h3>
+          <p class="text-sm text-gray-500">Registrar novo usuário</p>
+        </div>
       </a>
-      <a href="/master/condominios" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
-        Gerenciar Condomínios
+
+      <!-- Gerenciar Condomínios -->
+      <a href="/master/condominios" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-blue-100/0 group-hover:from-blue-50/50 group-hover:to-blue-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors duration-300">Gerenciar Condomínios</h3>
+          <p class="text-sm text-gray-500">Visualizar e editar</p>
+        </div>
       </a>
-      <a href="/master/usuarios" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition text-center">
-        Gerenciar Usuários
+
+      <!-- Gerenciar Usuários -->
+      <a href="/master/usuarios" class="group relative bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary-300 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-50/0 to-purple-100/0 group-hover:from-purple-50/50 group-hover:to-purple-100/30 rounded-2xl transition-all duration-300"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1 group-hover:text-purple-700 transition-colors duration-300">Gerenciar Usuários</h3>
+          <p class="text-sm text-gray-500">Visualizar e editar</p>
+        </div>
       </a>
     </div>
   </div>
 </div>
+</main>
 
 <%- include('../partials/footer') %>
