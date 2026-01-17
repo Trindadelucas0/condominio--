@@ -1,0 +1,83 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Relatórios</h1>
+    <p class="text-gray-600">Gere e baixe relatórios em PDF</p>
+  </div>
+
+  <!-- Gerar Relatório Mensal -->
+  <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Gerar Relatório Mensal</h2>
+    <form method="POST" action="/financeiro/relatorios/mensal/gerar" class="flex gap-4">
+      <select name="month" required class="px-3 py-2 border border-gray-300 rounded-md">
+        <% for (let i = 1; i <= 12; i++) { %>
+          <option value="<%= i %>" <%= i === new Date().getMonth() + 1 ? 'selected' : '' %>>
+            <%= new Date(2000, i - 1).toLocaleDateString('pt-BR', { month: 'long' }) %>
+          </option>
+        <% } %>
+      </select>
+      <select name="year" required class="px-3 py-2 border border-gray-300 rounded-md">
+        <% for (let y = new Date().getFullYear(); y >= new Date().getFullYear() - 2; y--) { %>
+          <option value="<%= y %>" <%= y === new Date().getFullYear() ? 'selected' : '' %>><%= y %></option>
+        <% } %>
+      </select>
+      <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        Gerar PDF
+      </button>
+    </form>
+  </div>
+
+  <!-- Histórico de Relatórios -->
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Relatórios Gerados</h2>
+    
+    <% if (reports && reports.length > 0) { %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mês/Ano</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gerado por</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% reports.forEach(function(report) { %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= report.report_type === 'MONTHLY_FINANCIAL' ? 'Financeiro Mensal' : report.report_type %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <% if (report.month && report.year) { %>
+                    <%= new Date(report.year, report.month - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= report.generated_by_name || 'N/A' %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= new Date(report.generated_at).toLocaleString('pt-BR') %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <a href="/financeiro/relatorios/download/<%= report.id %>" class="text-blue-600 hover:text-blue-800 font-semibold">
+                    Baixar PDF
+                  </a>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="text-gray-500 text-center py-8">Nenhum relatório gerado ainda.</p>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

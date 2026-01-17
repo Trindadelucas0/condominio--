@@ -253,12 +253,22 @@ const showOcorrencia = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
-    const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
+    const { query } = require('../config/database');
+    const occurrenceId = parseInt(req.params.id);
 
-    if (!occurrence) {
+    // Busca a ocorrência diretamente pelo ID, verificando apenas se pertence ao mesmo condomínio
+    // Isso permite que o operacional veja ocorrências mesmo que não tenha sido ele quem reportou
+    const occurrenceResult = await query(
+      `SELECT * FROM occurrences 
+       WHERE id = $1 AND condominium_id = $2`,
+      [occurrenceId, req.user.condominiumId]
+    );
+
+    if (occurrenceResult.rows.length === 0) {
       return renderError(res, 404, 'Ocorrência não encontrada');
     }
+
+    const occurrence = occurrenceResult.rows[0];
 
     res.render('operacional/ocorrencia-detail', {
       title: 'Detalhes da Ocorrência',
@@ -279,12 +289,21 @@ const showResolveOcorrencia = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
-    const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
+    const { query } = require('../config/database');
+    const occurrenceId = parseInt(req.params.id);
 
-    if (!occurrence) {
+    // Busca a ocorrência diretamente pelo ID
+    const occurrenceResult = await query(
+      `SELECT * FROM occurrences 
+       WHERE id = $1 AND condominium_id = $2`,
+      [occurrenceId, req.user.condominiumId]
+    );
+
+    if (occurrenceResult.rows.length === 0) {
       return renderError(res, 404, 'Ocorrência não encontrada');
     }
+
+    const occurrence = occurrenceResult.rows[0];
 
     if (occurrence.status === 'RESOLVIDA' || occurrence.status === 'ENCERRADA') {
       return res.redirect('/operacional/ocorrencias?error=' + encodeURIComponent('Ocorrência já está resolvida'));
@@ -340,12 +359,23 @@ const resolveOcorrencia = async (req, res) => {
     console.error('Erro ao resolver ocorrência:', error);
     // Se houver erro, volta para o formulário com os dados
     try {
-      const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId);
-      const occurrence = occurrences.find(o => o.id === parseInt(req.params.id));
+      const { query } = require('../config/database');
+      const occurrenceId = parseInt(req.params.id);
+      
+      const occurrenceResult = await query(
+        `SELECT * FROM occurrences 
+         WHERE id = $1 AND condominium_id = $2`,
+        [occurrenceId, req.user.condominiumId]
+      );
+
+      if (occurrenceResult.rows.length === 0) {
+        return res.redirect('/operacional/ocorrencias?error=' + encodeURIComponent('Ocorrência não encontrada'));
+      }
+
       res.render('operacional/resolve-occurrence', {
         title: 'Resolver Ocorrência',
         user: req.user,
-        occurrence: occurrence,
+        occurrence: occurrenceResult.rows[0],
         error: error.message,
         formData: req.body,
       });

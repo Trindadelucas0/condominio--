@@ -1,0 +1,137 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Taxas Mensais</h1>
+        <p class="text-gray-600 mt-1">Controle de inadimplência</p>
+      </div>
+      <a href="/financeiro/taxas/nova" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        + Nova Taxa
+      </a>
+    </div>
+  </div>
+
+  <!-- Estatísticas de Inadimplência -->
+  <% if (delinquency) { %>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-lg shadow p-4">
+        <p class="text-sm text-gray-600 mb-1">Taxa de Inadimplência</p>
+        <p class="text-2xl font-bold <%= delinquency.delinquencyRate > 10 ? 'text-red-600' : delinquency.delinquencyRate > 5 ? 'text-yellow-600' : 'text-green-600' %>">
+          <%= delinquency.delinquencyRate.toFixed(1) %>%
+        </p>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <p class="text-sm text-gray-600 mb-1">Valor em Aberto</p>
+        <p class="text-2xl font-bold text-red-600">
+          R$ <%= delinquency.totalOverdue.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+        </p>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <p class="text-sm text-gray-600 mb-1">Apartamentos Inadimplentes</p>
+        <p class="text-2xl font-bold text-gray-800">
+          <%= delinquency.overdueCount %>
+        </p>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <p class="text-sm text-gray-600 mb-1">Total de Taxas</p>
+        <p class="text-2xl font-bold text-gray-800">
+          <%= delinquency.totalFees %>
+        </p>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-lg shadow p-4 mb-6">
+    <form method="GET" class="flex flex-wrap gap-4">
+      <select name="paid" class="px-3 py-2 border border-gray-300 rounded-md">
+        <option value="">Todos</option>
+        <option value="true" <%= req.query.paid === 'true' ? 'selected' : '' %>>Pagas</option>
+        <option value="false" <%= req.query.paid === 'false' ? 'selected' : '' %>>Não Pagas</option>
+      </select>
+      <button type="submit" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+        Filtrar
+      </button>
+      <a href="/financeiro/taxas?overdue=true" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+        Ver Inadimplentes
+      </a>
+    </form>
+  </div>
+
+  <!-- Tabela de Taxas -->
+  <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Apartamento</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mês/Ano</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vencimento</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dias em Atraso</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multa/Juros</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% if (fees && fees.length > 0) { %>
+          <% fees.forEach(function(fee) { %>
+            <tr class="hover:bg-gray-50 <%= !fee.paid && fee.days_overdue > 0 ? 'bg-red-50' : '' %>">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <%= fee.apartment_number %><%= fee.block ? ' - ' + fee.block : '' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= new Date(fee.year, fee.month - 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                R$ <%= parseFloat(fee.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= new Date(fee.due_date).toLocaleDateString('pt-BR') %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm <%= fee.days_overdue > 0 ? 'font-bold text-red-600' : 'text-gray-500' %>">
+                <%= fee.days_overdue || 0 %> dias
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <% if (fee.late_fee > 0 || fee.interest > 0) { %>
+                  R$ <%= (parseFloat(fee.late_fee || 0) + parseFloat(fee.interest || 0)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                <% } else { %>
+                  -
+                <% } %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if (fee.paid) { %>
+                  <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Paga</span>
+                <% } else if (fee.days_overdue > 0) { %>
+                  <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Inadimplente</span>
+                <% } else { %>
+                  <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendente</span>
+                <% } %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <% if (!fee.paid) { %>
+                  <a href="/financeiro/taxas/<%= fee.id %>/pagar" class="text-blue-600 hover:text-blue-800 font-semibold">
+                    Marcar como Paga
+                  </a>
+                <% } else { %>
+                  <span class="text-gray-400">-</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+              Nenhuma taxa cadastrada ainda.
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

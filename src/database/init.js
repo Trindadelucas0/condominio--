@@ -514,6 +514,38 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/corrigir colunas de occurrences da FASE 22:', error);
     }
 
+    // FASE 23: Fechamento Mensal, Inadimplência, Assembleias, Fundo de Reserva
+    console.log('🔍 Verificando tabelas da FASE 23 (fechamento mensal, inadimplência, assembleias, fundo de reserva)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'monthly_closures'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 23 não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase23.sql'));
+        console.log('✅ Tabelas da FASE 23 criadas com sucesso');
+      } else {
+        // Verifica se campos novos foram adicionados (executa mesmo se tabela existe)
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase23.sql'));
+        console.log('✅ Tabelas da FASE 23 atualizadas');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 23:', error);
+    }
+
+    // FASE 24: Anexos Específicos
+    console.log('🔍 Verificando campos da FASE 24 (anexos específicos)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase24.sql'));
+      console.log('✅ Campos da FASE 24 atualizados');
+    } catch (error) {
+      console.error('Erro ao verificar/criar campos da FASE 24:', error);
+    }
+
     console.log('✅ Inicialização do banco de dados concluída!');
   } catch (error) {
     console.error('❌ Erro crítico na inicialização do banco de dados:', error);

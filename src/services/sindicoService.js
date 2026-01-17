@@ -75,6 +75,94 @@ const getDashboardStats = async (condominiumId) => {
 
     const balance = totalEntries - totalExitsPaid - totalExitsApproved;
 
+    // Gastos do mês atual (consolidado)
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    
+    const currentMonthExitsPaidResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 
+       AND EXTRACT(MONTH FROM exit_date) = $2 
+       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND payment_status = 'PAID'`,
+      [condominiumId, currentMonth, currentYear]
+    );
+    const currentMonthExitsPaid = parseFloat(currentMonthExitsPaidResult.rows[0].total);
+
+    const currentMonthExitsApprovedResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 
+       AND EXTRACT(MONTH FROM exit_date) = $2 
+       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND payment_status = 'APPROVED'`,
+      [condominiumId, currentMonth, currentYear]
+    );
+    const currentMonthExitsApproved = parseFloat(currentMonthExitsApprovedResult.rows[0].total);
+    
+    const currentMonthExpenses = currentMonthExitsPaid + currentMonthExitsApproved;
+
+    // Gastos do mês anterior (para comparação)
+    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    
+    const lastMonthExitsPaidResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 
+       AND EXTRACT(MONTH FROM exit_date) = $2 
+       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND payment_status = 'PAID'`,
+      [condominiumId, lastMonth, lastMonthYear]
+    );
+    const lastMonthExitsPaid = parseFloat(lastMonthExitsPaidResult.rows[0].total);
+
+    const lastMonthExitsApprovedResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
+       WHERE condominium_id = $1 
+       AND EXTRACT(MONTH FROM exit_date) = $2 
+       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND payment_status = 'APPROVED'`,
+      [condominiumId, lastMonth, lastMonthYear]
+    );
+    const lastMonthExitsApproved = parseFloat(lastMonthExitsApprovedResult.rows[0].total);
+    
+    const lastMonthExpenses = lastMonthExitsPaid + lastMonthExitsApproved;
+    
+    // Comparativo com mês anterior (%)
+    const expensesVariation = lastMonthExpenses > 0 
+      ? ((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 
+      : 0;
+
+    // Inadimplência (se existir tabela monthly_fees)
+    let delinquencyRate = 0;
+    let totalOverdue = 0;
+    let overdueCount = 0;
+    
+    try {
+      const overdueResult = await query(
+        `SELECT COUNT(*) as total, COALESCE(SUM(amount + late_fee + interest), 0) as total_amount
+         FROM monthly_fees 
+         WHERE condominium_id = $1 AND paid = FALSE AND due_date < CURRENT_DATE`,
+        [condominiumId]
+      );
+      
+      overdueCount = parseInt(overdueResult.rows[0].total);
+      totalOverdue = parseFloat(overdueResult.rows[0].total_amount);
+
+      const totalFeesResult = await query(
+        `SELECT COUNT(*) as total FROM monthly_fees 
+         WHERE condominium_id = $1 
+         AND EXTRACT(YEAR FROM due_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+         AND EXTRACT(MONTH FROM due_date) = EXTRACT(MONTH FROM CURRENT_DATE)`,
+        [condominiumId]
+      );
+      
+      const totalFees = parseInt(totalFeesResult.rows[0].total);
+      delinquencyRate = totalFees > 0 ? (overdueCount / totalFees) * 100 : 0;
+    } catch (error) {
+      // Tabela pode não existir ainda, ignora erro
+      console.log('Tabela monthly_fees ainda não existe ou erro ao calcular inadimplência:', error.message);
+    }
+
     // Tarefas atrasadas
     const overdueTasksResult = await query(
       `SELECT COUNT(*) as total FROM tasks 
@@ -142,6 +230,12 @@ const getDashboardStats = async (condominiumId) => {
       pendingBudgets,
       completedMaintenances,
       pendingOccurrencesApproval,
+      currentMonthExpenses,
+      lastMonthExpenses,
+      expensesVariation,
+      delinquencyRate,
+      totalOverdue,
+      overdueCount,
     };
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard síndico:', error);

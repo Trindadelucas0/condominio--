@@ -1,0 +1,21 @@
+{
+  "name": "condominio-tests",
+  "version": "1.0.0",
+  "description": "Testes do Sistema de Gestão Condominial",
+  "main": "testRunner.js",
+  "scripts": {
+    "test": "node testRunner.js",
+    "test:auth": "node -e \"require('./01-auth.test.js').run(require('./testRunner.js'))\"",
+    "test:financeiro": "node -e \"require('./02-financeiro.test.js').run(require('./testRunner.js'))\"",
+    "test:inadimplencia": "node -e \"require('./03-inadimplencia.test.js').run(require('./testRunner.js'))\"",
+    "test:assembleias": "node -e \"require('./04-assembleias.test.js').run(require('./testRunner.js'))\"",
+    "test:fundo": "node -e \"require('./05-fundo-reserva.test.js').run(require('./testRunner.js'))\"",
+    "test:relatorios": "node -e \"require('./06-relatorios.test.js').run(require('./testRunner.js'))\"",
+    "test:dashboards": "node -e \"require('./07-dashboards.test.js').run(require('./testRunner.js'))\"",
+    "test:permissoes": "node -e \"require('./08-permissoes.test.js').run(require('./testRunner.js'))\"",
+    "test:fluxos": "node -e \"require('./09-fluxos-completos.test.js').run(require('./testRunner.js'))\""
+  },
+  "keywords": ["test", "condominio", "gestao"],
+  "author": "",
+  "license": "ISC"
+}

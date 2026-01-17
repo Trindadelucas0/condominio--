@@ -93,12 +93,28 @@ const listTasks = async (userId, condominiumId, filters = {}) => {
     if (filters.status) {
       sql += ` AND t.status = $${paramCount++}`;
       params.push(filters.status);
+    } else {
+      // Por padrão, mostra apenas tarefas pendentes e em andamento (não concluídas)
+      sql += ` AND t.status IN ('PENDING', 'IN_PROGRESS')`;
     }
 
     sql += ` ORDER BY t.due_date ASC, t.priority DESC LIMIT 50`;
 
     const result = await query(sql, params);
     const tasks = result.rows;
+
+    // Log para debug (remover em produção se necessário)
+    console.log(`[OPERACIONAL] listTasks - userId: ${userId}, condominiumId: ${condominiumId}, encontradas: ${tasks.length} tarefas`);
+    if (tasks.length > 0) {
+      console.log(`[OPERACIONAL] Tarefas encontradas:`, tasks.map(t => ({ id: t.id, title: t.title, status: t.status, assigned_to: t.assigned_to })));
+    } else {
+      // Verifica se há tarefas atribuídas mas com condominium_id diferente
+      const debugResult = await query(
+        `SELECT COUNT(*) as total FROM tasks WHERE assigned_to = $1`,
+        [userId]
+      );
+      console.log(`[OPERACIONAL] Debug - Total de tarefas atribuídas ao usuário ${userId} (qualquer condomínio): ${debugResult.rows[0].total}`);
+    }
 
     // Para cada tarefa, busca checklists
     for (const task of tasks) {

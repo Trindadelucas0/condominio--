@@ -4,6 +4,8 @@
   "description": "Sistema interno de gestão condominial",
   "main": "src/server.js",
   "scripts": {
+    "test": "node tests/testRunner.js",
+    "test:all": "node tests/testRunner.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "apply-corrections": "node src/database/applyCorrections.js"
@@ -20,6 +22,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "pdfkit": "^0.14.0",
     "pg": "^8.11.3"
   },
   "devDependencies": {

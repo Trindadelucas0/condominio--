@@ -3,6 +3,7 @@
 // Apenas usuários com perfil SINDICO ou SUBSINDICO podem acessar
 
 const sindicoService = require('../services/sindicoService'); // Service do módulo síndico
+const dashboardAnalyticsService = require('../services/dashboardAnalyticsService'); // Analytics avançados
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir dashboard do síndico
@@ -17,10 +18,35 @@ const showDashboard = async (req, res) => {
     // Busca estatísticas do condomínio
     const stats = await sindicoService.getDashboardStats(req.user.condominiumId);
 
+    // Busca analytics avançados
+    const historicalData = await dashboardAnalyticsService.getHistoricalData(req.user.condominiumId, 12);
+    const projections = await dashboardAnalyticsService.getProjections(req.user.condominiumId, 3);
+    const trend = await dashboardAnalyticsService.getTrend(req.user.condominiumId, 'balance');
+    const categoryData = await dashboardAnalyticsService.getDataByCategory(req.user.condominiumId, 6);
+
+    // Comparação com mês anterior
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+    const comparison = await dashboardAnalyticsService.comparePeriods(
+      req.user.condominiumId,
+      { month: lastMonth, year: lastMonthYear },
+      { month: currentMonth, year: currentYear }
+    );
+
     res.render('sindico/dashboard', {
       title: 'Dashboard Síndico',
       user: req.user,
       stats: stats,
+      analytics: {
+        historical: historicalData,
+        projections: projections,
+        trend: trend,
+        categoryData: categoryData,
+        comparison: comparison
+      }
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard síndico:', error);

@@ -112,9 +112,13 @@ const uploadContracts = multer({
 // Middleware para upload de múltiplos arquivos PDF de contratos
 const uploadContract = uploadContracts.array('contractFiles', 10); // Máximo 10 arquivos por vez
 
+// Middleware para upload de um único arquivo PDF (para assembleias, etc)
+const uploadSingleContract = uploadContracts.single('file');
+
 module.exports = {
   uploadReceipt,
   uploadPayment,
   uploadContract,
+  uploadSingleContract,
   uploadsDir: receiptsDir
 };

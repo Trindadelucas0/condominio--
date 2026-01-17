@@ -10,8 +10,9 @@ const { authenticate, authorize } = require('../middlewares/auth');
 // Todas as rotas exigem autenticação
 router.use(authenticate);
 
-// Todas as rotas exigem perfil FINANCEIRO
-router.use(authorize('FINANCEIRO'));
+// Todas as rotas exigem perfil FINANCEIRO, SINDICO ou SUBSINDICO
+// SINDICO tem acesso total ao condomínio, incluindo financeiro
+router.use(authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'));
 
 // Dashboard
 router.get('/dashboard', financeiroController.showDashboard);
@@ -444,6 +445,264 @@ router.post('/orcamentos/:id/:action', async (req, res) => {
   } catch (error) {
     console.error('Erro ao liberar/retornar orçamento:', error);
     res.redirect('/financeiro/orcamentos-aprovados?error=' + encodeURIComponent(error.message));
+  }
+});
+
+// Fechamento Mensal
+const monthlyClosureService = require('../services/monthlyClosureService');
+router.get('/fechamento-mensal', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const closures = await monthlyClosureService.listClosures(req.user.condominiumId, { limit: 12 });
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    const currentClosure = await monthlyClosureService.getClosureByMonth(req.user.condominiumId, currentMonth, currentYear);
+    const validation = await monthlyClosureService.validateMonthClosure(req.user.condominiumId, currentMonth, currentYear);
+    const totals = await monthlyClosureService.calculateMonthTotals(req.user.condominiumId, currentMonth, currentYear);
+    
+    res.render('administrativo/financeiro/fechamento-mensal', {
+      title: 'Fechamento Mensal',
+      user: req.user,
+      closures: closures,
+      currentClosure: currentClosure,
+      currentMonth: currentMonth,
+      currentYear: currentYear,
+      validation: validation,
+      totals: totals,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar fechamento mensal:', error);
+    res.status(500).send('Erro ao carregar fechamento mensal');
+  }
+});
+
+router.post('/fechamento-mensal/fechar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const { month, year, notes } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    
+    await monthlyClosureService.closeMonth(
+      req.user.condominiumId,
+      parseInt(month),
+      parseInt(year),
+      req.user.id,
+      notes,
+      ipAddress,
+      userAgent
+    );
+    
+    res.redirect('/financeiro/fechamento-mensal?success=closed');
+  } catch (error) {
+    console.error('Erro ao fechar mês:', error);
+    res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent(error.message));
+  }
+});
+
+router.post('/fechamento-mensal/:id/reabrir', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent('Motivo da reabertura é obrigatório'));
+    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    
+    await monthlyClosureService.reopenMonth(
+      parseInt(req.params.id),
+      req.user.condominiumId,
+      req.user.id,
+      reason,
+      ipAddress,
+      userAgent
+    );
+    
+    res.redirect('/financeiro/fechamento-mensal?success=reopened');
+  } catch (error) {
+    console.error('Erro ao reabrir mês:', error);
+    res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent(error.message));
+  }
+});
+
+// Inadimplência
+const inadimplenciaController = require('../controllers/inadimplenciaController');
+router.get('/apartamentos/novo', (req, res) => {
+  res.render('administrativo/financeiro/apartamentos/form', {
+    title: 'Novo Apartamento',
+    user: req.user,
+    apartment: null,
+    req: req,
+  });
+});
+router.get('/apartamentos', inadimplenciaController.listApartments);
+router.post('/apartamentos', inadimplenciaController.createApartment);
+router.get('/taxas/nova', (req, res) => {
+  if (!req.user.condominiumId) {
+    return res.status(400).send('Usuário não está associado a um condomínio');
+  }
+  const inadimplenciaService = require('../services/inadimplenciaService');
+  inadimplenciaService.listApartments(req.user.condominiumId).then(apartments => {
+    res.render('administrativo/financeiro/taxas/form', {
+      title: 'Nova Taxa Mensal',
+      user: req.user,
+      apartments: apartments,
+      req: req,
+    });
+  }).catch(err => {
+    console.error('Erro ao carregar apartamentos:', err);
+    res.status(500).send('Erro ao carregar formulário');
+  });
+});
+router.get('/taxas/:id/pagar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const inadimplenciaService = require('../services/inadimplenciaService');
+    const fees = await inadimplenciaService.listMonthlyFees(req.user.condominiumId, { limit: 1000 });
+    const fee = fees.find(f => f.id === parseInt(req.params.id));
+    if (!fee) {
+      return res.status(404).send('Taxa não encontrada');
+    }
+    if (fee.paid) {
+      return res.redirect('/financeiro/taxas?error=already_paid');
+    }
+    res.render('administrativo/financeiro/taxas/pagar', {
+      title: 'Marcar Taxa como Paga',
+      user: req.user,
+      fee: fee,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar formulário de pagamento:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+});
+router.get('/taxas', inadimplenciaController.listMonthlyFees);
+router.post('/taxas', inadimplenciaController.createMonthlyFee);
+router.post('/taxas/:id/pagar', inadimplenciaController.markFeeAsPaid);
+
+// Relatórios
+const reportService = require('../services/reportService');
+router.get('/relatorios', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const reports = await reportService.listGeneratedReports(req.user.condominiumId);
+    res.render('administrativo/financeiro/relatorios/list', {
+      title: 'Relatórios',
+      user: req.user,
+      reports: reports,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao listar relatórios:', error);
+    res.status(500).send('Erro ao carregar relatórios');
+  }
+});
+
+router.post('/relatorios/mensal/gerar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const { month, year } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    
+    const report = await reportService.generateMonthlyFinancialReport(
+      req.user.condominiumId,
+      parseInt(month),
+      parseInt(year),
+      req.user.id,
+      ipAddress,
+      userAgent
+    );
+    
+    res.redirect(`/financeiro/relatorios?success=generated&file=${report.filePath}`);
+  } catch (error) {
+    console.error('Erro ao gerar relatório:', error);
+    res.redirect('/financeiro/relatorios?error=' + encodeURIComponent(error.message));
+  }
+});
+
+router.get('/relatorios/download/:id', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const { query } = require('../config/database');
+    const reportResult = await query(
+      `SELECT * FROM generated_reports 
+       WHERE id = $1 AND condominium_id = $2`,
+      [req.params.id, req.user.condominiumId]
+    );
+    
+    if (reportResult.rows.length === 0) {
+      return res.status(404).send('Relatório não encontrado');
+    }
+    
+    const report = reportResult.rows[0];
+    const path = require('path');
+    const filePath = path.join(__dirname, '../../', report.file_path);
+    
+    res.download(filePath, report.file_name);
+  } catch (error) {
+    console.error('Erro ao baixar relatório:', error);
+    res.status(500).send('Erro ao baixar relatório');
+  }
+});
+
+// Fundo de Reserva
+const reserveFundService = require('../services/reserveFundService');
+router.get('/fundo-reserva', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const fund = await reserveFundService.getReserveFund(req.user.condominiumId);
+    res.render('administrativo/financeiro/fundo-reserva', {
+      title: 'Fundo de Reserva',
+      user: req.user,
+      fund: fund,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar fundo de reserva:', error);
+    res.status(500).send('Erro ao carregar fundo de reserva');
+  }
+});
+
+router.post('/fundo-reserva', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    
+    await reserveFundService.setupReserveFund(
+      req.user.condominiumId,
+      req.user.id,
+      req.body,
+      ipAddress,
+      userAgent
+    );
+    
+    res.redirect('/financeiro/fundo-reserva?success=updated');
+  } catch (error) {
+    console.error('Erro ao configurar fundo de reserva:', error);
+    res.redirect('/financeiro/fundo-reserva?error=' + encodeURIComponent(error.message));
   }
 });
 

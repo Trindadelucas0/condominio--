@@ -1,0 +1,317 @@
+<%- include('../../partials/header', { title: title }) %>
+<%- include('../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Detalhes da Assembleia</h1>
+    <p class="text-gray-600">Gerencie participantes, decisões e documentos</p>
+  </div>
+
+  <% if (typeof req.query.success !== 'undefined') { %>
+    <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+      <% if (req.query.success === 'participant_added') { %>
+        Participante adicionado com sucesso!
+      <% } else if (req.query.success === 'decision_added') { %>
+        Decisão adicionada com sucesso!
+      <% } else if (req.query.success === 'document_attached') { %>
+        Documento anexado com sucesso!
+      <% } else if (req.query.success === 'completed') { %>
+        Assembleia finalizada com sucesso!
+      <% } %>
+    </div>
+  <% } %>
+
+  <!-- Informações da Assembleia -->
+  <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Informações Gerais</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <p class="text-sm text-gray-600">Data</p>
+        <p class="text-lg font-semibold">
+          <%= new Date(assembly.date).toLocaleDateString('pt-BR') %><%= assembly.time ? ' às ' + assembly.time : '' %>
+        </p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-600">Tipo</p>
+        <p class="text-lg font-semibold">
+          <%= assembly.type === 'ORDINARIA' ? 'Ordinária' : assembly.type === 'EXTRAORDINARIA' ? 'Extraordinária' : 'Especial' %>
+        </p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-600">Local</p>
+        <p class="text-lg font-semibold"><%= assembly.location || '-' %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-600">Status</p>
+        <p class="text-lg font-semibold">
+          <% if (assembly.status === 'COMPLETED') { %>
+            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Finalizada</span>
+          <% } else if (assembly.status === 'IN_PROGRESS') { %>
+            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Em Andamento</span>
+          <% } else { %>
+            <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">Agendada</span>
+          <% } %>
+        </p>
+      </div>
+    </div>
+    <div class="mt-4">
+      <p class="text-sm text-gray-600 mb-2">Pauta</p>
+      <p class="text-gray-800 whitespace-pre-wrap"><%= assembly.agenda %></p>
+    </div>
+  </div>
+
+  <!-- Participantes -->
+  <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">Participantes</h2>
+      <% if (assembly.status !== 'COMPLETED') { %>
+        <button onclick="document.getElementById('participantModal').classList.remove('hidden')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          + Adicionar
+        </button>
+      <% } %>
+    </div>
+    
+    <% if (assembly.participants && assembly.participants.length > 0) { %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Apartamento</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Presente</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assinado</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% assembly.participants.forEach(function(p) { %>
+            <tr>
+              <td class="px-6 py-4 text-sm text-gray-900"><%= p.owner_name %></td>
+              <td class="px-6 py-4 text-sm text-gray-500"><%= p.apartment_number || '-' %></td>
+              <td class="px-6 py-4 text-sm">
+                <% if (p.present) { %>
+                  <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">✓</span>
+                <% } else { %>
+                  <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">-</span>
+                <% } %>
+              </td>
+              <td class="px-6 py-4 text-sm">
+                <% if (p.signed) { %>
+                  <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">✓</span>
+                <% } else { %>
+                  <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">-</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p class="text-gray-500 text-center py-4">Nenhum participante registrado ainda.</p>
+    <% } %>
+  </div>
+
+  <!-- Decisões -->
+  <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">Decisões</h2>
+      <% if (assembly.status !== 'COMPLETED') { %>
+        <button onclick="document.getElementById('decisionModal').classList.remove('hidden')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          + Adicionar
+        </button>
+      <% } %>
+    </div>
+    
+    <% if (assembly.decisions && assembly.decisions.length > 0) { %>
+      <div class="space-y-4">
+        <% assembly.decisions.forEach(function(d) { %>
+          <div class="border border-gray-200 rounded-lg p-4">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-semibold text-gray-800">Decisão #<%= d.decision_number %>: <%= d.title %></h3>
+              <% if (d.approved) { %>
+                <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Aprovada</span>
+              <% } else { %>
+                <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">Rejeitada</span>
+              <% } %>
+            </div>
+            <p class="text-gray-600 mb-2"><%= d.description %></p>
+            <div class="flex gap-4 text-sm text-gray-500">
+              <span>A favor: <%= d.votes_for %></span>
+              <span>Contra: <%= d.votes_against %></span>
+              <span>Abstenções: <%= d.votes_abstention %></span>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <p class="text-gray-500 text-center py-4">Nenhuma decisão registrada ainda.</p>
+    <% } %>
+  </div>
+
+  <!-- Documentos -->
+  <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">Documentos</h2>
+      <% if (assembly.status !== 'COMPLETED') { %>
+        <button onclick="document.getElementById('documentModal').classList.remove('hidden')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          + Anexar
+        </button>
+      <% } %>
+    </div>
+    
+    <% if (assembly.documents && assembly.documents.length > 0) { %>
+      <div class="space-y-2">
+        <% assembly.documents.forEach(function(doc) { %>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <div>
+              <p class="font-semibold"><%= doc.file_name %></p>
+              <p class="text-sm text-gray-500">
+                <%= doc.document_type === 'ATA' ? 'Ata' : doc.document_type === 'CONVOCACAO' ? 'Convocação' : doc.document_type === 'PAUTA' ? 'Pauta' : 'Outro' %>
+                <% if (doc.signed) { %>
+                  - <span class="text-green-600 font-semibold">Assinada</span>
+                <% } %>
+              </p>
+            </div>
+            <a href="/uploads/<%= doc.file_path %>" target="_blank" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+              Ver PDF
+            </a>
+          </div>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <p class="text-gray-500 text-center py-4">Nenhum documento anexado ainda.</p>
+    <% } %>
+  </div>
+
+  <!-- Finalizar Assembleia -->
+  <% if (assembly.status !== 'COMPLETED') { %>
+    <div class="bg-white rounded-lg shadow-lg p-6">
+      <form method="POST" action="/assembleias/<%= assembly.id %>/finalizar">
+        <button type="submit" class="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">
+          Finalizar Assembleia
+        </button>
+      </form>
+    </div>
+  <% } %>
+
+  <!-- Modal Adicionar Participante -->
+  <div id="participantModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-xl font-bold mb-4">Adicionar Participante</h3>
+      <form method="POST" action="/assembleias/<%= assembly.id %>/participantes">
+        <div class="space-y-4">
+          <div>
+            <label for="ownerName" class="block text-sm font-medium text-gray-700 mb-2">Nome <span class="text-red-500">*</span></label>
+            <input type="text" id="ownerName" name="ownerName" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="ownerDocument" class="block text-sm font-medium text-gray-700 mb-2">CPF/CNPJ</label>
+            <input type="text" id="ownerDocument" name="ownerDocument" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="apartmentId" class="block text-sm font-medium text-gray-700 mb-2">Apartamento</label>
+            <select id="apartmentId" name="apartmentId" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+              <option value="">Selecione...</option>
+              <% if (apartments && apartments.length > 0) { %>
+                <% apartments.forEach(function(apt) { %>
+                  <option value="<%= apt.id %>"><%= apt.number %><%= apt.block ? ' - ' + apt.block : '' %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+          <div>
+            <label class="flex items-center">
+              <input type="checkbox" name="present" value="true" class="mr-2">
+              <span class="text-sm text-gray-700">Presente</span>
+            </label>
+          </div>
+          <div class="flex gap-3">
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Adicionar</button>
+            <button type="button" onclick="document.getElementById('participantModal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Adicionar Decisão -->
+  <div id="decisionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-xl font-bold mb-4">Adicionar Decisão</h3>
+      <form method="POST" action="/assembleias/<%= assembly.id %>/decisoes">
+        <div class="space-y-4">
+          <div>
+            <label for="decisionNumber" class="block text-sm font-medium text-gray-700 mb-2">Número <span class="text-red-500">*</span></label>
+            <input type="number" id="decisionNumber" name="decisionNumber" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-2">Título <span class="text-red-500">*</span></label>
+            <input type="text" id="title" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-2">Descrição <span class="text-red-500">*</span></label>
+            <textarea id="description" name="description" required rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label for="votesFor" class="block text-sm font-medium text-gray-700 mb-2">A Favor</label>
+              <input type="number" id="votesFor" name="votesFor" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            </div>
+            <div>
+              <label for="votesAgainst" class="block text-sm font-medium text-gray-700 mb-2">Contra</label>
+              <input type="number" id="votesAgainst" name="votesAgainst" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            </div>
+            <div>
+              <label for="votesAbstention" class="block text-sm font-medium text-gray-700 mb-2">Abstenções</label>
+              <input type="number" id="votesAbstention" name="votesAbstention" value="0" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            </div>
+          </div>
+          <div>
+            <label class="flex items-center">
+              <input type="checkbox" name="approved" value="true" class="mr-2">
+              <span class="text-sm text-gray-700">Aprovada</span>
+            </label>
+          </div>
+          <div class="flex gap-3">
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Adicionar</button>
+            <button type="button" onclick="document.getElementById('decisionModal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Anexar Documento -->
+  <div id="documentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-xl font-bold mb-4">Anexar Documento</h3>
+      <form method="POST" action="/assembleias/<%= assembly.id %>/documentos" enctype="multipart/form-data">
+        <div class="space-y-4">
+          <div>
+            <label for="documentType" class="block text-sm font-medium text-gray-700 mb-2">Tipo <span class="text-red-500">*</span></label>
+            <select id="documentType" name="documentType" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+              <option value="ATA">Ata</option>
+              <option value="CONVOCACAO">Convocação</option>
+              <option value="PAUTA">Pauta</option>
+              <option value="OUTRO">Outro</option>
+            </select>
+          </div>
+          <div>
+            <label for="file" class="block text-sm font-medium text-gray-700 mb-2">Arquivo PDF <span class="text-red-500">*</span></label>
+            <input type="file" id="file" name="file" accept="application/pdf" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label class="flex items-center">
+              <input type="checkbox" name="signed" value="true" class="mr-2">
+              <span class="text-sm text-gray-700">Documento assinado</span>
+            </label>
+          </div>
+          <div class="flex gap-3">
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Anexar</button>
+            <button type="button" onclick="document.getElementById('documentModal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>

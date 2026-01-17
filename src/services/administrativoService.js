@@ -187,6 +187,26 @@ const createTask = async (data, userId, condominiumId, ipAddress, userAgent) => 
       userAgent: userAgent,
     });
 
+    // Cria notificação para o usuário atribuído
+    const notificationService = require('./notificationService');
+    try {
+      await notificationService.createNotification(
+        assignedTo,
+        condominiumId,
+        `Nova Tarefa: ${title.trim()}`,
+        `Uma nova tarefa foi atribuída a você: ${title.trim()}`,
+        'TASK_ASSIGNED',
+        'tasks',
+        task.id
+      );
+      console.log(`[ADMINISTRATIVO] Notificação criada para usuário ${assignedTo} sobre tarefa ${task.id}`);
+    } catch (notifError) {
+      console.error('Erro ao criar notificação de tarefa:', notifError);
+      // Não falha a criação da tarefa se a notificação falhar
+    }
+
+    console.log(`[ADMINISTRATIVO] Tarefa criada: ID ${task.id}, assigned_to: ${assignedTo}, condominium_id: ${condominiumId}, status: ${task.status}`);
+
     return task;
   } catch (error) {
     console.error('Erro ao criar tarefa:', error);

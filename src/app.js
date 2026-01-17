@@ -47,6 +47,7 @@ const conselhoRoutes = require('./routes/conselhoRoutes');
 const configRoutes = require('./routes/configRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const automationRoutes = require('./routes/automationRoutes');
+const assemblyRoutes = require('./routes/assemblyRoutes');
 
 // Aplicar rotas
 app.use('/master', masterRoutes);
@@ -61,6 +62,7 @@ app.use('/conselho', conselhoRoutes);
 app.use('/config', configRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/automation', automationRoutes);
+app.use('/assembleias', assemblyRoutes);
 
 // Rota raiz - sempre redireciona para login
 // Após login bem-sucedido, o authController redireciona para o dashboard correto

@@ -34,11 +34,14 @@ const triageOccurrence = async (occurrenceId, triagemData, userId, condominiumId
     }
 
     // Atualiza ocorrência com dados de triagem
+    // Nota: Fazemos cast explícito de $6 para INTEGER para evitar erro de tipo quando NULL
+    const assignedToValue = assignTo || occurrence.assigned_to;
     const updateResult = await query(
       `UPDATE occurrences 
        SET triaged = TRUE, triaged_by = $1, triaged_at = CURRENT_TIMESTAMP,
            priority = $2, classification = $3, sla_hours = $4, sla_due_date = $5,
-           assigned_to = $6, status = CASE WHEN $6 IS NOT NULL THEN 'EM_ATENDIMENTO' ELSE status END,
+           assigned_to = $6::INTEGER, 
+           status = CASE WHEN $6::INTEGER IS NOT NULL THEN 'EM_ATENDIMENTO' ELSE status END,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $7
        RETURNING *`,
@@ -48,7 +51,7 @@ const triageOccurrence = async (occurrenceId, triagemData, userId, condominiumId
         classification || null,
         slaHours || null,
         slaDueDate,
-        assignTo || occurrence.assigned_to,
+        assignedToValue,
         occurrenceId,
       ]
     );

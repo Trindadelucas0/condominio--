@@ -92,17 +92,31 @@ const createTarefa = async (req, res) => {
           : [req.body.checklistItems].filter(item => item && item.trim() !== ''))
       : [];
 
+    // Valida assignedTo
+    if (!req.body.assignedTo) {
+      throw new Error('Responsável é obrigatório');
+    }
+
+    const assignedTo = parseInt(req.body.assignedTo);
+    if (isNaN(assignedTo)) {
+      throw new Error('Responsável inválido');
+    }
+
+    console.log(`[ADMINISTRATIVO] Criando tarefa - assignedTo: ${assignedTo}, condominiumId: ${req.user.condominiumId}`);
+
     const data = {
       title: req.body.title,
       description: req.body.description,
-      assignedTo: parseInt(req.body.assignedTo),
+      assignedTo: assignedTo,
       dueDate: req.body.dueDate,
       priority: req.body.priority || 'NORMAL',
       taskType: req.body.taskType || 'CHECKLIST',
       checklistItems: checklistItems,
     };
 
-    await administrativoService.createTask(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    const task = await administrativoService.createTask(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    
+    console.log(`[ADMINISTRATIVO] Tarefa criada com sucesso - ID: ${task.id}, assigned_to: ${task.assigned_to}, status: ${task.status}`);
 
     res.redirect('/administrativo/tarefas?success=created');
   } catch (error) {
