@@ -4,12 +4,23 @@
 
 const { query } = require('../config/database'); // Conexão com banco
 const { logAction } = require('../utils/logger'); // Para logs de auditoria
+const cacheService = require('./cacheService'); // Service de cache
 
 // Função para obter estatísticas do condomínio do síndico
 // Recebe: condominiumId
 // Retorna: estatísticas (alertas críticos, aprovações pendentes, financeiro, etc)
 const getDashboardStats = async (condominiumId) => {
   try {
+    // Tentar obter do cache
+    const cacheKey = `dashboard:stats:${condominiumId}`;
+    const cachedStats = cacheService.get(cacheKey);
+    if (cachedStats) {
+      console.log('📦 Dashboard stats retornados do cache');
+      return cachedStats;
+    }
+    
+    // Se não estiver no cache, calcular
+    console.log('🔄 Calculando dashboard stats...');
     // Conta aprovações pendentes
     const pendingApprovalsResult = await query(
       `SELECT COUNT(*) as total FROM approvals 
@@ -237,6 +248,11 @@ const getDashboardStats = async (condominiumId) => {
       totalOverdue,
       overdueCount,
     };
+    
+    // Salvar no cache (5 minutos)
+    cacheService.set(cacheKey, stats, 300);
+    
+    return stats;
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard síndico:', error);
     throw error;
@@ -246,17 +262,88 @@ const getDashboardStats = async (condominiumId) => {
 // Função para listar aprovações pendentes
 // Recebe: condominiumId
 // Retorna: lista de aprovações pendentes
-const listPendingApprovals = async (condominiumId) => {
+const listPendingApprovals = async (condominiumId, filters = {}) => {
   try {
-    const result = await query(
-      `SELECT a.*, u.full_name as requested_by_name
-       FROM approvals a
-       LEFT JOIN users u ON a.requested_by = u.id
-       WHERE a.condominium_id = $1 AND a.status = 'PENDING'
-       ORDER BY a.created_at DESC`,
-      [condominiumId]
-    );
-    return result.rows;
+    // Padrões para filtros
+    const {
+      search = '',
+      page = 1,
+      perPage = 20,
+      orderBy = 'created_at',
+      orderDir = 'DESC'
+    } = filters;
+
+    // Construir query base
+    let sql = `
+      SELECT a.*, u.full_name as requested_by_name
+      FROM approvals a
+      LEFT JOIN users u ON a.requested_by = u.id
+      WHERE a.condominium_id = $1 AND a.status = 'PENDING'
+    `;
+    const params = [condominiumId];
+    let paramIndex = 2;
+
+    // Adicionar busca por texto
+    if (search) {
+      sql += ` AND (
+        a.approval_type ILIKE $${paramIndex} OR
+        a.description ILIKE $${paramIndex} OR
+        u.full_name ILIKE $${paramIndex}
+      )`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    // Adicionar ordenação
+    const validOrderBy = ['created_at', 'approval_type', 'amount', 'due_date'];
+    const validOrderDir = ['ASC', 'DESC'];
+    const orderByField = validOrderBy.includes(orderBy) ? orderBy : 'created_at';
+    const orderDirection = validOrderDir.includes(orderDir.toUpperCase()) ? orderDir.toUpperCase() : 'DESC';
+    sql += ` ORDER BY a.${orderByField} ${orderDirection}`;
+
+    // Adicionar paginação
+    const offset = (page - 1) * perPage;
+    sql += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(perPage, offset);
+
+    // Executar query principal
+    const result = await query(sql, params);
+
+    // Contar total de registros (sem LIMIT e OFFSET)
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM approvals a
+      LEFT JOIN users u ON a.requested_by = u.id
+      WHERE a.condominium_id = $1 AND a.status = 'PENDING'
+    `;
+    const countParams = [condominiumId];
+    let countParamIndex = 2;
+
+    if (search) {
+      countSql += ` AND (
+        a.approval_type ILIKE $${countParamIndex} OR
+        a.description ILIKE $${countParamIndex} OR
+        u.full_name ILIKE $${countParamIndex}
+      )`;
+      countParams.push(`%${search}%`);
+      countParamIndex++;
+    }
+
+    const countResult = await query(countSql, countParams);
+    const totalRecords = countResult.rows.length > 0 ? parseInt(countResult.rows[0].total) : 0;
+    const totalPages = Math.ceil(totalRecords / perPage);
+
+    return {
+      approvals: result.rows,
+      pagination: {
+        currentPage: page,
+        perPage: perPage,
+        totalRecords: totalRecords,
+        totalPages: totalPages,
+        hasPrev: page > 1,
+        hasNext: page < totalPages
+      }
+    };
   } catch (error) {
     console.error('Erro ao listar aprovações pendentes:', error);
     throw error;
@@ -385,8 +472,8 @@ const processApproval = async (approvalId, action, reason, userId, condominiumId
 };
 
 // Função para listar alertas do condomínio
-// Recebe: condominiumId, filtros opcionais (resolved, severity)
-// Retorna: lista de alertas
+// Recebe: condominiumId, filtros opcionais (resolved, severity, search, page, perPage)
+// Retorna: lista de alertas com paginação
 const listAlerts = async (condominiumId, filters = {}) => {
   try {
     let sql = `
@@ -397,6 +484,17 @@ const listAlerts = async (condominiumId, filters = {}) => {
     `;
     const params = [condominiumId];
     let paramCount = 2;
+
+    // Busca por texto (título, mensagem, nome do resolvedor)
+    if (filters.search) {
+      sql += ` AND (
+        a.title ILIKE $${paramCount} OR 
+        a.message ILIKE $${paramCount} OR
+        u.full_name ILIKE $${paramCount}
+      )`;
+      params.push(`%${filters.search}%`);
+      paramCount++;
+    }
 
     // Aplica filtros
     if (filters.resolved !== undefined) {
@@ -409,10 +507,65 @@ const listAlerts = async (condominiumId, filters = {}) => {
       params.push(filters.severity);
     }
 
-    sql += ` ORDER BY a.created_at DESC LIMIT 100`;
+    // Contar total de registros para paginação (query separada e mais simples)
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM alerts a
+      LEFT JOIN users u ON a.resolved_by = u.id
+      WHERE a.condominium_id = $1
+    `;
+    const countParams = [condominiumId];
+    let countParamCount = 2;
+    
+    // Aplicar os mesmos filtros da query principal
+    if (filters.search) {
+      countSql += ` AND (
+        a.title ILIKE $${countParamCount} OR 
+        a.message ILIKE $${countParamCount} OR
+        u.full_name ILIKE $${countParamCount}
+      )`;
+      countParams.push(`%${filters.search}%`);
+      countParamCount++;
+    }
+    
+    if (filters.resolved !== undefined) {
+      countSql += ` AND a.resolved = $${countParamCount++}`;
+      countParams.push(filters.resolved);
+    }
+    
+    if (filters.severity) {
+      countSql += ` AND a.severity = $${countParamCount++}`;
+      countParams.push(filters.severity);
+    }
+    
+    const countResult = await query(countSql, countParams);
+    const totalRecords = countResult && countResult.rows && countResult.rows.length > 0 ? parseInt(countResult.rows[0].total) : 0;
+
+    // Paginação
+    const page = filters.page || 1;
+    const perPage = filters.perPage || 20;
+    const offset = (page - 1) * perPage;
+    const totalPages = Math.ceil(totalRecords / perPage);
+
+    // Ordenação
+    const orderBy = filters.orderBy || 'created_at';
+    const orderDir = filters.orderDir || 'DESC';
+    sql += ` ORDER BY a.${orderBy} ${orderDir} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(perPage, offset);
 
     const result = await query(sql, params);
-    return result.rows;
+    
+    return {
+      alerts: result.rows,
+      pagination: {
+        currentPage: page,
+        perPage: perPage,
+        totalRecords: totalRecords,
+        totalPages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
   } catch (error) {
     console.error('Erro ao listar alertas:', error);
     throw error;
@@ -469,10 +622,11 @@ const resolveAlert = async (alertId, userId, condominiumId, ipAddress, userAgent
 };
 
 // Função para listar logs de auditoria do condomínio
-// Recebe: condominiumId, filtros opcionais (module, userId, limit, startDate, endDate, action)
-// Retorna: lista de logs
+// Recebe: condominiumId, filtros opcionais (module, userId, limit, startDate, endDate, action, search, page, perPage)
+// Retorna: lista de logs com paginação
 const listAuditLogs = async (condominiumId, filters = {}) => {
   try {
+    // Construir query base
     let sql = `
       SELECT al.*, u.full_name as user_name, u.username
       FROM audit_logs al
@@ -481,6 +635,18 @@ const listAuditLogs = async (condominiumId, filters = {}) => {
     `;
     const params = [condominiumId];
     let paramCount = 2;
+
+    // Busca por texto (módulo, ação, nome do usuário)
+    if (filters.search) {
+      sql += ` AND (
+        al.module ILIKE $${paramCount} OR 
+        al.action ILIKE $${paramCount} OR
+        u.full_name ILIKE $${paramCount} OR
+        u.username ILIKE $${paramCount}
+      )`;
+      params.push(`%${filters.search}%`);
+      paramCount++;
+    }
 
     // Aplica filtros
     if (filters.module) {
@@ -508,11 +674,79 @@ const listAuditLogs = async (condominiumId, filters = {}) => {
       params.push(filters.endDate + ' 23:59:59');
     }
 
-    sql += ` ORDER BY al.created_at DESC LIMIT $${paramCount}`;
-    params.push(filters.limit || 100);
+    // Contar total de registros para paginação (query separada)
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      WHERE al.condominium_id = $1
+    `;
+    const countParams = [condominiumId];
+    let countParamCount = 2;
+    
+    // Aplicar os mesmos filtros
+    if (filters.search) {
+      countSql += ` AND (
+        al.module ILIKE $${countParamCount} OR 
+        al.action ILIKE $${countParamCount} OR
+        u.full_name ILIKE $${countParamCount} OR
+        u.username ILIKE $${countParamCount}
+      )`;
+      countParams.push(`%${filters.search}%`);
+      countParamCount++;
+    }
+    
+    if (filters.module) {
+      countSql += ` AND al.module = $${countParamCount++}`;
+      countParams.push(filters.module);
+    }
+    
+    if (filters.userId) {
+      countSql += ` AND al.user_id = $${countParamCount++}`;
+      countParams.push(filters.userId);
+    }
+    
+    if (filters.action) {
+      countSql += ` AND al.action = $${countParamCount++}`;
+      countParams.push(filters.action);
+    }
+    
+    if (filters.startDate) {
+      countSql += ` AND al.created_at >= $${countParamCount++}`;
+      countParams.push(filters.startDate);
+    }
+    
+    if (filters.endDate) {
+      countSql += ` AND al.created_at <= $${countParamCount++}`;
+      countParams.push(filters.endDate + ' 23:59:59');
+    }
+    
+    const countResult = await query(countSql, countParams);
+    const totalRecords = countResult && countResult.rows && countResult.rows.length > 0 ? parseInt(countResult.rows[0].total) : 0;
+
+    // Paginação
+    const page = filters.page || 1;
+    const perPage = filters.perPage || 20;
+    const offset = (page - 1) * perPage;
+    const totalPages = Math.ceil(totalRecords / perPage);
+
+    // Aplicar ordenação e paginação
+    sql += ` ORDER BY al.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(perPage, offset);
 
     const result = await query(sql, params);
-    return result.rows;
+    
+    return {
+      logs: result.rows,
+      pagination: {
+        currentPage: page,
+        perPage: perPage,
+        totalRecords: totalRecords,
+        totalPages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
   } catch (error) {
     console.error('Erro ao listar logs de auditoria:', error);
     throw error;
@@ -539,14 +773,40 @@ const listUsers = async (condominiumId) => {
 };
 
 // Função para listar tarefas do condomínio (para o síndico)
-// Recebe: condominiumId, filtros opcionais (status)
-// Retorna: lista de tarefas com informações completas
+// Recebe: condominiumId, filtros opcionais (status, search, page, perPage)
+// Retorna: lista de tarefas com informações completas e paginação
 const listTasks = async (condominiumId, filters = {}) => {
   try {
+    // Query otimizada com JOINs e subqueries para evitar N+1
     let sql = `
-      SELECT t.*, 
-             creator.full_name as created_by_name,
-             assignee.full_name as assigned_to_name
+      SELECT 
+        t.*,
+        creator.full_name as created_by_name,
+        assignee.full_name as assigned_to_name,
+        -- Subquery para última observação
+        (
+          SELECT json_build_object(
+            'observation', so.observation,
+            'created_at', so.created_at,
+            'user_name', u.full_name
+          )
+          FROM sindico_observations so
+          LEFT JOIN users u ON so.user_id = u.id
+          WHERE so.entity_type = 'tasks' 
+            AND so.entity_id = t.id 
+            AND so.condominium_id = $1
+          ORDER BY so.created_at DESC
+          LIMIT 1
+        ) as last_observation,
+        -- Subquery para contagem de checklists
+        (
+          SELECT json_build_object(
+            'total', COUNT(*),
+            'done', SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END)
+          )
+          FROM checklists
+          WHERE task_id = t.id
+        ) as checklists_stats
       FROM tasks t
       LEFT JOIN users creator ON t.created_by = creator.id
       LEFT JOIN users assignee ON t.assigned_to = assignee.id
@@ -555,43 +815,102 @@ const listTasks = async (condominiumId, filters = {}) => {
     const params = [condominiumId];
     let paramCount = 2;
 
+    // Busca por texto (título, descrição, nome do criador/atribuído)
+    if (filters.search) {
+      sql += ` AND (
+        t.title ILIKE $${paramCount} OR 
+        t.description ILIKE $${paramCount} OR
+        creator.full_name ILIKE $${paramCount} OR
+        assignee.full_name ILIKE $${paramCount}
+      )`;
+      params.push(`%${filters.search}%`);
+      paramCount++;
+    }
+
     // Aplica filtros
     if (filters.status) {
       sql += ` AND t.status = $${paramCount++}`;
       params.push(filters.status);
     }
 
-    sql += ` ORDER BY t.created_at DESC LIMIT 200`;
+    // Contar total de registros para paginação (query separada)
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM tasks t
+      LEFT JOIN users creator ON t.created_by = creator.id
+      LEFT JOIN users assignee ON t.assigned_to = assignee.id
+      WHERE t.condominium_id = $1
+    `;
+    const countParams = [condominiumId];
+    let countParamCount = 2;
+    
+    // Aplicar os mesmos filtros
+    if (filters.search) {
+      countSql += ` AND (
+        t.title ILIKE $${countParamCount} OR 
+        t.description ILIKE $${countParamCount} OR
+        creator.full_name ILIKE $${countParamCount} OR
+        assignee.full_name ILIKE $${countParamCount}
+      )`;
+      countParams.push(`%${filters.search}%`);
+      countParamCount++;
+    }
+    
+    if (filters.status) {
+      countSql += ` AND t.status = $${countParamCount++}`;
+      countParams.push(filters.status);
+    }
+    
+    const countResult = await query(countSql, countParams);
+    const totalRecords = countResult && countResult.rows && countResult.rows.length > 0 ? parseInt(countResult.rows[0].total) : 0;
+
+    // Paginação
+    const page = filters.page || 1;
+    const perPage = filters.perPage || 20;
+    const offset = (page - 1) * perPage;
+    const totalPages = Math.ceil(totalRecords / perPage);
+
+    // Ordenação (permitir customização)
+    const orderBy = filters.orderBy || 'created_at';
+    const orderDir = filters.orderDir || 'DESC';
+    sql += ` ORDER BY t.${orderBy} ${orderDir} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(perPage, offset);
 
     const result = await query(sql, params);
-    const tasks = result.rows;
-
-    // Para cada tarefa, busca checklists (se necessário) e observações
-    for (const task of tasks) {
-      const checklistsResult = await query(
-        `SELECT COUNT(*) as total, 
-                SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) as done_count
-         FROM checklists WHERE task_id = $1`,
-        [task.id]
-      );
-      task.checklists_count = parseInt(checklistsResult.rows[0].total);
-      task.checklists_done = parseInt(checklistsResult.rows[0].done_count);
-
-      // Busca última observação do síndico (para preview)
-      const lastObservationResult = await query(
-        `SELECT so.observation, so.created_at, u.full_name as user_name
-         FROM sindico_observations so
-         LEFT JOIN users u ON so.user_id = u.id
-         WHERE so.entity_type = 'tasks' AND so.entity_id = $1 AND so.condominium_id = $2
-         ORDER BY so.created_at DESC LIMIT 1`,
-        [task.id, condominiumId]
-      );
-      if (lastObservationResult.rows.length > 0) {
-        task.last_observation = lastObservationResult.rows[0];
+    
+    // Processar resultados
+    const tasks = result.rows.map(row => {
+      const task = { ...row };
+      // Parse JSON fields
+      if (task.last_observation) {
+        task.last_observation = typeof task.last_observation === 'string' 
+          ? JSON.parse(task.last_observation) 
+          : task.last_observation;
       }
-    }
+      if (task.checklists_stats) {
+        const stats = typeof task.checklists_stats === 'string' 
+          ? JSON.parse(task.checklists_stats) 
+          : task.checklists_stats;
+        task.checklists_count = parseInt(stats.total) || 0;
+        task.checklists_done = parseInt(stats.done) || 0;
+      } else {
+        task.checklists_count = 0;
+        task.checklists_done = 0;
+      }
+      return task;
+    });
 
-    return tasks;
+    return {
+      tasks: tasks,
+      pagination: {
+        currentPage: page,
+        perPage: perPage,
+        totalRecords: totalRecords,
+        totalPages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
   } catch (error) {
     console.error('Erro ao listar tarefas do condomínio:', error);
     throw error;
@@ -648,15 +967,32 @@ const getTaskById = async (taskId, condominiumId) => {
 };
 
 // Função para listar ocorrências do condomínio (para o síndico)
-// Recebe: condominiumId, filtros opcionais (status)
-// Retorna: lista de ocorrências com informações completas
+// Recebe: condominiumId, filtros opcionais (status, search, page, perPage)
+// Retorna: lista de ocorrências com informações completas e paginação
 const listOccurrences = async (condominiumId, filters = {}) => {
   try {
+    // Query otimizada com JOINs e subqueries para evitar N+1
     let sql = `
-      SELECT o.*, 
-             reporter.full_name as reported_by_name,
-             resolver.full_name as resolved_by_name,
-             assignee.full_name as assigned_to_name
+      SELECT 
+        o.*,
+        reporter.full_name as reported_by_name,
+        resolver.full_name as resolved_by_name,
+        assignee.full_name as assigned_to_name,
+        -- Subquery para última observação
+        (
+          SELECT json_build_object(
+            'observation', so.observation,
+            'created_at', so.created_at,
+            'user_name', u.full_name
+          )
+          FROM sindico_observations so
+          LEFT JOIN users u ON so.user_id = u.id
+          WHERE so.entity_type = 'occurrences' 
+            AND so.entity_id = o.id 
+            AND so.condominium_id = $1
+          ORDER BY so.created_at DESC
+          LIMIT 1
+        ) as last_observation
       FROM occurrences o
       LEFT JOIN users reporter ON o.reported_by = reporter.id
       LEFT JOIN users resolver ON o.resolved_by = resolver.id
@@ -666,33 +1002,91 @@ const listOccurrences = async (condominiumId, filters = {}) => {
     const params = [condominiumId];
     let paramCount = 2;
 
+    // Busca por texto (título, descrição, nome do reportador)
+    if (filters.search) {
+      sql += ` AND (
+        o.title ILIKE $${paramCount} OR 
+        o.description ILIKE $${paramCount} OR
+        reporter.full_name ILIKE $${paramCount}
+      )`;
+      params.push(`%${filters.search}%`);
+      paramCount++;
+    }
+
     // Aplica filtros
     if (filters.status) {
       sql += ` AND o.status = $${paramCount++}`;
       params.push(filters.status);
     }
 
-    sql += ` ORDER BY o.created_at DESC LIMIT 200`;
+    // Contar total de registros para paginação (query separada)
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM occurrences o
+      LEFT JOIN users reporter ON o.reported_by = reporter.id
+      LEFT JOIN users resolver ON o.resolved_by = resolver.id
+      LEFT JOIN users assignee ON o.assigned_to = assignee.id
+      WHERE o.condominium_id = $1
+    `;
+    const countParams = [condominiumId];
+    let countParamCount = 2;
+    
+    // Aplicar os mesmos filtros
+    if (filters.search) {
+      countSql += ` AND (
+        o.title ILIKE $${countParamCount} OR 
+        o.description ILIKE $${countParamCount} OR
+        reporter.full_name ILIKE $${countParamCount}
+      )`;
+      countParams.push(`%${filters.search}%`);
+      countParamCount++;
+    }
+    
+    if (filters.status) {
+      countSql += ` AND o.status = $${countParamCount++}`;
+      countParams.push(filters.status);
+    }
+    
+    const countResult = await query(countSql, countParams);
+    const totalRecords = countResult && countResult.rows && countResult.rows.length > 0 ? parseInt(countResult.rows[0].total) : 0;
+
+    // Paginação
+    const page = filters.page || 1;
+    const perPage = filters.perPage || 20;
+    const offset = (page - 1) * perPage;
+    const totalPages = Math.ceil(totalRecords / perPage);
+
+    // Ordenação (permitir customização)
+    const orderBy = filters.orderBy || 'created_at';
+    const orderDir = filters.orderDir || 'DESC';
+    sql += ` ORDER BY o.${orderBy} ${orderDir} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(perPage, offset);
 
     const result = await query(sql, params);
-    const occurrences = result.rows;
-
-    // Para cada ocorrência, busca última observação do síndico (para preview)
-    for (const occurrence of occurrences) {
-      const lastObservationResult = await query(
-        `SELECT so.observation, so.created_at, u.full_name as user_name
-         FROM sindico_observations so
-         LEFT JOIN users u ON so.user_id = u.id
-         WHERE so.entity_type = 'occurrences' AND so.entity_id = $1 AND so.condominium_id = $2
-         ORDER BY so.created_at DESC LIMIT 1`,
-        [occurrence.id, condominiumId]
-      );
-      if (lastObservationResult.rows.length > 0) {
-        occurrence.last_observation = lastObservationResult.rows[0];
+    
+    // Processar resultados
+    const occurrences = result.rows.map(row => {
+      const occurrence = { ...row };
+      // Parse JSON fields
+      if (occurrence.last_observation) {
+        occurrence.last_observation = typeof occurrence.last_observation === 'string' 
+          ? JSON.parse(occurrence.last_observation) 
+          : occurrence.last_observation;
       }
-    }
+      return occurrence;
+    });
 
-    return occurrences;
+    return {
+      occurrences: occurrences,
+      pagination: {
+        currentPage: page,
+        perPage: perPage,
+        totalRecords: totalRecords,
+        totalPages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
   } catch (error) {
     console.error('Erro ao listar ocorrências do condomínio:', error);
     throw error;

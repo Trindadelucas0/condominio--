@@ -1,5 +1,6 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
+<%- include('../partials/notifications') %>
 
 <style>
   @keyframes fadeInUp {
@@ -66,267 +67,33 @@
   <div class="container mx-auto px-4 py-8">
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-fade-in-up">
-      <div class="flex items-center space-x-4 mb-4">
-        <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-4 shadow-lg">
-          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent">
-            Dashboard Síndico
-          </h1>
-          <p class="text-gray-600 mt-1">Visão executiva do condomínio</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Cards de Estatísticas Principais -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      <!-- Aprovações Pendentes -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500 card-elevate animate-fade-in-up <%= stats.pendingApprovals > 0 ? 'pulse-animation' : '' %>" style="animation-delay: 0.1s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Aprovações Pendentes</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">
-              <%= stats.pendingApprovals %>
-            </p>
-            <% if (stats.pendingAmount > 0) { %>
-              <p class="text-xs text-gray-500 mt-2 font-semibold">R$ <%= stats.pendingAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
-            <% } %>
-          </div>
-          <div class="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-        </div>
-        <a href="/sindico/aprovacoes" class="inline-flex items-center text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors duration-200 group">
-          Ver todas
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </a>
-      </div>
-
-      <!-- Alertas Críticos -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-red-500 card-elevate animate-fade-in-up <%= stats.criticalAlerts > 0 ? 'pulse-animation' : '' %>" style="animation-delay: 0.2s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Alertas Críticos</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-              <%= stats.criticalAlerts %>
-            </p>
-          </div>
-          <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-          </div>
-        </div>
-        <a href="/sindico/alertas?severity=CRITICAL" class="inline-flex items-center text-sm font-semibold text-red-600 hover:text-red-700 transition-colors duration-200 group">
-          Ver todos
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </a>
-      </div>
-
-      <!-- Alertas de Aviso -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500 card-elevate animate-fade-in-up" style="animation-delay: 0.3s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Alertas de Aviso</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">
-              <%= stats.warningAlerts %>
-            </p>
-          </div>
-          <div class="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-          </div>
-        </div>
-        <a href="/sindico/alertas?severity=WARNING" class="inline-flex items-center text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors duration-200 group">
-          Ver todos
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </a>
-      </div>
-
-      <!-- Saldo Financeiro -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 <%= stats.balance >= 0 ? 'border-green-500' : 'border-red-500' %> card-elevate animate-fade-in-up" style="animation-delay: 0.4s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Saldo Atual</p>
-            <p class="text-4xl font-bold bg-gradient-to-r <%= stats.balance >= 0 ? 'from-green-600 to-emerald-600' : 'from-red-600 to-red-700' %> bg-clip-text text-transparent">
-              R$ <%= stats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
-            </p>
-            <p class="text-xs font-semibold mt-2 <%= stats.balance >= 0 ? 'text-green-600' : 'text-red-600' %>">
-              <%= stats.balance >= 0 ? 'Positivo' : 'Negativo' %>
-            </p>
-          </div>
-          <div class="bg-gradient-to-br <%= stats.balance >= 0 ? 'from-green-500 to-emerald-600' : 'from-red-500 to-red-600' %> rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Segunda Linha de Cards - Gastos e Inadimplência -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      <!-- Gastos do Mês -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 card-elevate animate-fade-in-up" style="animation-delay: 0.5s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Gastos do Mês</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-              R$ <%= typeof stats.currentMonthExpenses !== 'undefined' ? stats.currentMonthExpenses.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
-            </p>
-            <% if (typeof stats.expensesVariation !== 'undefined' && stats.expensesVariation !== 0) { %>
-              <p class="text-xs font-semibold mt-2 <%= stats.expensesVariation > 0 ? 'text-red-600' : 'text-green-600' %>">
-                <%= stats.expensesVariation > 0 ? '+' : '' %><%= stats.expensesVariation.toFixed(1) %>% vs mês anterior
-              </p>
-            <% } %>
-          </div>
-          <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+          <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-4 shadow-lg">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
             </svg>
           </div>
+          <div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent">
+              Dashboard Síndico
+            </h1>
+            <p class="text-gray-600 mt-1">Visão executiva do condomínio</p>
+          </div>
         </div>
-        <a href="/financeiro/saidas" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 group">
-          Ver detalhes
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        <button onclick="openDashboardConfig()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center space-x-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
           </svg>
-        </a>
-      </div>
-
-      <!-- Inadimplência -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 <%= typeof stats.delinquencyRate !== 'undefined' && stats.delinquencyRate > 10 ? 'border-red-500' : typeof stats.delinquencyRate !== 'undefined' && stats.delinquencyRate > 5 ? 'border-yellow-500' : 'border-green-500' %> card-elevate animate-fade-in-up" style="animation-delay: 0.6s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Inadimplência</p>
-            <p class="text-4xl font-bold bg-gradient-to-r <%= typeof stats.delinquencyRate !== 'undefined' && stats.delinquencyRate > 10 ? 'from-red-600 to-red-700' : typeof stats.delinquencyRate !== 'undefined' && stats.delinquencyRate > 5 ? 'from-yellow-600 to-amber-600' : 'from-green-600 to-emerald-600' %> bg-clip-text text-transparent">
-              <%= typeof stats.delinquencyRate !== 'undefined' ? stats.delinquencyRate.toFixed(1) : '0,0' %>%
-            </p>
-            <% if (typeof stats.totalOverdue !== 'undefined' && stats.totalOverdue > 0) { %>
-              <p class="text-xs text-gray-500 mt-2 font-semibold">
-                R$ <%= stats.totalOverdue.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> em aberto
-              </p>
-            <% } %>
-            <% if (typeof stats.overdueCount !== 'undefined' && stats.overdueCount > 0) { %>
-              <p class="text-xs text-gray-500 mt-1">
-                <%= stats.overdueCount %> apartamento(s) inadimplente(s)
-              </p>
-            <% } %>
-          </div>
-          <div class="bg-gradient-to-br <%= typeof stats.delinquencyRate !== 'undefined' && stats.delinquencyRate > 10 ? 'from-red-500 to-red-600' : typeof stats.delinquencyRate !== 'undefined' && stats.delinquencyRate > 5 ? 'from-yellow-500 to-amber-600' : 'from-green-500 to-emerald-600' %> rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-        </div>
+          <span>⚙️ Personalizar</span>
+        </button>
       </div>
     </div>
 
-    <!-- Segunda Linha de Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      <!-- Despesas Pendentes -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 card-elevate animate-fade-in-up" style="animation-delay: 0.5s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Despesas Pendentes</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              <%= stats.pendingExpenses || 0 %>
-            </p>
-          </div>
-          <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-        </div>
-        <a href="/sindico/saidas-pendentes" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 group">
-          Ver saídas pendentes
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </a>
-      </div>
-
-      <!-- Tarefas Atrasadas -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-red-500 card-elevate animate-fade-in-up <%= stats.overdueTasks > 0 ? 'pulse-animation' : '' %>" style="animation-delay: 0.6s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Tarefas Atrasadas</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-              <%= stats.overdueTasks %>
-            </p>
-          </div>
-          <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-        </div>
-        <a href="/sindico/tarefas" class="inline-flex items-center text-sm font-semibold text-red-600 hover:text-red-700 transition-colors duration-200 group">
-          Ver todas as tarefas
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </a>
-      </div>
-
-      <!-- Ocorrências Abertas -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 card-elevate animate-fade-in-up" style="animation-delay: 0.7s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Ocorrências Abertas</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              <%= stats.openOccurrences %>
-            </p>
-          </div>
-          <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-          </div>
-        </div>
-        <a href="/sindico/ocorrencias" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 group">
-          Ver todas as ocorrências
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </a>
-      </div>
-
-      <!-- Orçamentos Pendentes -->
-      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-purple-500 card-elevate animate-fade-in-up" style="animation-delay: 0.8s">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Orçamentos Pendentes</p>
-            <p class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              <%= stats.pendingBudgets || 0 %>
-            </p>
-          </div>
-          <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-4 shadow-md">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-          </div>
-        </div>
-        <a href="/sindico/orcamentos-pendentes" class="inline-flex items-center text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors duration-200 group">
-          Ver orçamentos
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </a>
-      </div>
+    <!-- Widgets Dinâmicos baseados na Configuração do Usuário -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6" id="dashboard-widgets">
+      <%- include('dashboard-widgets-partial') %>
     </div>
 
     <!-- Resumo Financeiro -->
@@ -728,6 +495,256 @@
     });
   }
   <% } %>
+
+  // Modal de Personalização do Dashboard
+  function openDashboardConfig() {
+    // Criar modal dinamicamente
+    const modal = document.createElement('div');
+    modal.id = 'dashboard-config-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+    
+    // Obter configuração atual do servidor (disponível via EJS)
+    // dashboardConfig já é o array de widgets
+    const currentConfig = typeof dashboardConfig !== 'undefined' && Array.isArray(dashboardConfig) ? dashboardConfig : [];
+    
+    // Widgets padrão caso não tenha configuração (completo)
+    const defaultWidgets = [
+      { key: 'pending_approvals', title: 'Aprovações Pendentes', visible: true },
+      { key: 'critical_alerts', title: 'Alertas Críticos', visible: true },
+      { key: 'warning_alerts', title: 'Alertas de Aviso', visible: true },
+      { key: 'balance', title: 'Saldo Financeiro', visible: true },
+      { key: 'current_month_expenses', title: 'Gastos do Mês', visible: true },
+      { key: 'delinquency_rate', title: 'Inadimplência', visible: true },
+      { key: 'pending_expenses', title: 'Despesas Pendentes', visible: true },
+      { key: 'overdue_tasks', title: 'Tarefas Atrasadas', visible: true },
+      { key: 'open_occurrences', title: 'Ocorrências Abertas', visible: true },
+      { key: 'pending_budgets', title: 'Orçamentos Pendentes', visible: true },
+      { key: 'pending_entries', title: 'Entradas Pendentes', visible: true },
+      { key: 'completed_maintenances', title: 'Manutenções Concluídas', visible: false },
+      { key: 'pending_occurrences_approval', title: 'Ocorrências Aguardando Aprovação', visible: false },
+    ];
+    
+    // Criar mapa de configuração atual por key
+    const configMap = {};
+    if (currentConfig.length > 0) {
+      currentConfig.forEach(w => {
+        configMap[w.key] = w;
+      });
+    }
+    
+    // Mesclar padrão com configuração atual
+    const widgets = defaultWidgets.map(function(w, i) {
+      const saved = configMap[w.key];
+      return {
+        key: w.key,
+        title: w.title,
+        visible: saved ? (saved.visible !== false) : w.visible,
+        position: saved ? (saved.position || i + 1) : (i + 1),
+        id: w.key
+      };
+    }).sort(function(a, b) {
+      return a.position - b.position;
+    });
+    
+    // Gerar HTML dos widgets
+    let widgetsHTML = '';
+    widgets.forEach(function(widget, index) {
+      const widgetId = widget.id || widget.key || index;
+      const widgetTitle = widget.title || widget.name || 'Widget ' + (index + 1);
+      const isVisible = widget.visible !== false;
+      const position = widget.position !== undefined ? widget.position : index + 1;
+      
+      widgetsHTML += `
+        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-move" draggable="true" data-widget-id="${widgetId}" data-widget-key="${widget.key || widgetId}">
+          <div class="flex items-center space-x-3 flex-1">
+            <svg class="w-5 h-5 text-gray-400 cursor-move" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+            </svg>
+            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleWidget('${widgetId}', this.checked)" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+            <span class="font-semibold text-gray-900">${widgetTitle}</span>
+          </div>
+          <span class="text-sm text-gray-500 ml-4">Posição ${position}</span>
+        </div>
+      `;
+    });
+    
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-gray-900">⚙️ Personalizar Dashboard</h2>
+            <button onclick="closeDashboardConfig()" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <p class="text-gray-600 mb-6">
+            <strong>📋 Como usar:</strong><br>
+            • Marque/desmarque os widgets para mostrar ou ocultar no dashboard<br>
+            • Arraste os widgets para reorganizar a ordem de exibição<br>
+            • Clique em "Salvar Configuração" para aplicar as mudanças
+          </p>
+          <div id="widget-list" class="space-y-3">
+            ${widgetsHTML || '<p class="text-gray-500 text-center py-8">Nenhum widget configurável encontrado.</p>'}
+          </div>
+        </div>
+        <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+          <button onclick="closeDashboardConfig()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-colors">
+            Cancelar
+          </button>
+          <button onclick="saveDashboardConfig()" class="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+            💾 Salvar Configuração
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Adicionar funcionalidade de drag and drop
+    const widgetList = document.getElementById('widget-list');
+    if (widgetList) {
+      let draggedElement = null;
+      widgetList.addEventListener('dragstart', (e) => {
+        if (e.target.draggable) {
+          draggedElement = e.target;
+          e.target.style.opacity = '0.5';
+        }
+      });
+      widgetList.addEventListener('dragend', (e) => {
+        if (e.target.draggable) {
+          e.target.style.opacity = '1';
+        }
+      });
+      widgetList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (draggedElement) {
+          const afterElement = getDragAfterElement(widgetList, e.clientY);
+          if (afterElement == null) {
+            widgetList.appendChild(draggedElement);
+          } else {
+            widgetList.insertBefore(draggedElement, afterElement);
+          }
+        }
+      });
+    }
+  }
+
+  function closeDashboardConfig() {
+    const modal = document.getElementById('dashboard-config-modal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+
+  function toggleWidget(widgetId, visible) {
+    // Atualizar estado local (será salvo quando o usuário clicar em Salvar)
+    const widget = document.querySelector(`[data-widget-id="${widgetId}"]`);
+    if (widget) {
+      widget.style.opacity = visible ? '1' : '0.6';
+    }
+  }
+
+  function saveDashboardConfig() {
+    const widgetList = document.getElementById('widget-list');
+    if (!widgetList) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Lista de widgets não encontrada', 'error');
+      } else {
+        alert('❌ Erro: Lista de widgets não encontrada');
+      }
+      return;
+    }
+    
+    const widgetElements = Array.from(widgetList.children).filter(function(item) {
+      return item.draggable && (item.dataset.widgetKey || item.dataset.widgetId);
+    });
+    
+    if (widgetElements.length === 0) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Nenhum widget encontrado para salvar', 'warning');
+      } else {
+        alert('❌ Erro: Nenhum widget encontrado');
+      }
+      return;
+    }
+    
+    const widgets = widgetElements.map(function(item, index) {
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      const widgetKey = item.dataset.widgetKey || item.dataset.widgetId;
+      const titleElement = item.querySelector('span.font-semibold');
+      const widgetTitle = titleElement ? titleElement.textContent.trim() : 'Widget';
+      
+      return {
+        key: widgetKey,
+        title: widgetTitle,
+        visible: checkbox ? checkbox.checked : true,
+        position: index + 1
+      };
+    });
+
+    console.log('Salvando configuração:', widgets);
+
+    // Enviar para o servidor
+    fetch('/sindico/dashboard/config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ widgets })
+    })
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(err => { throw err; });
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      if (data.success) {
+        if (typeof showNotification !== 'undefined') {
+          showNotification('Configuração salva com sucesso! A página será recarregada.', 'success', 2000);
+          setTimeout(function() {
+            window.location.reload();
+          }, 2000);
+        } else {
+          alert('✅ Configuração salva com sucesso! A página será recarregada.');
+          window.location.reload();
+        }
+      } else {
+        const errorMsg = data.message || 'Erro desconhecido';
+        if (typeof showNotification !== 'undefined') {
+          showNotification('Erro ao salvar configuração: ' + errorMsg, 'error', 7000);
+        } else {
+          alert('❌ Erro ao salvar configuração: ' + errorMsg);
+        }
+      }
+    })
+    .catch(function(error) {
+      console.error('Erro:', error);
+      const errorMsg = error.message || 'Erro desconhecido';
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Erro ao salvar configuração: ' + errorMsg, 'error', 7000);
+      } else {
+        alert('❌ Erro ao salvar configuração: ' + errorMsg);
+      }
+    });
+  }
+
+  function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('[draggable="true"]')]
+      .filter(el => el.style.opacity !== '0.5');
+    return draggableElements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
 </script>
 
 <%- include('../partials/footer') %>

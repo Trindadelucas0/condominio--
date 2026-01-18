@@ -4,7 +4,10 @@
 
 const sindicoService = require('../services/sindicoService'); // Service do módulo síndico
 const dashboardAnalyticsService = require('../services/dashboardAnalyticsService'); // Analytics avançados
+const dashboardConfigService = require('../services/dashboardConfigService'); // Configuração do dashboard
+const cacheService = require('../services/cacheService'); // Cache service
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
+const { getErrorMessage } = require('../utils/errorMessages'); // Mensagens de erro amigáveis
 
 // Função para exibir dashboard do síndico
 // GET /sindico/dashboard
@@ -18,35 +21,54 @@ const showDashboard = async (req, res) => {
     // Busca estatísticas do condomínio
     const stats = await sindicoService.getDashboardStats(req.user.condominiumId);
 
-    // Busca analytics avançados
-    const historicalData = await dashboardAnalyticsService.getHistoricalData(req.user.condominiumId, 12);
-    const projections = await dashboardAnalyticsService.getProjections(req.user.condominiumId, 3);
-    const trend = await dashboardAnalyticsService.getTrend(req.user.condominiumId, 'balance');
-    const categoryData = await dashboardAnalyticsService.getDataByCategory(req.user.condominiumId, 6);
-
-    // Comparação com mês anterior
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-
-    const comparison = await dashboardAnalyticsService.comparePeriods(
-      req.user.condominiumId,
-      { month: lastMonth, year: lastMonthYear },
-      { month: currentMonth, year: currentYear }
+    // Buscar configuração do dashboard do usuário
+    const dashboardConfig = await dashboardConfigService.getUserConfig(
+      req.user.id,
+      req.user.condominiumId
     );
+    
+    // Buscar nome do condomínio para exibição
+    const condominiumResult = await require('../config/database').query(
+      `SELECT name FROM condominiums WHERE id = $1`,
+      [req.user.condominiumId]
+    );
+    const condominiumName = condominiumResult.rows.length > 0 ? condominiumResult.rows[0].name : 'Condomínio';
+
+    // Busca analytics avançados (com cache)
+    const analyticsCacheKey = `dashboard:analytics:${req.user.condominiumId}`;
+    let analytics = cacheService.get(analyticsCacheKey);
+    
+    if (!analytics) {
+      analytics = {
+        historical: await dashboardAnalyticsService.getHistoricalData(req.user.condominiumId, 12),
+        projections: await dashboardAnalyticsService.getProjections(req.user.condominiumId, 3),
+        trend: await dashboardAnalyticsService.getTrend(req.user.condominiumId, 'balance'),
+        categoryData: await dashboardAnalyticsService.getDataByCategory(req.user.condominiumId, 6),
+      };
+      
+      // Comparação com mês anterior
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+      analytics.comparison = await dashboardAnalyticsService.comparePeriods(
+        req.user.condominiumId,
+        { month: lastMonth, year: lastMonthYear },
+        { month: currentMonth, year: currentYear }
+      );
+      
+      // Cache por 5 minutos
+      cacheService.set(analyticsCacheKey, analytics, 300);
+    }
 
     res.render('sindico/dashboard', {
       title: 'Dashboard Síndico',
       user: req.user,
       stats: stats,
-      analytics: {
-        historical: historicalData,
-        projections: projections,
-        trend: trend,
-        categoryData: categoryData,
-        comparison: comparison
-      }
+      analytics: analytics,
+      dashboardConfig: dashboardConfig,
+      condominiumName: condominiumName
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard síndico:', error);
@@ -62,12 +84,32 @@ const showAprovacoes = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const approvals = await sindicoService.listPendingApprovals(req.user.condominiumId);
+    // Extrair filtros da query string
+    const filters = {
+      search: req.query.search || '',
+      page: parseInt(req.query.page) || 1,
+      perPage: parseInt(req.query.perPage) || 20,
+      orderBy: req.query.orderBy || 'created_at',
+      orderDir: req.query.orderDir || 'DESC',
+    };
+
+    // Buscar aprovações com filtros e paginação
+    const result = await sindicoService.listPendingApprovals(
+      req.user.condominiumId,
+      filters
+    );
+
+    // Extrair approvals e pagination do resultado
+    const approvals = result.approvals || result;
+    const pagination = result.pagination || null;
 
     res.render('sindico/aprovacoes', {
       title: 'Aprovações Pendentes',
       user: req.user,
       approvals: approvals,
+      pagination: pagination,
+      filters: filters,
+      query: req.query,
     });
   } catch (error) {
     console.error('Erro ao listar aprovações:', error);
@@ -121,15 +163,22 @@ const showAlertas = async (req, res) => {
     const filters = {
       resolved: req.query.resolved === 'true' ? true : req.query.resolved === 'false' ? false : undefined,
       severity: req.query.severity || undefined,
+      search: req.query.search || undefined,
+      page: req.query.page ? parseInt(req.query.page) : 1,
+      perPage: req.query.perPage ? parseInt(req.query.perPage) : 20,
+      orderBy: req.query.orderBy || 'created_at',
+      orderDir: req.query.orderDir || 'DESC',
     };
 
-    const alerts = await sindicoService.listAlerts(req.user.condominiumId, filters);
+    const result = await sindicoService.listAlerts(req.user.condominiumId, filters);
 
     res.render('sindico/alertas', {
       title: 'Alertas',
       user: req.user,
-      alerts: alerts,
+      alerts: result.alerts || result, // Compatibilidade com versão antiga
+      pagination: result.pagination,
       filters: filters,
+      query: req.query, // Para manter parâmetros na paginação
     });
   } catch (error) {
     console.error('Erro ao listar alertas:', error);
@@ -172,10 +221,12 @@ const showLogs = async (req, res) => {
       action: req.query.action || undefined,
       startDate: req.query.startDate || undefined,
       endDate: req.query.endDate || undefined,
-      limit: req.query.limit ? parseInt(req.query.limit) : 100,
+      search: req.query.search || undefined,
+      page: req.query.page ? parseInt(req.query.page) : 1,
+      perPage: req.query.perPage ? parseInt(req.query.perPage) : 20,
     };
 
-    const logs = await sindicoService.listAuditLogs(req.user.condominiumId, filters);
+    const result = await sindicoService.listAuditLogs(req.user.condominiumId, filters);
     const users = await sindicoService.listUsers(req.user.condominiumId);
 
     // Lista de módulos disponíveis (para filtro)
@@ -185,11 +236,13 @@ const showLogs = async (req, res) => {
     res.render('sindico/logs', {
       title: 'Logs de Auditoria',
       user: req.user,
-      logs: logs,
+      logs: result.logs || result, // Compatibilidade com versão antiga
+      pagination: result.pagination,
       filters: filters,
       users: users,
       modules: modules,
       actions: actions,
+      query: req.query, // Para manter parâmetros na paginação
     });
   } catch (error) {
     console.error('Erro ao listar logs:', error);
@@ -207,15 +260,22 @@ const showTarefas = async (req, res) => {
 
     const filters = {
       status: req.query.status || undefined,
+      search: req.query.search || undefined,
+      page: req.query.page ? parseInt(req.query.page) : 1,
+      perPage: req.query.perPage ? parseInt(req.query.perPage) : 20,
+      orderBy: req.query.orderBy || 'created_at',
+      orderDir: req.query.orderDir || 'DESC',
     };
 
-    const tasks = await sindicoService.listTasks(req.user.condominiumId, filters);
+    const result = await sindicoService.listTasks(req.user.condominiumId, filters);
 
     res.render('sindico/tarefas', {
       title: 'Tarefas do Condomínio',
       user: req.user,
-      tasks: tasks,
+      tasks: result.tasks || result, // Compatibilidade com versão antiga
+      pagination: result.pagination,
       filters: filters,
+      query: req.query, // Para manter parâmetros na paginação
     });
   } catch (error) {
     console.error('Erro ao listar tarefas:', error);
@@ -296,15 +356,22 @@ const showOcorrencias = async (req, res) => {
 
     const filters = {
       status: req.query.status || undefined,
+      search: req.query.search || undefined,
+      page: req.query.page ? parseInt(req.query.page) : 1,
+      perPage: req.query.perPage ? parseInt(req.query.perPage) : 20,
+      orderBy: req.query.orderBy || 'created_at',
+      orderDir: req.query.orderDir || 'DESC',
     };
 
-    const occurrences = await sindicoService.listOccurrences(req.user.condominiumId, filters);
+    const result = await sindicoService.listOccurrences(req.user.condominiumId, filters);
 
     res.render('sindico/ocorrencias', {
       title: 'Ocorrências do Condomínio',
       user: req.user,
-      occurrences: occurrences,
+      occurrences: result.occurrences || result, // Compatibilidade com versão antiga
+      pagination: result.pagination,
       filters: filters,
+      query: req.query, // Para manter parâmetros na paginação
     });
   } catch (error) {
     console.error('Erro ao listar ocorrências:', error);

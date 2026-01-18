@@ -32,8 +32,8 @@
             <!-- Menu de navegação DINÂMICO (baseado em roles) -->
             <div id="nav-menu" class="hidden md:flex items-center space-x-1 lg:space-x-2">
                 <% 
-                // Verifica se user existe e tem roles
-                if (typeof user !== 'undefined' && user.roles && Array.isArray(user.roles)) {
+                // Verifica se user existe, não é null e tem roles
+                if (typeof user !== 'undefined' && user !== null && user.roles && Array.isArray(user.roles)) {
                     const roles = user.roles;
                     
                     // SUPER_MASTER
@@ -115,7 +115,7 @@
                 %>
 
                 <!-- Notificações -->
-                <% if (typeof user !== 'undefined' && user.id) { %>
+                <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
                     <div class="relative">
                         <a href="/notifications" class="hover:bg-primary-700 px-3 py-2 rounded relative transition-all duration-200">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,10 +127,10 @@
                 <% } %>
 
                 <!-- Informações do usuário e logout -->
-                <% if (typeof user !== 'undefined') { %>
+                <% if (typeof user !== 'undefined' && user !== null) { %>
                     <div class="flex items-center space-x-2 sm:space-x-3 border-l border-primary-400 pl-3 sm:pl-4 ml-3 sm:ml-4">
                         <span class="text-xs sm:text-sm font-medium hidden sm:inline">
-                            <%= user.fullName %>
+                            <%= user.fullName || user.full_name || 'Usuário' %>
                         </span>
                         <form method="POST" action="/auth/logout" class="inline">
                             <button type="submit" class="bg-primary-700 hover:bg-primary-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300">Sair</button>
@@ -144,7 +144,7 @@
         <div id="mobile-menu" class="hidden md:hidden pb-4 border-t border-primary-500 mt-2 pt-4">
             <div class="flex flex-col space-y-2">
                 <% 
-                if (typeof user !== 'undefined' && user.roles && Array.isArray(user.roles)) {
+                if (typeof user !== 'undefined' && user !== null && user.roles && Array.isArray(user.roles)) {
                     const roles = user.roles;
                     
                     if (roles.includes('SUPER_MASTER')) { %>
@@ -188,7 +188,7 @@
                     <% }
                 }
                 %>
-                <% if (typeof user !== 'undefined' && user.id) { %>
+                <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
                     <a href="/notifications" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium relative">
                         Notificações
                         <span id="notification-badge-mobile" class="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 hidden font-semibold">0</span>
@@ -258,7 +258,7 @@
     }
     
     // Atualizar badge mobile também
-    <% if (typeof user !== 'undefined' && user.id) { %>
+    <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
     fetch('/notifications/unread-count')
       .then(response => response.json())
       .then(data => {

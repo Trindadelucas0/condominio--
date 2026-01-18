@@ -546,6 +546,52 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar campos da FASE 24:', error);
     }
 
+    // FASE 25: Contratos e Relatórios Avançados
+    console.log('🔍 Verificando tabelas da FASE 25 (contratos e relatórios avançados)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'contracts'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 25 não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase25.sql'));
+        console.log('✅ Tabelas da FASE 25 criadas com sucesso');
+      } else {
+        // Executa mesmo se existir para adicionar novos campos
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase25.sql'));
+        console.log('✅ Tabelas da FASE 25 atualizadas');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 25:', error);
+    }
+
+    // FASE 26: KPIs e Relatórios Avançados
+    console.log('🔍 Verificando tabelas da FASE 26 (KPIs e relatórios avançados)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'kpi_metrics'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 26 não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase26.sql'));
+        console.log('✅ Tabelas da FASE 26 criadas com sucesso');
+      } else {
+        // Executa mesmo se existir para adicionar novos campos
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase26.sql'));
+        console.log('✅ Tabelas da FASE 26 atualizadas');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 26:', error);
+    }
+
     console.log('✅ Inicialização do banco de dados concluída!');
   } catch (error) {
     console.error('❌ Erro crítico na inicialização do banco de dados:', error);

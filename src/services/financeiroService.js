@@ -342,6 +342,114 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
       }
     }
 
+    // VALIDAÇÃO DE SALDO DISPONÍVEL
+    const exitAmount = parseFloat(current.amount);
+    
+    // Calcular saldo disponível
+    const entriesResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total 
+       FROM financial_entries 
+       WHERE condominium_id = $1 AND received = TRUE`,
+      [condominiumId]
+    );
+    const totalEntries = parseFloat(entriesResult.rows[0].total);
+    
+    const exitsPaidResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total 
+       FROM financial_exits 
+       WHERE condominium_id = $1 AND payment_status = 'PAID'`,
+      [condominiumId]
+    );
+    const totalExitsPaid = parseFloat(exitsPaidResult.rows[0].total);
+    
+    // Saídas aprovadas mas não pagas (incluindo a atual se já estiver aprovada)
+    const exitsApprovedResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total 
+       FROM financial_exits 
+       WHERE condominium_id = $1 
+         AND payment_status = 'APPROVED' 
+         AND id != $2`,
+      [condominiumId, exitId]
+    );
+    const totalExitsApproved = parseFloat(exitsApprovedResult.rows[0].total);
+    
+    const availableBalance = totalEntries - totalExitsPaid - totalExitsApproved;
+    
+    // Validar se há saldo suficiente
+    if (exitAmount > availableBalance) {
+      const deficit = exitAmount - availableBalance;
+      const error = new Error('EXIT_INSUFFICIENT_BALANCE');
+      error.details = {
+        availableBalance: availableBalance.toFixed(2),
+        exitAmount: exitAmount.toFixed(2),
+        deficit: deficit.toFixed(2)
+      };
+      throw error;
+    }
+
+    // Verificar se requer multi-aprovação
+    const multiApprovalService = require('./multiApprovalService');
+    const requiresMulti = await multiApprovalService.requiresMultiApproval(
+      'financial_exits',
+      exitId,
+      condominiumId
+    );
+    
+    if (requiresMulti) {
+      // Buscar ou criar multi-aprovação
+      let multiApproval = await multiApprovalService.getMultiApproval(
+        'financial_exits',
+        exitId,
+        condominiumId
+      );
+      
+      if (!multiApproval) {
+        const requiredApprovals = multiApprovalService.getRequiredApprovals('financial_exits', exitAmount);
+        multiApproval = await multiApprovalService.createMultiApproval(
+          'financial_exits',
+          exitId,
+          condominiumId,
+          requiredApprovals
+        );
+      }
+      
+      // Votar na multi-aprovação
+      const voteResult = await multiApprovalService.vote(
+        multiApproval.id,
+        userId,
+        'APPROVE',
+        null,
+        ipAddress,
+        userAgent
+      );
+      
+      // Se ainda não atingiu aprovações necessárias, retornar status pendente
+      if (voteResult.status === 'PENDING') {
+        return {
+          ...current,
+          payment_status: 'PENDING',
+          message: `Aprovação registrada. Aguardando ${voteResult.remainingApprovals} aprovação(ões) adicional(is).`,
+          multi_approval: voteResult
+        };
+      }
+      
+      // Se foi rejeitada
+      if (voteResult.status === 'REJECTED') {
+        await query(
+          `UPDATE financial_exits SET payment_status = 'REJECTED' WHERE id = $1`,
+          [exitId]
+        );
+        throw new Error('Saída rejeitada por multi-aprovação');
+      }
+      
+      // Se foi aprovada (atingiu todas as aprovações), continuar com aprovação normal
+    }
+
+    // Invalidar cache do dashboard após aprovar
+    const cacheService = require('./cacheService');
+    cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
+
     // Atualiza status para aprovado
     const updateResult = await query(
       `UPDATE financial_exits 
