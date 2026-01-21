@@ -35,14 +35,28 @@ const showChecklist = async (req, res) => {
 
     const filters = {
       status: req.query.status || undefined,
+      search: req.query.search || undefined,
+      page: req.query.page || undefined,
+      perPage: req.query.perPage || undefined,
     };
 
-    const tasks = await operacionalService.listTasks(req.user.id, req.user.condominiumId, filters);
+    const result = await operacionalService.listTasks(req.user.id, req.user.condominiumId, filters);
+
+    // Compatibilidade: se result for array (versão antiga), mantém comportamento
+    const tasks = result.tasks || result;
+    const pagination = result.total !== undefined ? {
+      total: result.total,
+      page: result.page,
+      perPage: result.perPage,
+      totalPages: result.totalPages,
+    } : null;
 
     res.render('operacional/checklist', {
       title: 'Checklist',
       user: req.user,
       tasks: tasks,
+      pagination: pagination,
+      query: req.query,
     });
   } catch (error) {
     console.error('Erro ao listar checklist:', error);
@@ -189,14 +203,31 @@ const showOcorrencias = async (req, res) => {
 
     const filters = {
       status: req.query.status || undefined,
+      search: req.query.search || undefined,
+      dateFrom: req.query.dateFrom || undefined,
+      dateTo: req.query.dateTo || undefined,
+      priority: req.query.priority || undefined,
+      page: req.query.page || undefined,
+      perPage: req.query.perPage || undefined,
     };
 
-    const occurrences = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId, filters);
+    const result = await operacionalService.listOccurrences(req.user.id, req.user.condominiumId, filters);
+
+    // Compatibilidade: se result for array (versão antiga), mantém comportamento
+    const occurrences = result.occurrences || result;
+    const pagination = result.total !== undefined ? {
+      total: result.total,
+      page: result.page,
+      perPage: result.perPage,
+      totalPages: result.totalPages,
+    } : null;
 
     res.render('operacional/ocorrencias', {
       title: 'Ocorrências',
       user: req.user,
       occurrences: occurrences,
+      pagination: pagination,
+      query: req.query,
     });
   } catch (error) {
     console.error('Erro ao listar ocorrências:', error);

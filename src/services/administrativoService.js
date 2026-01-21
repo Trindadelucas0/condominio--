@@ -150,12 +150,19 @@ const createTask = async (data, userId, condominiumId, ipAddress, userAgent) => 
       throw new Error('Usuário responsável inválido ou não é operacional');
     }
 
+    // Calcula SLA deadline baseado na prioridade
+    const slaUtils = require('../utils/slaUtils');
+    const taskPriority = priority || 'NORMAL';
+    const slaHours = slaUtils.getDefaultSLAHours(taskPriority, 'task');
+    const createdAt = new Date();
+    const slaDeadline = slaUtils.calculateSLADeadline(createdAt, slaHours);
+
     // Insere tarefa (pode ter ocorrência relacionada)
     const taskResult = await query(
-      `INSERT INTO tasks (condominium_id, created_by, assigned_to, title, description, task_type, priority, due_date, status, related_occurrence_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9)
+      `INSERT INTO tasks (condominium_id, created_by, assigned_to, title, description, task_type, priority, due_date, status, related_occurrence_id, sla_hours, sla_deadline)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9, $10, $11)
        RETURNING *`,
-      [condominiumId, userId, assignedTo, title.trim(), description || null, taskType || 'CHECKLIST', priority || 'NORMAL', dueDate, relatedOccurrenceId]
+      [condominiumId, userId, assignedTo, title.trim(), description || null, taskType || 'CHECKLIST', taskPriority, dueDate, relatedOccurrenceId, slaHours, slaDeadline]
     );
 
     const task = taskResult.rows[0];

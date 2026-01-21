@@ -74,6 +74,109 @@
       </div>
     </div>
 
+    <!-- Filtros e Busca -->
+    <div class="mb-6 animate-slide-in">
+      <div class="bg-white rounded-2xl shadow-xl p-6">
+        <div class="flex items-center space-x-2 mb-4">
+          <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+          </svg>
+          <h2 class="text-lg font-bold text-gray-800">Filtros</h2>
+        </div>
+        <form method="GET" action="/operacional/ocorrencias" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Busca Textual -->
+            <div class="lg:col-span-2">
+              <label for="search" class="block text-sm font-semibold text-gray-700 mb-2">Buscar</label>
+              <input 
+                type="text" 
+                id="search"
+                name="search" 
+                placeholder="Título, descrição ou localização..." 
+                value="<%= typeof query !== 'undefined' && query.search ? query.search : '' %>"
+                class="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:border-orange-500 focus:outline-none transition-colors"
+              >
+            </div>
+            
+            <!-- Filtro por Prioridade -->
+            <div>
+              <label for="priority" class="block text-sm font-semibold text-gray-700 mb-2">Prioridade</label>
+              <select 
+                id="priority"
+                name="priority" 
+                class="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:border-orange-500 focus:outline-none transition-colors"
+              >
+                <option value="">Todas</option>
+                <option value="URGENTE" <%= typeof query !== 'undefined' && query.priority === 'URGENTE' ? 'selected' : '' %>>Urgente</option>
+                <option value="ALTA" <%= typeof query !== 'undefined' && query.priority === 'ALTA' ? 'selected' : '' %>>Alta</option>
+                <option value="NORMAL" <%= typeof query !== 'undefined' && query.priority === 'NORMAL' ? 'selected' : '' %>>Normal</option>
+                <option value="BAIXA" <%= typeof query !== 'undefined' && query.priority === 'BAIXA' ? 'selected' : '' %>>Baixa</option>
+              </select>
+            </div>
+
+            <!-- Filtro por Status -->
+            <div>
+              <label for="status" class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+              <select 
+                id="status"
+                name="status" 
+                class="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:border-orange-500 focus:outline-none transition-colors"
+              >
+                <option value="">Todas</option>
+                <option value="ABERTA" <%= typeof query !== 'undefined' && query.status === 'ABERTA' ? 'selected' : '' %>>Aberta</option>
+                <option value="EM_ATENDIMENTO" <%= typeof query !== 'undefined' && query.status === 'EM_ATENDIMENTO' ? 'selected' : '' %>>Em Atendimento</option>
+                <option value="RESOLVIDA" <%= typeof query !== 'undefined' && query.status === 'RESOLVIDA' ? 'selected' : '' %>>Resolvida</option>
+                <option value="ENCERRADA" <%= typeof query !== 'undefined' && query.status === 'ENCERRADA' ? 'selected' : '' %>>Encerrada</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Filtro por Data Início -->
+            <div>
+              <label for="dateFrom" class="block text-sm font-semibold text-gray-700 mb-2">Data de Criação (De)</label>
+              <input 
+                type="date" 
+                id="dateFrom"
+                name="dateFrom" 
+                value="<%= typeof query !== 'undefined' && query.dateFrom ? query.dateFrom : '' %>"
+                class="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:border-orange-500 focus:outline-none transition-colors"
+              >
+            </div>
+
+            <!-- Filtro por Data Fim -->
+            <div>
+              <label for="dateTo" class="block text-sm font-semibold text-gray-700 mb-2">Data de Criação (Até)</label>
+              <input 
+                type="date" 
+                id="dateTo"
+                name="dateTo" 
+                value="<%= typeof query !== 'undefined' && query.dateTo ? query.dateTo : '' %>"
+                class="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:border-orange-500 focus:outline-none transition-colors"
+              >
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <button 
+              type="submit" 
+              class="bg-gradient-to-r from-orange-600 to-amber-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 inline-flex items-center space-x-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <span>Aplicar Filtros</span>
+            </button>
+            <% if (typeof query !== 'undefined' && (query.search || query.priority || query.status || query.dateFrom || query.dateTo)) { %>
+            <a href="/operacional/ocorrencias" class="bg-gray-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-600 transition-colors inline-flex items-center">
+              Limpar Filtros
+            </a>
+            <% } %>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Mensagens de Sucesso -->
     <% if (typeof query !== 'undefined' && query.success === 'created') { %>
       <div class="mb-6 animate-slide-in">
@@ -190,6 +293,51 @@
             </div>
           </div>
         <% }); %>
+      </div>
+    <% } %>
+    
+    <!-- Paginação -->
+    <% if (pagination && pagination.totalPages > 1) { %>
+      <div class="bg-white rounded-2xl shadow-xl p-6 mt-6 animate-slide-in">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="text-sm text-gray-600">
+            Mostrando <strong><%= ((pagination.page - 1) * pagination.perPage) + 1 %></strong> até 
+            <strong><%= Math.min(pagination.page * pagination.perPage, pagination.total) %></strong> 
+            de <strong><%= pagination.total %></strong> ocorrências
+            <span class="text-gray-400">(Página <%= pagination.page %> de <%= pagination.totalPages %>)</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <% 
+              // Construir query string preservando filtros
+              const queryParams = new URLSearchParams();
+              if (query && query.search) queryParams.set('search', query.search);
+              if (query && query.status) queryParams.set('status', query.status);
+              if (query && query.priority) queryParams.set('priority', query.priority);
+              if (query && query.dateFrom) queryParams.set('dateFrom', query.dateFrom);
+              if (query && query.dateTo) queryParams.set('dateTo', query.dateTo);
+              if (query && query.perPage) queryParams.set('perPage', query.perPage);
+              const queryString = queryParams.toString();
+            %>
+            <% if (pagination.page > 1) { %>
+              <a href="/operacional/ocorrencias?page=<%= pagination.page - 1 %><%= queryString ? '&' + queryString : '' %>" 
+                 class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                <span>Anterior</span>
+              </a>
+            <% } %>
+            <% if (pagination.page < pagination.totalPages) { %>
+              <a href="/operacional/ocorrencias?page=<%= pagination.page + 1 %><%= queryString ? '&' + queryString : '' %>" 
+                 class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center space-x-2">
+                <span>Próxima</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </a>
+            <% } %>
+          </div>
+        </div>
       </div>
     <% } %>
   </div>

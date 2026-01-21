@@ -8,6 +8,58 @@ const { logAction } = require('../utils/logger'); // Para logs de auditoria
 // Função para obter estatísticas do operacional
 // Recebe: userId (operacional)
 // Retorna: estatísticas (tarefas pendentes, ocorrências abertas, etc)
+// Função auxiliar para verificar e atualizar SLA de uma tarefa
+const checkAndUpdateTaskSLA = async (task) => {
+  if (!task.sla_deadline) {
+    return task; // Sem SLA definido
+  }
+  
+  const slaUtils = require('../utils/slaUtils');
+  const isViolated = slaUtils.isSLAViolated(task.sla_deadline, task.completed_at);
+  
+  // Se SLA foi violado e ainda não está marcado, atualiza
+  if (isViolated && !task.sla_violated) {
+    const { query } = require('../config/database');
+    await query(
+      `UPDATE tasks SET sla_violated = TRUE, sla_violated_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [task.id]
+    );
+    task.sla_violated = true;
+    task.sla_violated_at = new Date();
+  }
+  
+  // Calcula informações de SLA para exibição
+  task.sla_info = slaUtils.formatSLAForDisplay(task.sla_deadline, task.completed_at);
+  
+  return task;
+};
+
+// Função auxiliar para verificar e atualizar SLA de uma ocorrência
+const checkAndUpdateOccurrenceSLA = async (occurrence) => {
+  if (!occurrence.sla_deadline) {
+    return occurrence; // Sem SLA definido
+  }
+  
+  const slaUtils = require('../utils/slaUtils');
+  const isViolated = slaUtils.isSLAViolated(occurrence.sla_deadline, occurrence.resolved_at);
+  
+  // Se SLA foi violado e ainda não está marcado, atualiza
+  if (isViolated && !occurrence.sla_violated) {
+    const { query } = require('../config/database');
+    await query(
+      `UPDATE occurrences SET sla_violated = TRUE, sla_violated_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [occurrence.id]
+    );
+    occurrence.sla_violated = true;
+    occurrence.sla_violated_at = new Date();
+  }
+  
+  // Calcula informações de SLA para exibição
+  occurrence.sla_info = slaUtils.formatSLAForDisplay(occurrence.sla_deadline, occurrence.resolved_at);
+  
+  return occurrence;
+};
+
 const getDashboardStats = async (userId, condominiumId) => {
   try {
     // Conta tarefas pendentes do usuário
@@ -76,10 +128,25 @@ const getDashboardStats = async (userId, condominiumId) => {
 };
 
 // Função para listar tarefas do operacional
-// Recebe: userId, condominiumId, filtros (status, dueDate)
-// Retorna: lista de tarefas com checklists
+// Recebe: userId, condominiumId, filtros (status, dueDate, search, page, perPage)
+// Retorna: { tasks, total, page, perPage, totalPages } com checklists
 const listTasks = async (userId, condominiumId, filters = {}) => {
   try {
+    // Paginação: padrão page=1, perPage=20 (pode ser 10, 20, 50)
+    const page = parseInt(filters.page) || 1;
+    const perPage = parseInt(filters.perPage) || 20;
+    const offset = (page - 1) * perPage;
+
+    // Query base para contar total
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM tasks t
+      WHERE t.assigned_to = $1 AND t.condominium_id = $2
+    `;
+    const countParams = [userId, condominiumId];
+    let countParamCount = 3;
+
+    // Query principal
     let sql = `
       SELECT t.*, u.full_name as created_by_name
       FROM tasks t
@@ -89,19 +156,77 @@ const listTasks = async (userId, condominiumId, filters = {}) => {
     const params = [userId, condominiumId];
     let paramCount = 3;
 
-    // Aplica filtros
+    // Aplica filtros (tanto na query principal quanto na contagem)
     if (filters.status) {
       sql += ` AND t.status = $${paramCount++}`;
+      countSql += ` AND t.status = $${countParamCount++}`;
       params.push(filters.status);
+      countParams.push(filters.status);
     } else {
       // Por padrão, mostra apenas tarefas pendentes e em andamento (não concluídas)
       sql += ` AND t.status IN ('PENDING', 'IN_PROGRESS')`;
+      countSql += ` AND t.status IN ('PENDING', 'IN_PROGRESS')`;
     }
 
-    sql += ` ORDER BY t.due_date ASC, t.priority DESC LIMIT 50`;
+    // Filtro por data de vencimento (dateFrom)
+    if (filters.dateFrom) {
+      sql += ` AND t.due_date >= $${paramCount++}`;
+      countSql += ` AND t.due_date >= $${countParamCount++}`;
+      params.push(filters.dateFrom);
+      countParams.push(filters.dateFrom);
+    }
 
+    // Filtro por data de vencimento (dateTo)
+    if (filters.dateTo) {
+      sql += ` AND t.due_date <= $${paramCount++}`;
+      countSql += ` AND t.due_date <= $${countParamCount++}`;
+      params.push(filters.dateTo);
+      countParams.push(filters.dateTo);
+    }
+
+    // Filtro por prioridade
+    if (filters.priority) {
+      sql += ` AND t.priority = $${paramCount++}`;
+      countSql += ` AND t.priority = $${countParamCount++}`;
+      params.push(filters.priority);
+      countParams.push(filters.priority);
+    }
+
+    // Busca textual (se fornecido)
+    if (filters.search && filters.search.trim() !== '') {
+      const searchTerm = `%${filters.search.trim()}%`;
+      sql += ` AND (t.title ILIKE $${paramCount++} OR t.description ILIKE $${paramCount++})`;
+      countSql += ` AND (t.title ILIKE $${countParamCount++} OR t.description ILIKE $${countParamCount++})`;
+      params.push(searchTerm);
+      params.push(searchTerm);
+      countParams.push(searchTerm);
+      countParams.push(searchTerm);
+    }
+
+    // Ordenação: Prioriza URGENTE (ordem: URGENTE=4, ALTA=3, NORMAL=2, BAIXA=1)
+    // Usa CASE para ordenar por prioridade primeiro, depois por data de vencimento
+    sql += ` ORDER BY 
+      CASE t.priority 
+        WHEN 'URGENTE' THEN 4
+        WHEN 'ALTA' THEN 3
+        WHEN 'NORMAL' THEN 2
+        WHEN 'BAIXA' THEN 1
+        ELSE 0
+      END DESC, 
+      t.due_date ASC 
+      LIMIT $${paramCount++} OFFSET $${paramCount++}`;
+    
+    params.push(perPage);
+    params.push(offset);
+
+    // Executa query principal
     const result = await query(sql, params);
     const tasks = result.rows;
+
+    // Executa query de contagem
+    const countResult = await query(countSql, countParams);
+    const total = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / perPage);
 
     // Log para debug (remover em produção se necessário)
     console.log(`[OPERACIONAL] listTasks - userId: ${userId}, condominiumId: ${condominiumId}, encontradas: ${tasks.length} tarefas`);
@@ -116,16 +241,25 @@ const listTasks = async (userId, condominiumId, filters = {}) => {
       console.log(`[OPERACIONAL] Debug - Total de tarefas atribuídas ao usuário ${userId} (qualquer condomínio): ${debugResult.rows[0].total}`);
     }
 
-    // Para cada tarefa, busca checklists
+    // Para cada tarefa, busca checklists e verifica SLA
     for (const task of tasks) {
       const checklistsResult = await query(
         `SELECT * FROM checklists WHERE task_id = $1 ORDER BY item_order, id`,
         [task.id]
       );
       task.checklists = checklistsResult.rows;
+      
+      // Verifica e atualiza SLA
+      await checkAndUpdateTaskSLA(task);
     }
 
-    return tasks;
+    return {
+      tasks,
+      total,
+      page,
+      perPage,
+      totalPages,
+    };
   } catch (error) {
     console.error('Erro ao listar tarefas:', error);
     throw error;
@@ -283,6 +417,18 @@ const completeTask = async (taskId, userId, condominiumId, completionData, ipAdd
       throw new Error('Todos os itens do checklist devem estar concluídos');
     }
 
+    // Validação: Se evidence_required = TRUE, verifica se há evidências (fotos)
+    if (task.evidence_required === true) {
+      const evidencesResult = await query(
+        `SELECT COUNT(*) as total FROM task_evidences WHERE task_id = $1`,
+        [taskId]
+      );
+      const evidencesCount = parseInt(evidencesResult.rows[0].total);
+      if (evidencesCount === 0) {
+        throw new Error('Esta tarefa requer evidências (fotos) obrigatórias. Por favor, anexe pelo menos uma foto antes de concluir a tarefa.');
+      }
+    }
+
     // Validação: completion_success é obrigatório
     if (completionData.completion_success === undefined || completionData.completion_success === null) {
       throw new Error('É obrigatório informar se a tarefa foi concluída com sucesso');
@@ -396,14 +542,21 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
       finalApprovalRequiredFrom = 'SINDICO';
     }
 
+    // Calcula SLA deadline baseado na prioridade
+    const slaUtils = require('../utils/slaUtils');
+    const occurrencePriority = priority || 'NORMAL';
+    const slaHours = slaUtils.getDefaultSLAHours(occurrencePriority, 'occurrence');
+    const createdAt = new Date();
+    const slaDeadline = slaUtils.calculateSLADeadline(createdAt, slaHours);
+
     // Insere ocorrência
     const result = await query(
       `INSERT INTO occurrences (
         condominium_id, reported_by, title, description, location, priority, status, 
         occurrence_type, requires_approval, approval_required_from, approval_status,
-        sent_to_user_id, sent_to_role, is_in_checklist, is_routine_task
+        sent_to_user_id, sent_to_role, is_in_checklist, is_routine_task, sla_hours, sla_deadline
       )
-       VALUES ($1, $2, $3, $4, $5, $6, 'ABERTA', $7, $8, $9, $10, $11, $12, $13, $14)
+       VALUES ($1, $2, $3, $4, $5, $6, 'ABERTA', $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
       [
         condominiumId, 
@@ -411,7 +564,7 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
         title.trim(), 
         description.trim(), 
         location || null, 
-        priority || 'NORMAL',
+        occurrencePriority,
         finalOccurrenceType,
         finalRequiresApproval,
         finalApprovalRequiredFrom,
@@ -419,7 +572,9 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
         sentToUserId || null,
         sentToRole || null,
         isInChecklist || false,
-        isRoutineTask || false
+        isRoutineTask || false,
+        slaHours,
+        slaDeadline
       ]
     );
 
@@ -496,10 +651,27 @@ const createOccurrence = async (data, userId, condominiumId, ipAddress, userAgen
 };
 
 // Função para listar ocorrências de ZELADORIA (OPERACIONAL)
-// Recebe: userId, condominiumId, filtros
-// Retorna: lista de ocorrências de zeladoria
+// Recebe: userId, condominiumId, filtros (status, search, page, perPage)
+// Retorna: { occurrences, total, page, perPage, totalPages }
 const listOccurrences = async (userId, condominiumId, filters = {}) => {
   try {
+    // Paginação: padrão page=1, perPage=20
+    const page = parseInt(filters.page) || 1;
+    const perPage = parseInt(filters.perPage) || 20;
+    const offset = (page - 1) * perPage;
+
+    // Query base para contar total
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM occurrences 
+      WHERE condominium_id = $1 
+        AND (reported_by = $2 OR assigned_to = $2)
+        AND (occurrence_type = 'ZELADORIA' OR occurrence_type IS NULL)
+    `;
+    const countParams = [condominiumId, userId];
+    let countParamCount = 3;
+
+    // Query principal
     let sql = `
       SELECT * FROM occurrences 
       WHERE condominium_id = $1 
@@ -511,13 +683,72 @@ const listOccurrences = async (userId, condominiumId, filters = {}) => {
 
     if (filters.status) {
       sql += ` AND status = $${paramCount++}`;
+      countSql += ` AND status = $${countParamCount++}`;
       params.push(filters.status);
+      countParams.push(filters.status);
     }
 
-    sql += ` ORDER BY created_at DESC LIMIT 100`;
+    // Filtro por data de criação (dateFrom)
+    if (filters.dateFrom) {
+      sql += ` AND created_at >= $${paramCount++}`;
+      countSql += ` AND created_at >= $${countParamCount++}`;
+      params.push(filters.dateFrom);
+      countParams.push(filters.dateFrom);
+    }
+
+    // Filtro por data de criação (dateTo)
+    if (filters.dateTo) {
+      sql += ` AND created_at <= $${paramCount++}`;
+      countSql += ` AND created_at <= $${countParamCount++}`;
+      params.push(filters.dateTo);
+      countParams.push(filters.dateTo);
+    }
+
+    // Filtro por prioridade
+    if (filters.priority) {
+      sql += ` AND priority = $${paramCount++}`;
+      countSql += ` AND priority = $${countParamCount++}`;
+      params.push(filters.priority);
+      countParams.push(filters.priority);
+    }
+
+    // Busca textual (se fornecido)
+    if (filters.search && filters.search.trim() !== '') {
+      const searchTerm = `%${filters.search.trim()}%`;
+      sql += ` AND (title ILIKE $${paramCount++} OR description ILIKE $${paramCount++} OR location ILIKE $${paramCount++})`;
+      countSql += ` AND (title ILIKE $${countParamCount++} OR description ILIKE $${countParamCount++} OR location ILIKE $${countParamCount++})`;
+      params.push(searchTerm);
+      params.push(searchTerm);
+      params.push(searchTerm);
+      countParams.push(searchTerm);
+      countParams.push(searchTerm);
+      countParams.push(searchTerm);
+    }
+
+    sql += ` ORDER BY created_at DESC LIMIT $${paramCount++} OFFSET $${paramCount++}`;
+    params.push(perPage);
+    params.push(offset);
 
     const result = await query(sql, params);
-    return result.rows;
+    const occurrences = result.rows;
+
+    // Verifica e atualiza SLA para cada ocorrência
+    for (const occurrence of occurrences) {
+      await checkAndUpdateOccurrenceSLA(occurrence);
+    }
+
+    // Executa query de contagem
+    const countResult = await query(countSql, countParams);
+    const total = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / perPage);
+
+    return {
+      occurrences,
+      total,
+      page,
+      perPage,
+      totalPages,
+    };
   } catch (error) {
     console.error('Erro ao listar ocorrências:', error);
     throw error;
