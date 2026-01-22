@@ -809,12 +809,19 @@ const reportService = {
           };
           
           // Função auxiliar para adicionar nova página se necessário
-          const checkPageBreak = (requiredSpace = 50) => {
-            if (doc.y + requiredSpace > 750) {
+          const checkPageBreak = (requiredSpace = 80) => {
+            if (doc.y + requiredSpace > 720) {
               doc.addPage();
+              doc.y = 50;
               return true;
             }
             return false;
+          };
+          
+          // Garantir espaço mínimo após bloco e evitar sobreposição
+          const SECTION_GAP = 40;
+          const setYAfter = (y) => {
+            doc.y = Math.max(doc.y, y) + SECTION_GAP;
           };
           
           // Função auxiliar para formatar moeda
@@ -996,269 +1003,175 @@ const reportService = {
           doc.text(`Quantidade de Saídas: ${exits.length}`, 200, statsY + 30);
           doc.text(`Contas de Consumo: ${consumption.length}`, 340, statsY + 30);
           
-          doc.y = statsY + statsHeight + 20;
+          doc.y = statsY + statsHeight + SECTION_GAP;
           
-          // ========== GRÁFICOS VISUAIS PROFISSIONAIS ==========
-          checkPageBreak(250);
-          const chartsY = doc.y;
+          // ========== PÁGINA DEDICADA AOS GRÁFICOS ==========
+          doc.addPage();
+          doc.y = 50;
+          
+          const chartsSectionY = doc.y;
           doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
-            .text('1.4. ANÁLISE VISUAL COM GRÁFICOS', 50, chartsY);
-          drawLine(chartsY + 25, colors.primary, 350);
-          doc.y = chartsY + 35;
+            .text('1.4. ANÁLISE VISUAL – GRÁFICOS', 50, chartsSectionY);
+          drawLine(chartsSectionY + 25, colors.primary, 320);
+          doc.y = chartsSectionY + 38;
           
-          // Gráfico de Barras Vertical Profissional - Entradas vs Saídas
-          const chartY = doc.y;
-          const chartHeight = 180;
-          const chartWidth = 495;
-          const chartBoxY = chartY;
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+          doc.text(
+            'Esta seção apresenta os gráficos do período. Cada gráfico mostra um aspecto do financeiro: comparação entre entradas e saídas, distribuição das saídas por categoria e, quando há dados, a evolução em relação ao mês anterior.',
+            50, doc.y, { width: 495, align: 'left' }
+          );
+          doc.y += 32;
           
-          // Box do gráfico com sombra visual
-          drawBox(50, chartBoxY, chartWidth, chartHeight, '#fafafa');
-          drawBox(52, chartBoxY + 2, chartWidth - 4, chartHeight - 4, '#ffffff');
+          // ----- Gráfico 1: Entradas vs Saídas (uma única área, sem sobreposição) -----
+          checkPageBreak(220);
+          const g1StartY = doc.y;
+          const g1BoxH = 200;
+          const g1Pad = 16;
           
-          doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.dark)
-            .text('Gráfico 1: Comparação Entradas vs Saídas', 60, chartBoxY + 15);
+          drawBox(50, g1StartY, 495, g1BoxH, '#fafafa');
+          doc.rect(52, g1StartY + 2, 491, g1BoxH - 4).strokeColor(colors.border).lineWidth(0.5).stroke();
           
-          // Calcular valores para o gráfico
-          const maxValue = Math.max(totalEntriesReceived, totalExitsPaid, balance > 0 ? balance : 0, 1000);
-          const chartAreaX = 80;
-          const chartAreaY = chartBoxY + 50;
-          const chartAreaWidth = 435;
-          const chartAreaHeight = 100;
-          const maxBarHeight = chartAreaHeight - 20;
+          doc.fontSize(13).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('Gráfico 1 – Comparação Entradas vs Saídas', 50 + g1Pad, g1StartY + g1Pad);
+          doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+            .text('Valores recebidos (entradas) e valores pagos (saídas) no mês. O saldo é a diferença entre eles.', 50 + g1Pad, g1StartY + g1Pad + 16, { width: 463 });
           
-          // Eixos do gráfico
-          // Linha horizontal (eixo X)
-          doc.moveTo(chartAreaX, chartAreaY + maxBarHeight + 10)
-            .lineTo(chartAreaX + chartAreaWidth, chartAreaY + maxBarHeight + 10)
-            .strokeColor('#cccccc').lineWidth(1).stroke();
+          const g1ChartTop = g1StartY + 55;
+          const g1ChartH = 110;
+          const g1AxisX = 90;
+          const g1AxisY = g1ChartTop + g1ChartH - 15;
+          const g1ChartW = 435;
+          const g1MaxVal = Math.max(totalEntriesReceived, totalExitsPaid, balance > 0 ? balance : 0, 1000);
+          const g1BarH = (v) => Math.max((v / g1MaxVal) * (g1ChartH - 25), 8);
+          const g1BarW = 70;
+          const g1Gap = 28;
           
-          // Linha vertical (eixo Y)
-          doc.moveTo(chartAreaX, chartAreaY)
-            .lineTo(chartAreaX, chartAreaY + maxBarHeight + 10)
-            .strokeColor('#cccccc').lineWidth(1).stroke();
+          doc.moveTo(g1AxisX, g1ChartTop).lineTo(g1AxisX, g1AxisY).strokeColor('#d1d5db').lineWidth(1).stroke();
+          doc.moveTo(g1AxisX, g1AxisY).lineTo(g1AxisX + g1ChartW, g1AxisY).strokeColor('#d1d5db').lineWidth(1).stroke();
           
-          // Grade horizontal (linhas de referência)
-          for (let i = 0; i <= 4; i++) {
-            const gridY = chartAreaY + (maxBarHeight / 4) * i;
-            doc.moveTo(chartAreaX, gridY)
-              .lineTo(chartAreaX + chartAreaWidth, gridY)
-              .strokeColor('#e5e7eb').lineWidth(0.5).stroke();
-            
-            // Valores no eixo Y
-            const gridValue = maxValue - (maxValue / 4) * i;
-            doc.fontSize(7).font('Helvetica').fillColor('#6b7280')
-              .text(formatCurrency(gridValue), chartAreaX - 75, gridY - 3, { width: 70, align: 'right' });
-          }
+          let g1X = g1AxisX + 25;
           
-          // Barra de Entradas (com gradiente visual)
-          const entriesBarHeight = Math.max((totalEntriesReceived / maxValue) * maxBarHeight, 5);
-          const entriesBarY = chartAreaY + maxBarHeight + 10 - entriesBarHeight;
-          const entriesBarX = chartAreaX + 40;
-          const entriesBarWidth = 100;
-          
-          // Barra principal
-          doc.rect(entriesBarX, entriesBarY, entriesBarWidth, entriesBarHeight)
-            .fillColor(colors.success).fill();
-          // Borda
-          doc.rect(entriesBarX, entriesBarY, entriesBarWidth, entriesBarHeight)
-            .strokeColor('#059669').lineWidth(1.5).stroke();
-          // Destaque superior (simula gradiente)
-          doc.rect(entriesBarX, entriesBarY, entriesBarWidth, Math.min(entriesBarHeight * 0.3, 10))
-            .fillColor('#34d399').fill();
-          
-          // Label e valor
-          doc.fontSize(10).font('Helvetica-Bold').fillColor(colors.success)
-            .text('ENTRADAS', entriesBarX, entriesBarY - 18, { width: entriesBarWidth, align: 'center' });
-          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
-            .text(formatCurrency(totalEntriesReceived), entriesBarX, entriesBarY + entriesBarHeight + 5, { width: entriesBarWidth, align: 'center' });
-          
-          // Barra de Saídas
-          const exitsBarHeight = Math.max((totalExitsPaid / maxValue) * maxBarHeight, 5);
-          const exitsBarY = chartAreaY + maxBarHeight + 10 - exitsBarHeight;
-          const exitsBarX = entriesBarX + entriesBarWidth + 40;
-          
-          // Barra principal
-          doc.rect(exitsBarX, exitsBarY, entriesBarWidth, exitsBarHeight)
-            .fillColor(colors.danger).fill();
-          // Borda
-          doc.rect(exitsBarX, exitsBarY, entriesBarWidth, exitsBarHeight)
-            .strokeColor('#dc2626').lineWidth(1.5).stroke();
-          // Destaque superior
-          doc.rect(exitsBarX, exitsBarY, entriesBarWidth, Math.min(exitsBarHeight * 0.3, 10))
-            .fillColor('#f87171').fill();
-          
-          // Label e valor
-          doc.fontSize(10).font('Helvetica-Bold').fillColor(colors.danger)
-            .text('SAÍDAS', exitsBarX, exitsBarY - 18, { width: entriesBarWidth, align: 'center' });
-          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
-            .text(formatCurrency(totalExitsPaid), exitsBarX, exitsBarY + exitsBarHeight + 5, { width: entriesBarWidth, align: 'center' });
-          
-          // Barra de Saldo (se positivo)
-          if (balance > 0) {
-            const balanceBarHeight = Math.max((balance / maxValue) * maxBarHeight, 5);
-            const balanceBarY = chartAreaY + maxBarHeight + 10 - balanceBarHeight;
-            const balanceBarX = exitsBarX + entriesBarWidth + 40;
-            
-            // Barra principal
-            doc.rect(balanceBarX, balanceBarY, entriesBarWidth, balanceBarHeight)
-              .fillColor('#10b981').fill();
-            // Borda
-            doc.rect(balanceBarX, balanceBarY, entriesBarWidth, balanceBarHeight)
-              .strokeColor('#059669').lineWidth(1.5).stroke();
-            // Destaque superior
-            doc.rect(balanceBarX, balanceBarY, entriesBarWidth, Math.min(balanceBarHeight * 0.3, 10))
-              .fillColor('#34d399').fill();
-            
-            // Label e valor
-            doc.fontSize(10).font('Helvetica-Bold').fillColor('#059669')
-              .text('SALDO', balanceBarX, balanceBarY - 18, { width: entriesBarWidth, align: 'center' });
+          const drawBar = (x, height, color, label, value) => {
+            const by = g1AxisY - height;
+            doc.rect(x, by, g1BarW, height).fillColor(color).fill();
+            doc.rect(x, by, g1BarW, height).strokeColor(color).lineWidth(1).stroke();
             doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
-              .text(formatCurrency(balance), balanceBarX, balanceBarY + balanceBarHeight + 5, { width: entriesBarWidth, align: 'center' });
+              .text(label, x, by - 14, { width: g1BarW, align: 'center' });
+            doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+              .text(value, x, g1AxisY + 4, { width: g1BarW, align: 'center' });
+          };
+          
+          drawBar(g1X, g1BarH(totalEntriesReceived), colors.success, 'ENTRADAS', formatCurrency(totalEntriesReceived));
+          g1X += g1BarW + g1Gap;
+          drawBar(g1X, g1BarH(totalExitsPaid), colors.danger, 'SAÍDAS', formatCurrency(totalExitsPaid));
+          g1X += g1BarW + g1Gap;
+          if (balance > 0) {
+            drawBar(g1X, g1BarH(balance), '#059669', 'SALDO', formatCurrency(balance));
           }
           
-          doc.y = chartBoxY + chartHeight + 25;
+          doc.y = g1StartY + g1BoxH + SECTION_GAP;
           
-          // Gráfico de Barras Horizontais Profissional - Distribuição por Categoria
+          // ----- Gráfico 2: Distribuição por Categoria (em nova página se não couber) -----
           if (Object.keys(exitsByCategory).length > 0) {
-            checkPageBreak(180);
-            const pieChartY = doc.y;
-            const pieChartHeight = 150;
+            checkPageBreak(220);
+            const g2StartY = doc.y;
+            const g2BoxH = 180;
+            const g2Pad = 14;
             
-            // Box do gráfico
-            drawBox(50, pieChartY, 495, pieChartHeight, '#fafafa');
-            drawBox(52, pieChartY + 2, 491, pieChartHeight - 4, '#ffffff');
+            drawBox(50, g2StartY, 495, g2BoxH, '#fafafa');
+            doc.rect(52, g2StartY + 2, 491, g2BoxH - 4).strokeColor(colors.border).lineWidth(0.5).stroke();
             
-            doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.dark)
-              .text('Gráfico 2: Distribuição de Saídas por Categoria', 60, pieChartY + 15);
+            doc.fontSize(13).font('Helvetica-Bold').fillColor(colors.dark)
+              .text('Gráfico 2 – Distribuição das Saídas por Categoria', 50 + g2Pad, g2StartY + g2Pad);
+            doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+              .text('Quanto foi gasto em cada categoria (ex.: manutenção, contas). Valores e percentuais sobre o total de saídas.', 50 + g2Pad, g2StartY + g2Pad + 14, { width: 467 });
             
-            // Criar gráfico de barras horizontais melhorado
-            const categoryColors = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
-            let catIndex = 0;
-            let catBarY = pieChartY + 45;
-            const catBarMaxWidth = 380;
-            const catBarHeight = 16;
-            const catBarSpacing = 20;
+            const catColors = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#14b8a6'];
+            const catLabelW = 110;
+            const catBarMaxW = 260;
+            const catBarH = 14;
+            const catSpacing = 22;
+            let catY = g2StartY + 52;
             
             Object.entries(exitsByCategory)
               .sort((a, b) => b[1].total - a[1].total)
-              .slice(0, 5) // Top 5 categorias
-              .forEach(([cat, data]) => {
-                const percentage = (data.total / totalExits) * 100;
-                const catBarWidth = (data.total / totalExits) * catBarMaxWidth;
-                const catColor = categoryColors[catIndex % categoryColors.length];
-                
-                // Barra de fundo (cinza claro)
-                doc.rect(70, catBarY, catBarMaxWidth, catBarHeight)
-                  .fillColor('#f3f4f6').fill();
-                
-                // Barra de valor (colorida)
-                doc.rect(70, catBarY, catBarWidth, catBarHeight)
-                  .fillColor(catColor).fill();
-                
-                // Borda da barra
-                doc.rect(70, catBarY, catBarWidth, catBarHeight)
-                  .strokeColor(catColor).lineWidth(0.5).stroke();
-                
-                // Label da categoria
-                doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
-                  .text(cat, 70, catBarY + 4, { width: 120 });
-                
-                // Valor e percentual dentro da barra
-                if (catBarWidth > 150) {
-                  doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff')
-                    .text(`${formatCurrency(data.total)} (${percentage.toFixed(1)}%)`, 75, catBarY + 5);
-                } else {
-                  // Se a barra for pequena, colocar o texto fora
-                  doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
-                    .text(`${formatCurrency(data.total)} (${percentage.toFixed(1)}%)`, 75 + catBarWidth + 5, catBarY + 5);
-                }
-                
-                catBarY += catBarSpacing;
-                catIndex++;
+              .slice(0, 5)
+              .forEach(([cat, data], idx) => {
+                const pct = totalExits > 0 ? (data.total / totalExits) * 100 : 0;
+                const barW = totalExits > 0 ? (data.total / totalExits) * catBarMaxW : 0;
+                const c = catColors[idx % catColors.length];
+                doc.rect(50 + g2Pad + catLabelW, catY, catBarMaxW, catBarH).fillColor('#f3f4f6').fill();
+                doc.rect(50 + g2Pad + catLabelW, catY, barW, catBarH).fillColor(c).fill();
+                doc.rect(50 + g2Pad + catLabelW, catY, barW, catBarH).strokeColor(c).lineWidth(0.5).stroke();
+                doc.fontSize(9).font('Helvetica').fillColor(colors.dark).text(cat, 50 + g2Pad, catY + 2, { width: catLabelW - 4 });
+                doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+                  .text(`${formatCurrency(data.total)} (${pct.toFixed(1)}%)`, 50 + g2Pad + catLabelW + catBarMaxW + 8, catY + 3);
+                catY += catSpacing;
               });
             
-            // Legenda de cores (se houver mais de uma categoria)
-            if (Object.keys(exitsByCategory).length > 1) {
-              const legendY = pieChartY + pieChartHeight - 25;
-              doc.fontSize(8).font('Helvetica').fillColor('#6b7280')
-                .text('Legenda: Cada barra representa o valor total gasto em cada categoria', 70, legendY);
-            }
-            
-            doc.y = pieChartY + pieChartHeight + 20;
+            doc.y = g2StartY + g2BoxH + SECTION_GAP;
           }
           
-          // Gráfico de Comparação Temporal (se houver dados do mês anterior)
+          // ----- Gráfico 3: Evolução Mensal (barras lado a lado, sem sobreposição) -----
           if (prevEntries > 0 || prevExits > 0) {
-            checkPageBreak(180);
-            const temporalChartY = doc.y;
-            const temporalChartHeight = 150;
+            checkPageBreak(200);
+            const g3StartY = doc.y;
+            const g3BoxH = 170;
+            const g3Pad = 14;
             
-            drawBox(50, temporalChartY, 495, temporalChartHeight, '#fafafa');
-            drawBox(52, temporalChartY + 2, 491, temporalChartHeight - 4, '#ffffff');
+            drawBox(50, g3StartY, 495, g3BoxH, '#fafafa');
+            doc.rect(52, g3StartY + 2, 491, g3BoxH - 4).strokeColor(colors.border).lineWidth(0.5).stroke();
             
-            doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.dark)
-              .text('Gráfico 3: Evolução Mensal (Comparação)', 60, temporalChartY + 15);
+            doc.fontSize(13).font('Helvetica-Bold').fillColor(colors.dark)
+              .text('Gráfico 3 – Evolução Mensal (Entradas e Saídas)', 50 + g3Pad, g3StartY + g3Pad);
+            doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+              .text('Comparação entre o mês anterior e o mês atual. Cada par de barras: entradas (verde) e saídas (vermelho).', 50 + g3Pad, g3StartY + g3Pad + 14, { width: 467 });
             
-            // Gráfico de linha simples com duas barras lado a lado
-            const tempChartAreaX = 80;
-            const tempChartAreaY = temporalChartY + 45;
-            const tempChartAreaWidth = 400;
-            const tempChartAreaHeight = 80;
-            const tempMaxValue = Math.max(prevEntries, prevExits, totalEntriesReceived, totalExitsPaid, 1000);
-            const tempMaxBarHeight = tempChartAreaHeight - 10;
+            const g3ChartY = g3StartY + 52;
+            const g3BarH = 75;
+            const g3Max = Math.max(prevEntries, prevExits, totalEntriesReceived, totalExitsPaid, 1000);
+            const g3Bar = (v) => Math.max((v / g3Max) * g3BarH, 6);
+            const g3BarW = 45;
+            const g3Gap = 12;
+            const g3GroupGap = 55;
             
-            // Mês anterior
-            const prevEntriesBar = Math.max((prevEntries / tempMaxValue) * tempMaxBarHeight, 3);
-            const prevExitsBar = Math.max((prevExits / tempMaxValue) * tempMaxBarHeight, 3);
-            const prevBarX = tempChartAreaX + 50;
-            const prevBarWidth = 60;
+            let g3X = 80;
+            const g3BaseY = g3ChartY + g3BarH + 5;
             
-            doc.rect(prevBarX, tempChartAreaY + tempMaxBarHeight - prevEntriesBar, prevBarWidth, prevEntriesBar)
-              .fillColor('#93c5fd').fill();
-            doc.rect(prevBarX, tempChartAreaY + tempMaxBarHeight - prevExitsBar, prevBarWidth, prevExitsBar)
-              .fillColor('#fca5a5').fill();
+            const drawGroup = (ent, sai, label) => {
+              const he = g3Bar(ent);
+              const hs = g3Bar(sai);
+              doc.rect(g3X, g3BaseY - he, g3BarW, he).fillColor(colors.success).fill();
+              doc.rect(g3X, g3BaseY - he, g3BarW, he).strokeColor(colors.success).lineWidth(1).stroke();
+              doc.rect(g3X + g3BarW + g3Gap, g3BaseY - hs, g3BarW, hs).fillColor(colors.danger).fill();
+              doc.rect(g3X + g3BarW + g3Gap, g3BaseY - hs, g3BarW, hs).strokeColor(colors.danger).lineWidth(1).stroke();
+              doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+                .text(label, g3X, g3BaseY + 8, { width: g3BarW * 2 + g3Gap, align: 'center' });
+            };
             
-            doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
-              .text(`${prevMonth}/${prevYear}`, prevBarX, tempChartAreaY + tempMaxBarHeight + 5, { width: prevBarWidth, align: 'center' });
+            drawGroup(prevEntries, prevExits, `${String(prevMonth).padStart(2, '0')}/${prevYear}`);
+            g3X += g3BarW * 2 + g3Gap + g3GroupGap;
+            drawGroup(totalEntriesReceived, totalExitsPaid, `${String(month).padStart(2, '0')}/${year}`);
             
-            // Mês atual
-            const currEntriesBar = Math.max((totalEntriesReceived / tempMaxValue) * tempMaxBarHeight, 3);
-            const currExitsBar = Math.max((totalExitsPaid / tempMaxValue) * tempMaxBarHeight, 3);
-            const currBarX = prevBarX + prevBarWidth + 80;
+            doc.fontSize(8).font('Helvetica').fillColor(colors.success).text('Entradas', g3X + 60, g3ChartY - 8);
+            doc.fontSize(8).font('Helvetica').fillColor(colors.danger).text('Saídas', g3X + 120, g3ChartY - 8);
             
-            doc.rect(currBarX, tempChartAreaY + tempMaxBarHeight - currEntriesBar, prevBarWidth, currEntriesBar)
-              .fillColor(colors.success).fill();
-            doc.rect(currBarX, tempChartAreaY + tempMaxBarHeight - currExitsBar, prevBarWidth, currExitsBar)
-              .fillColor(colors.danger).fill();
-            
-            doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
-              .text(`${month}/${year}`, currBarX, tempChartAreaY + tempMaxBarHeight + 5, { width: prevBarWidth, align: 'center' });
-            
-            // Legenda
-            const legendY = tempChartAreaY - 20;
-            doc.fontSize(8).font('Helvetica').fillColor(colors.success)
-              .text('Entradas', tempChartAreaX + 200, legendY);
-            doc.fontSize(8).font('Helvetica').fillColor(colors.danger)
-              .text('Saídas', tempChartAreaX + 280, legendY);
-            
-            doc.y = temporalChartY + temporalChartHeight + 20;
+            doc.y = g3StartY + g3BoxH + SECTION_GAP;
           }
           
           // ========== EXPLICAÇÃO DO CÁLCULO DO SALDO ==========
-          checkPageBreak(120);
+          checkPageBreak(140);
           const calculationY = doc.y;
-          const calculationHeight = 100;
+          const calculationHeight = 115;
           drawBox(50, calculationY, 495, calculationHeight, '#e0f2fe');
           
           doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.primary)
             .text('1.5. CÁLCULO DETALHADO DO SALDO FINAL', 60, calculationY + 10);
+          doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+            .text('Como o saldo do mês é obtido: somam-se apenas as entradas já recebidas e subtraem-se apenas as saídas já pagas.', 60, calculationY + 28, { width: 475 });
           
           doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
-          let calcY = calculationY + 30;
-          
-          doc.text('Como chegamos no saldo final:', 60, calcY);
-          calcY += 15;
+          let calcY = calculationY + 48;
           
           doc.font('Helvetica-Bold').text('1. Total de Entradas Recebidas:', 70, calcY);
           doc.font('Helvetica').text(`   ${formatCurrency(totalEntriesReceived)}`, 90, calcY + 12);
@@ -1277,20 +1190,23 @@ const reportService = {
               .text(`ATENCAO: Existem ${formatCurrency(totalExitsApproved)} em saidas aprovadas que ainda nao foram pagas.`, 70, calcY);
           }
           
-          doc.y = calculationY + calculationHeight + 20;
+          doc.y = calculationY + calculationHeight + SECTION_GAP;
           
           // ========== ANÁLISE POR CENTRO DE CUSTO ==========
-          checkPageBreak(100);
+          checkPageBreak(120);
           const costCenterY = doc.y;
           doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
             .text('2. ANÁLISE POR CENTRO DE CUSTO', 50, costCenterY);
           drawLine(costCenterY + 25, colors.primary, 250);
           doc.y = costCenterY + 35;
+          doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+            .text('Valores agrupados por centro de custo (ex.: áreas comuns, administrativo). Entradas: o que entrou; Saídas: o que saiu por centro.', 50, doc.y, { width: 495 });
+          doc.y += 22;
           
           // Entradas por centro de custo
           doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
             .text('2.1. Entradas por Centro de Custo', 60, doc.y);
-          doc.moveDown(0.5);
+          doc.y += 18;
           
           if (Object.keys(entriesByCostCenter).length === 0) {
             doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
