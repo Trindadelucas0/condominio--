@@ -595,7 +595,27 @@ router.get('/fechamento-mensal', async (req, res) => {
     const closures = await monthlyClosureService.listClosures(req.user.condominiumId, { limit: 12 });
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
-    const currentClosure = await monthlyClosureService.getClosureByMonth(req.user.condominiumId, currentMonth, currentYear);
+    
+    // Busca TODOS os fechamentos do mês atual (pode ter múltiplos)
+    const { query } = require('../config/database');
+    const currentMonthClosuresResult = await query(
+      `SELECT mc.*, 
+              u1.full_name as closed_by_name,
+              u2.full_name as reopened_by_name
+       FROM monthly_closures mc
+       LEFT JOIN users u1 ON mc.closed_by = u1.id
+       LEFT JOIN users u2 ON mc.reopened_by = u2.id
+       WHERE mc.condominium_id = $1 AND mc.month = $2 AND mc.year = $3
+       ORDER BY mc.created_at DESC`,
+      [req.user.condominiumId, currentMonth, currentYear]
+    );
+    const currentMonthClosures = currentMonthClosuresResult.rows;
+    
+    // Pega o fechamento mais recente (último fechado) para exibir status
+    const currentClosure = currentMonthClosures.length > 0 
+      ? currentMonthClosures.find(c => c.status === 'CLOSED') || currentMonthClosures[0]
+      : null;
+    
     const validation = await monthlyClosureService.validateMonthClosure(req.user.condominiumId, currentMonth, currentYear);
     const totals = await monthlyClosureService.calculateMonthTotals(req.user.condominiumId, currentMonth, currentYear);
     
@@ -603,7 +623,8 @@ router.get('/fechamento-mensal', async (req, res) => {
       title: 'Fechamento Mensal',
       user: req.user,
       closures: closures,
-      currentClosure: currentClosure,
+      currentMonthClosures: currentMonthClosures, // Todos os fechamentos do mês atual
+      currentClosure: currentClosure, // Último fechamento (para compatibilidade)
       currentMonth: currentMonth,
       currentYear: currentYear,
       validation: validation,
@@ -621,9 +642,12 @@ router.post('/fechamento-mensal/fechar', async (req, res) => {
     if (!req.user.condominiumId) {
       return res.status(400).send('Usuário não está associado a um condomínio');
     }
-    const { month, year, notes } = req.body;
+    const { month, year, notes, createNewClosure, action } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
+    
+    // Se action = 'new' ou createNewClosure = 'true', cria nova comanda mesmo se já existe fechamento
+    const isNewClosure = action === 'new' || createNewClosure === 'true' || createNewClosure === true;
     
     await monthlyClosureService.closeMonth(
       req.user.condominiumId,
@@ -632,7 +656,8 @@ router.post('/fechamento-mensal/fechar', async (req, res) => {
       req.user.id,
       notes,
       ipAddress,
-      userAgent
+      userAgent,
+      isNewClosure
     );
     
     res.redirect('/financeiro/fechamento-mensal?success=closed');

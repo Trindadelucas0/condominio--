@@ -538,6 +538,35 @@ const showOrcamentos = async (req, res) => {
   }
 };
 
+// Função para exibir detalhes de uma solicitação de orçamento
+// GET /administrativo/orcamentos/:id
+const showOrcamentoDetail = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const orcamentoService = require('../services/orcamentoService');
+    const budgetRequestId = parseInt(req.params.id);
+
+    // Busca solicitação completa com orçamentos e anexos
+    const request = await orcamentoService.getBudgetRequestById(budgetRequestId, req.user.condominiumId);
+
+    if (!request) {
+      return res.status(404).send('Solicitação de orçamento não encontrada');
+    }
+
+    res.render('administrativo/orcamentos/detail', {
+      title: `Detalhes: ${request.title}`,
+      user: req.user,
+      request: request,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar detalhes do orçamento:', error);
+    res.status(500).send('Erro ao carregar detalhes');
+  }
+};
+
 // Função para exibir formulário de solicitação de orçamento
 // GET /administrativo/orcamentos/novo
 const showCreateOrcamento = async (req, res) => {
@@ -579,122 +608,68 @@ const createOrcamento = async (req, res) => {
     const userAgent = req.get('user-agent');
 
     // Processa múltiplos orçamentos do formulário
-    // O formulário envia como quotes[1][supplierName], quotes[2][supplierName], etc.
+    // O formulário pode enviar como array quotes[] ou como campos separados quotes[N][campo]
     const quotes = [];
     
-    // Debug: log dos dados recebidos
-    console.log('📋 Dados recebidos do formulário:');
-    console.log('req.body keys:', Object.keys(req.body));
-    console.log('req.body sample:', JSON.stringify(req.body).substring(0, 500));
-    
-    // Procura por campos que começam com "quotes["
-    const allKeys = Object.keys(req.body);
-    const quoteKeys = allKeys.filter(key => key.includes('quotes[') || key.includes('supplierName') || key.includes('quoteValue'));
-    
-    console.log('Keys relacionadas a orçamentos:', quoteKeys);
-    
-    // Agrupa os dados por índice do orçamento
-    const quoteIndices = new Set();
-    quoteKeys.forEach(key => {
-      // Tenta diferentes padrões de nome
-      const patterns = [
-        /quotes\[(\d+)\]/,
-        /quotes\.(\d+)\./,
-        /quote(\d+)/,
-      ];
+    // Verifica se quotes vem como array direto (formato mais comum com multipart/form-data)
+    if (req.body.quotes && Array.isArray(req.body.quotes)) {
+      console.log('📋 Processando quotes como array:', req.body.quotes.length, 'itens');
       
-      for (const pattern of patterns) {
-        const match = key.match(pattern);
+      req.body.quotes.forEach((quote, index) => {
+        // Ignora valores null ou undefined (pode acontecer se o índice começar em 1)
+        if (quote && typeof quote === 'object') {
+          const supplierName = quote.supplierName;
+          const supplierContact = quote.supplierContact;
+          const quoteValue = quote.quoteValue;
+          const quoteDescription = quote.quoteDescription;
+          const quoteValidityDate = quote.quoteValidityDate;
+
+          if (supplierName && supplierName.trim() && quoteValue && !isNaN(parseFloat(quoteValue))) {
+            quotes.push({
+              supplierName: supplierName.trim(),
+              supplierContact: supplierContact ? supplierContact.trim() : null,
+              quoteValue: parseFloat(quoteValue),
+              quoteDescription: quoteDescription ? quoteDescription.trim() : null,
+              quoteValidityDate: quoteValidityDate || null,
+            });
+          }
+        }
+      });
+      
+      console.log('✅ Orçamentos processados do array:', quotes.length);
+    } else {
+      // Fallback: processa como campos separados quotes[N][campo]
+      console.log('📋 Processando quotes como campos separados...');
+      
+      const quoteKeys = Object.keys(req.body).filter(key => key.startsWith('quotes['));
+      const quoteIndices = new Set();
+      
+      quoteKeys.forEach(key => {
+        const match = key.match(/quotes\[(\d+)\]/);
         if (match) {
           quoteIndices.add(match[1]);
-          break;
-        }
-      }
-    });
-
-    console.log('Índices de orçamentos encontrados:', Array.from(quoteIndices));
-
-    // Constrói array de orçamentos
-    quoteIndices.forEach(index => {
-      // Tenta diferentes formatos de acesso
-      const supplierName = req.body[`quotes[${index}][supplierName]`] || 
-                          req.body[`quotes.${index}.supplierName`] ||
-                          req.body[`quote${index}supplierName`];
-      
-      const supplierContact = req.body[`quotes[${index}][supplierContact]`] || 
-                             req.body[`quotes.${index}.supplierContact`] ||
-                             req.body[`quote${index}supplierContact`] || null;
-      
-      const quoteValue = req.body[`quotes[${index}][quoteValue]`] || 
-                        req.body[`quotes.${index}.quoteValue`] ||
-                        req.body[`quote${index}quoteValue`];
-      
-      const quoteDescription = req.body[`quotes[${index}][quoteDescription]`] || 
-                               req.body[`quotes.${index}.quoteDescription`] ||
-                               req.body[`quote${index}quoteDescription`] || null;
-      
-      const quoteValidityDate = req.body[`quotes[${index}][quoteValidityDate]`] || 
-                                req.body[`quotes.${index}.quoteValidityDate`] ||
-                                req.body[`quote${index}quoteValidityDate`] || null;
-
-      console.log(`Orçamento ${index}:`, {
-        supplierName,
-        supplierContact,
-        quoteValue,
-        quoteDescription,
-        quoteValidityDate
-      });
-
-      if (supplierName && supplierName.trim() && quoteValue && !isNaN(parseFloat(quoteValue))) {
-        quotes.push({
-          supplierName: supplierName.trim(),
-          supplierContact: supplierContact ? supplierContact.trim() : null,
-          quoteValue: parseFloat(quoteValue),
-          quoteDescription: quoteDescription ? quoteDescription.trim() : null,
-          quoteValidityDate: quoteValidityDate || null,
-        });
-      }
-    });
-
-    console.log('Orçamentos processados:', quotes.length, quotes);
-
-    // Se ainda não encontrou orçamentos, tenta processar todos os campos manualmente
-    if (quotes.length === 0) {
-      console.log('⚠️ Tentando processar todos os campos manualmente...');
-      
-      // Itera por todos os campos do body procurando padrões
-      const quoteMap = new Map();
-      
-      Object.keys(req.body).forEach(key => {
-        // Procura por padrão quotes[N][campo]
-        const match = key.match(/quotes\[(\d+)\]\[(\w+)\]/);
-        if (match) {
-          const index = match[1];
-          const field = match[2];
-          
-          if (!quoteMap.has(index)) {
-            quoteMap.set(index, {});
-          }
-          
-          const quote = quoteMap.get(index);
-          quote[field] = req.body[key];
         }
       });
-      
-      // Converte o Map em array
-      quoteMap.forEach((quote, index) => {
-        if (quote.supplierName && quote.supplierName.trim() && quote.quoteValue && !isNaN(parseFloat(quote.quoteValue))) {
+
+      quoteIndices.forEach(index => {
+        const supplierName = req.body[`quotes[${index}][supplierName]`];
+        const supplierContact = req.body[`quotes[${index}][supplierContact]`];
+        const quoteValue = req.body[`quotes[${index}][quoteValue]`];
+        const quoteDescription = req.body[`quotes[${index}][quoteDescription]`];
+        const quoteValidityDate = req.body[`quotes[${index}][quoteValidityDate]`];
+
+        if (supplierName && supplierName.trim() && quoteValue && !isNaN(parseFloat(quoteValue))) {
           quotes.push({
-            supplierName: quote.supplierName.trim(),
-            supplierContact: quote.supplierContact ? quote.supplierContact.trim() : null,
-            quoteValue: parseFloat(quote.quoteValue),
-            quoteDescription: quote.quoteDescription ? quote.quoteDescription.trim() : null,
-            quoteValidityDate: quote.quoteValidityDate || null,
+            supplierName: supplierName.trim(),
+            supplierContact: supplierContact ? supplierContact.trim() : null,
+            quoteValue: parseFloat(quoteValue),
+            quoteDescription: quoteDescription ? quoteDescription.trim() : null,
+            quoteValidityDate: quoteValidityDate || null,
           });
         }
       });
       
-      console.log('Orçamentos encontrados após processamento manual:', quotes.length);
+      console.log('✅ Orçamentos processados de campos separados:', quotes.length);
     }
 
     const data = {
@@ -713,7 +688,8 @@ const createOrcamento = async (req, res) => {
     console.log('📤 Enviando para service:', {
       title: data.title,
       quotesCount: quotes.length,
-      filesCount: files.length
+      filesCount: files.length,
+      quotes: quotes.map(q => ({ supplier: q.supplierName, value: q.quoteValue }))
     });
 
     await orcamentoService.createBudgetRequest(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
@@ -917,6 +893,7 @@ module.exports = {
   showOcorrenciasPendentes,
   // Solicitações de orçamento (ADM → Síndico)
   showOrcamentos,
+  showOrcamentoDetail,
   showCreateOrcamento,
   createOrcamento,
   // Comunicados operacionais

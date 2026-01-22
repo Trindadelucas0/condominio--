@@ -7,21 +7,24 @@ const { logAction } = require('../utils/logger');
 const { validateUserBelongsToCondominium } = require('../utils/queryHelper');
 
 // Função para validar se pode fechar o mês
-// Recebe: condominiumId, month, year
+// Recebe: condominiumId, month, year, allowNewClosure (se true, permite criar nova comanda mesmo se já existe fechamento)
 // Retorna: { canClose: boolean, issues: array }
-const validateMonthClosure = async (condominiumId, month, year) => {
+const validateMonthClosure = async (condominiumId, month, year, allowNewClosure = false) => {
   try {
     const issues = [];
 
-    // Verifica se já existe fechamento para este mês
+    // Verifica se já existe fechamento para este mês (apenas avisa, não bloqueia se allowNewClosure = true)
     const existingClosure = await query(
       `SELECT * FROM monthly_closures 
        WHERE condominium_id = $1 AND month = $2 AND year = $3 AND status = 'CLOSED'`,
       [condominiumId, month, year]
     );
 
-    if (existingClosure.rows.length > 0) {
-      issues.push('Este mês já foi fechado anteriormente');
+    if (existingClosure.rows.length > 0 && !allowNewClosure) {
+      issues.push('Este mês já foi fechado anteriormente. Use "Nova Comanda" para criar um novo fechamento.');
+    } else if (existingClosure.rows.length > 0 && allowNewClosure) {
+      // Apenas avisa, não bloqueia
+      issues.push(`Aviso: Este mês já possui ${existingClosure.rows.length} fechamento(s) anterior(es). Criando nova comanda.`);
     }
 
     // Verifica entradas pendentes de análise
@@ -135,9 +138,9 @@ const calculateMonthTotals = async (condominiumId, month, year) => {
 };
 
 // Função para fechar o mês
-// Recebe: condominiumId, month, year, userId, notes
+// Recebe: condominiumId, month, year, userId, notes, createNewClosure (se true, cria nova comanda mesmo se já existe)
 // Retorna: fechamento criado
-const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, userAgent) => {
+const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, userAgent, createNewClosure = false) => {
   try {
     // Valida que usuário pertence ao condomínio
     const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
@@ -145,43 +148,19 @@ const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, 
       throw new Error('Usuário não pertence a este condomínio');
     }
 
-    // Valida se pode fechar
-    const validation = await validateMonthClosure(condominiumId, month, year);
-    if (!validation.canClose) {
-      throw new Error('Não é possível fechar o mês: ' + validation.issues.join(', '));
+    // Valida se pode fechar (permite nova comanda se createNewClosure = true)
+    const validation = await validateMonthClosure(condominiumId, month, year, createNewClosure);
+    if (!validation.canClose && !createNewClosure) {
+      throw new Error('Não é possível fechar o mês: ' + validation.issues.filter(i => !i.includes('Aviso:')).join(', '));
     }
 
     // Calcula totais
     const totals = await calculateMonthTotals(condominiumId, month, year);
 
-    // Verifica se já existe fechamento (mesmo que aberto)
-    const existingResult = await query(
-      `SELECT * FROM monthly_closures 
-       WHERE condominium_id = $1 AND month = $2 AND year = $3`,
-      [condominiumId, month, year]
-    );
-
     let closure;
 
-    if (existingResult.rows.length > 0) {
-      // Atualiza fechamento existente
-      const updateResult = await query(
-        `UPDATE monthly_closures 
-         SET status = 'CLOSED',
-             closed_by = $1,
-             closed_at = CURRENT_TIMESTAMP,
-             notes = $2,
-             total_entries = $3,
-             total_exits = $4,
-             balance = $5,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $6
-         RETURNING *`,
-        [userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance, existingResult.rows[0].id]
-      );
-      closure = updateResult.rows[0];
-    } else {
-      // Cria novo fechamento
+    if (createNewClosure) {
+      // SEMPRE cria novo fechamento (nova comanda), mantendo os anteriores
       const insertResult = await query(
         `INSERT INTO monthly_closures (
           condominium_id, month, year, status, closed_by, closed_at, 
@@ -192,6 +171,45 @@ const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, 
         [condominiumId, month, year, userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance]
       );
       closure = insertResult.rows[0];
+    } else {
+      // Verifica se já existe fechamento aberto (status OPEN ou REOPENED)
+      const existingResult = await query(
+        `SELECT * FROM monthly_closures 
+         WHERE condominium_id = $1 AND month = $2 AND year = $3 
+         AND status IN ('OPEN', 'REOPENED')`,
+        [condominiumId, month, year]
+      );
+
+      if (existingResult.rows.length > 0) {
+        // Atualiza fechamento existente aberto
+        const updateResult = await query(
+          `UPDATE monthly_closures 
+           SET status = 'CLOSED',
+               closed_by = $1,
+               closed_at = CURRENT_TIMESTAMP,
+               notes = $2,
+               total_entries = $3,
+               total_exits = $4,
+               balance = $5,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $6
+           RETURNING *`,
+          [userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance, existingResult.rows[0].id]
+        );
+        closure = updateResult.rows[0];
+      } else {
+        // Cria novo fechamento (primeira vez)
+        const insertResult = await query(
+          `INSERT INTO monthly_closures (
+            condominium_id, month, year, status, closed_by, closed_at, 
+            notes, total_entries, total_exits, balance
+          )
+          VALUES ($1, $2, $3, 'CLOSED', $4, CURRENT_TIMESTAMP, $5, $6, $7, $8)
+          RETURNING *`,
+          [condominiumId, month, year, userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance]
+        );
+        closure = insertResult.rows[0];
+      }
     }
 
     // Registra no log
@@ -313,6 +331,12 @@ const listClosures = async (condominiumId, filters = {}) => {
       params.push(filters.year);
     }
 
+    // Filtro por mês
+    if (filters.month) {
+      queryText += ` AND mc.month = $${params.length + 1}`;
+      params.push(filters.month);
+    }
+
     // Filtro por status
     if (filters.status) {
       queryText += ` AND mc.status = $${params.length + 1}`;
@@ -356,18 +380,37 @@ const getClosureByMonth = async (condominiumId, month, year) => {
 // Função para verificar se mês está fechado (bloqueia edição)
 // Recebe: condominiumId, date
 // Retorna: boolean
+// NOTA: Se houver pelo menos um fechamento CLOSED (não reaberto), o mês está fechado
 const isMonthClosed = async (condominiumId, date) => {
   try {
     const month = new Date(date).getMonth() + 1;
     const year = new Date(date).getFullYear();
 
+    // Verifica se há algum fechamento CLOSED (não reaberto) para este mês
+    // Se todos foram reabertos, o mês não está fechado
     const result = await query(
-      `SELECT status FROM monthly_closures 
+      `SELECT COUNT(*) as total FROM monthly_closures 
        WHERE condominium_id = $1 AND month = $2 AND year = $3 AND status = 'CLOSED'`,
       [condominiumId, month, year]
     );
 
-    return result.rows.length > 0;
+    const closedCount = parseInt(result.rows[0].total);
+    
+    // Se há fechamentos fechados, verifica se todos foram reabertos
+    if (closedCount > 0) {
+      const reopenedResult = await query(
+        `SELECT COUNT(*) as total FROM monthly_closures 
+         WHERE condominium_id = $1 AND month = $2 AND year = $3 AND status = 'REOPENED'`,
+        [condominiumId, month, year]
+      );
+      
+      const reopenedCount = parseInt(reopenedResult.rows[0].total);
+      
+      // Se todos os fechamentos foram reabertos, o mês não está fechado
+      return reopenedCount < closedCount;
+    }
+
+    return false;
   } catch (error) {
     console.error('Erro ao verificar se mês está fechado:', error);
     return false; // Em caso de erro, não bloqueia

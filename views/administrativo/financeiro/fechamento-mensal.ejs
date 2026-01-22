@@ -41,14 +41,21 @@
       <!-- Status -->
       <div>
         <p class="text-sm text-gray-600 mb-2">Status:</p>
-        <% if (currentClosure && currentClosure.status === 'CLOSED') { %>
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
-            Fechado
-          </span>
-        <% } else if (currentClosure && currentClosure.status === 'REOPENED') { %>
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800">
-            Reaberto
-          </span>
+        <% if (currentMonthClosures && currentMonthClosures.length > 0) { %>
+          <% const closedCount = currentMonthClosures.filter(c => c.status === 'CLOSED').length; %>
+          <% if (closedCount > 0) { %>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
+              <%= closedCount %> Comanda(s) Fechada(s)
+            </span>
+          <% } else if (currentMonthClosures.some(c => c.status === 'REOPENED')) { %>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800">
+              Reaberto
+            </span>
+          <% } else { %>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+              Aberto
+            </span>
+          <% } %>
         <% } else { %>
           <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
             Aberto
@@ -93,93 +100,217 @@
       </div>
     <% } %>
 
-    <!-- Formulário de Fechamento -->
-    <% if (!currentClosure || currentClosure.status !== 'CLOSED') { %>
-      <form method="POST" action="/financeiro/fechamento-mensal/fechar" class="mb-6">
-        <input type="hidden" name="month" value="<%= currentMonth %>">
-        <input type="hidden" name="year" value="<%= currentYear %>">
-        
-        <div class="mb-4">
-          <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
-            Observações (opcional)
-          </label>
-          <textarea
-            id="notes"
-            name="notes"
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Observações sobre o fechamento do mês..."
-          ></textarea>
+    <!-- Lista de Fechamentos do Mês Atual -->
+    <% if (currentMonthClosures && currentMonthClosures.length > 0) { %>
+      <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold text-blue-800">Fechamentos deste Mês (<%= currentMonthClosures.length %>)</h3>
+          <% const hasClosed = currentMonthClosures.some(c => c.status === 'CLOSED'); %>
+          <% if (hasClosed && user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO') || user.roles.includes('FINANCEIRO'))) { %>
+            <span class="text-xs text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
+              <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Clique em "Abrir Mês" para reabrir uma comanda fechada
+            </span>
+          <% } %>
         </div>
+        <div class="space-y-2">
+          <% currentMonthClosures.forEach(closure => { %>
+            <div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
+              <div class="flex-1">
+                <div class="flex items-center space-x-3 mb-2">
+                  <p class="text-sm font-bold text-gray-800">
+                    Comanda #<%= closure.id %>
+                  </p>
+                  <span class="px-3 py-1 rounded-full text-xs font-semibold <%= 
+                    closure.status === 'CLOSED' ? 'bg-green-100 text-green-800 border border-green-300' :
+                    closure.status === 'REOPENED' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
+                    'bg-blue-100 text-blue-800 border border-blue-300'
+                  %>">
+                    <%= closure.status === 'CLOSED' ? '🔒 Fechado' : closure.status === 'REOPENED' ? '🔓 Reaberto' : '📝 Aberto' %>
+                  </span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600">
+                  <div>
+                    <span class="font-semibold">Fechado por:</span> <%= closure.closed_by_name || 'N/A' %>
+                  </div>
+                  <div>
+                    <span class="font-semibold">Data:</span> <%= closure.closed_at ? new Date(closure.closed_at).toLocaleString('pt-BR') : 'N/A' %>
+                  </div>
+                  <div>
+                    <span class="font-semibold">Saldo:</span> 
+                    <strong class="<%= parseFloat(closure.balance) >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                      R$ <%= parseFloat(closure.balance).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              <div class="ml-4">
+                <% if (closure.status === 'CLOSED' && user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO') || user.roles.includes('FINANCEIRO'))) { %>
+                  <button
+                    onclick="document.getElementById('reopenModal<%= closure.id %>').classList.remove('hidden')"
+                    class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center space-x-2 shadow-sm hover:shadow-md"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                    </svg>
+                    <span>Abrir Mês</span>
+                  </button>
+                <% } else if (closure.status === 'REOPENED') { %>
+                  <span class="px-3 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-semibold">
+                    Mês Reaberto
+                  </span>
+                <% } %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    <% } %>
 
-        <button
-          type="submit"
-          class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold <%= !validation.canClose ? 'opacity-50 cursor-not-allowed' : '' %>"
-          <%= !validation.canClose ? 'disabled' : '' %>
-        >
-          Fechar Mês
-        </button>
-      </form>
-    <% } else { %>
-      <!-- Informações do Fechamento -->
-      <div class="bg-gray-50 rounded-lg p-4 mb-6">
-        <p class="text-sm text-gray-600 mb-2">Fechado por: <strong><%= currentClosure.closed_by_name || 'N/A' %></strong></p>
-        <p class="text-sm text-gray-600 mb-2">Data: <strong><%= new Date(currentClosure.closed_at).toLocaleString('pt-BR') %></strong></p>
-        <% if (currentClosure.notes) { %>
-          <p class="text-sm text-gray-600">Observações: <%= currentClosure.notes %></p>
-        <% } %>
+    <!-- Formulário de Fechamento -->
+    <form method="POST" action="/financeiro/fechamento-mensal/fechar" class="mb-6">
+      <input type="hidden" name="month" value="<%= currentMonth %>">
+      <input type="hidden" name="year" value="<%= currentYear %>">
+      
+      <div class="mb-4">
+        <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
+          Observações (opcional)
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          rows="3"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Observações sobre o fechamento do mês..."
+        ></textarea>
       </div>
 
-      <!-- Botão de Reabertura (apenas SINDICO) -->
-      <% if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) { %>
-        <button
-          onclick="document.getElementById('reopenModal').classList.remove('hidden')"
-          class="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-200 font-semibold"
-        >
-          Reabrir Mês
-        </button>
+      <div class="flex space-x-3">
+        <!-- Botão Fechar Mês (só aparece se não há fechamento fechado) -->
+        <% if (!currentClosure || currentClosure.status !== 'CLOSED') { %>
+          <button
+            type="submit"
+            name="action"
+            value="close"
+            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold <%= !validation.canClose ? 'opacity-50 cursor-not-allowed' : '' %>"
+            <%= !validation.canClose ? 'disabled' : '' %>
+          >
+            Fechar Mês
+          </button>
+        <% } %>
 
-        <!-- Modal de Reabertura -->
-        <div id="reopenModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Reabrir Mês Fechado</h3>
-            <p class="text-sm text-gray-600 mb-4">
-              Ao reabrir um mês fechado, as edições serão liberadas novamente. Esta ação será registrada no log.
-            </p>
-            <form method="POST" action="/financeiro/fechamento-mensal/<%= currentClosure.id %>/reabrir">
-              <div class="mb-4">
-                <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
-                  Motivo da Reabertura <span class="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="reason"
-                  name="reason"
-                  rows="4"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  placeholder="Descreva o motivo da reabertura..."
-                ></textarea>
+        <!-- Botão Nova Comanda (sempre disponível, mesmo se já fechado) -->
+        <button
+          type="submit"
+          name="action"
+          value="new"
+          class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-semibold"
+        >
+          Nova Comanda
+        </button>
+      </div>
+      
+      <!-- Campo hidden para indicar nova comanda -->
+      <input type="hidden" name="createNewClosure" id="createNewClosure" value="false">
+    </form>
+
+    <!-- Script para controlar createNewClosure -->
+    <script>
+      document.querySelectorAll('button[type="submit"]').forEach(button => {
+        button.addEventListener('click', function(e) {
+          if (this.value === 'new') {
+            document.getElementById('createNewClosure').value = 'true';
+          } else {
+            document.getElementById('createNewClosure').value = 'false';
+          }
+        });
+      });
+    </script>
+
+    <!-- Modais de Reabertura (um para cada fechamento) -->
+    <% if (currentMonthClosures && currentMonthClosures.length > 0) { %>
+      <% currentMonthClosures.forEach(closure => { %>
+        <% if (closure.status === 'CLOSED' && user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO') || user.roles.includes('FINANCEIRO'))) { %>
+          <!-- Modal de Reabertura -->
+          <div id="reopenModal<%= closure.id %>" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="if(event.target === this) this.classList.add('hidden')">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+              <div class="flex items-center space-x-3 mb-4">
+                <div class="bg-yellow-100 rounded-full p-2">
+                  <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                  </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Abrir Mês - Comanda #<%= closure.id %></h3>
               </div>
-              <div class="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onclick="document.getElementById('reopenModal').classList.add('hidden')"
-                  class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-200"
-                >
-                  Confirmar Reabertura
-                </button>
+              
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded">
+                <p class="text-sm text-yellow-800 font-semibold mb-2">⚠️ O que acontece ao abrir o mês:</p>
+                <ul class="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                  <li>As edições no mês serão liberadas novamente</li>
+                  <li>Novos registros financeiros poderão ser criados</li>
+                  <li>Esta ação será registrada no log de auditoria</li>
+                  <li>O motivo da reabertura é obrigatório</li>
+                </ul>
               </div>
-            </form>
+              
+              <form method="POST" action="/financeiro/fechamento-mensal/<%= closure.id %>/reabrir" onsubmit="return validateReopenForm(this)">
+                <div class="mb-4">
+                  <label for="reason<%= closure.id %>" class="block text-sm font-medium text-gray-700 mb-2">
+                    Motivo da Abertura do Mês <span class="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="reason<%= closure.id %>"
+                    name="reason"
+                    rows="4"
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="Ex: Necessário corrigir lançamento de entrada financeira..."
+                  ></textarea>
+                  <p class="text-xs text-gray-500 mt-1">Descreva o motivo que justifica a abertura deste mês fechado.</p>
+                </div>
+                <div class="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onclick="document.getElementById('reopenModal<%= closure.id %>').classList.add('hidden')"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200 font-semibold"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-200 font-semibold flex items-center space-x-2"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span>Confirmar Abertura</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      <% } %>
+        <% } %>
+      <% }); %>
     <% } %>
+    
+    <script>
+      function validateReopenForm(form) {
+        const reason = form.querySelector('textarea[name="reason"]');
+        if (!reason.value.trim()) {
+          alert('Por favor, informe o motivo da abertura do mês.');
+          reason.focus();
+          return false;
+        }
+        if (reason.value.trim().length < 10) {
+          alert('O motivo deve ter pelo menos 10 caracteres.');
+          reason.focus();
+          return false;
+        }
+        return true;
+      }
+    </script>
   </div>
 
   <!-- Histórico de Fechamentos -->
@@ -191,6 +322,7 @@
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mês/Ano</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entradas</th>
@@ -198,11 +330,15 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fechado por</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <% closures.forEach(function(closure) { %>
               <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  #<%= closure.id %>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   <%= new Date(closure.year, closure.month - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %>
                 </td>
@@ -230,6 +366,23 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <%= closure.closed_at ? new Date(closure.closed_at).toLocaleDateString('pt-BR') : 'N/A' %>
                 </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <% if (closure.status === 'CLOSED' && user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO') || user.roles.includes('FINANCEIRO'))) { %>
+                    <button
+                      onclick="document.getElementById('reopenModal<%= closure.id %>').classList.remove('hidden')"
+                      class="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold text-xs transition-colors duration-200 flex items-center space-x-1"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                      </svg>
+                      <span>Abrir</span>
+                    </button>
+                  <% } else if (closure.status === 'REOPENED') { %>
+                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
+                      Reaberto
+                    </span>
+                  <% } %>
+                </td>
               </tr>
             <% }); %>
           </tbody>
@@ -239,6 +392,72 @@
       <p class="text-gray-500 text-center py-8">Nenhum fechamento registrado ainda.</p>
     <% } %>
   </div>
+
+  <!-- Modais de Reabertura para histórico -->
+  <% if (closures && closures.length > 0) { %>
+    <% closures.forEach(function(closure) { %>
+      <% if (closure.status === 'CLOSED' && user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO') || user.roles.includes('FINANCEIRO'))) { %>
+        <!-- Modal de Reabertura -->
+        <div id="reopenModal<%= closure.id %>" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="if(event.target === this) this.classList.add('hidden')">
+          <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div class="flex items-center space-x-3 mb-4">
+              <div class="bg-yellow-100 rounded-full p-2">
+                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                </svg>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800">Abrir Mês - Comanda #<%= closure.id %></h3>
+            </div>
+            
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded">
+              <p class="text-sm text-yellow-800 font-semibold mb-2">⚠️ O que acontece ao abrir o mês:</p>
+              <ul class="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                <li>As edições no mês serão liberadas novamente</li>
+                <li>Novos registros financeiros poderão ser criados</li>
+                <li>Esta ação será registrada no log de auditoria</li>
+                <li>O motivo da reabertura é obrigatório</li>
+              </ul>
+            </div>
+            
+            <form method="POST" action="/financeiro/fechamento-mensal/<%= closure.id %>/reabrir" onsubmit="return validateReopenForm(this)">
+              <div class="mb-4">
+                <label for="reason<%= closure.id %>" class="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo da Abertura do Mês <span class="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="reason<%= closure.id %>"
+                  name="reason"
+                  rows="4"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  placeholder="Ex: Necessário corrigir lançamento de entrada financeira..."
+                ></textarea>
+                <p class="text-xs text-gray-500 mt-1">Descreva o motivo que justifica a abertura deste mês fechado.</p>
+              </div>
+              <div class="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onclick="document.getElementById('reopenModal<%= closure.id %>').classList.add('hidden')"
+                  class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200 font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-200 font-semibold flex items-center space-x-2"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span>Confirmar Abertura</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      <% } %>
+    <% }); %>
+  <% } %>
 </div>
 
 <%- include('../../partials/footer') %>

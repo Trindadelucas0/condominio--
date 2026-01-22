@@ -1,0 +1,238 @@
+<%- include('../../partials/header', { title: title }) %>
+<%- include('../../partials/navbar', { user: user }) %>
+
+<style>
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  .card-glow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .card-glow:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+</style>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-blue-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-5xl mx-auto">
+      <!-- Cabeçalho -->
+      <div class="mb-8 animate-slide-in">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-3">
+            <a href="/administrativo/orcamentos" class="text-indigo-600 hover:text-indigo-800">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </a>
+            <div>
+              <h1 class="text-4xl font-bold text-gray-800"><%= request.title %></h1>
+              <p class="text-gray-600 mt-1">Detalhes da solicitação de orçamento</p>
+            </div>
+          </div>
+          <div>
+            <span class="px-4 py-2 rounded-lg text-sm font-semibold <%= 
+              request.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+              request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+              request.status === 'PENDING_SINDICO' ? 'bg-yellow-100 text-yellow-800' :
+              request.status === 'LIBERATED' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+            %>">
+              <%= request.status %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informações Principais -->
+      <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+          <svg class="w-6 h-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Informações da Solicitação
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Descrição</p>
+            <p class="text-gray-800"><%= request.description %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Prioridade</p>
+            <span class="px-3 py-1 rounded text-sm font-semibold <%= 
+              request.priority === 'URGENTE' ? 'bg-red-100 text-red-800' :
+              request.priority === 'ALTA' ? 'bg-orange-100 text-orange-800' :
+              request.priority === 'NORMAL' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+            %>">
+              <%= request.priority %>
+            </span>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Criado em</p>
+            <p class="text-gray-800"><%= new Date(request.created_at).toLocaleString('pt-BR') %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Solicitado por</p>
+            <p class="text-gray-800"><%= request.requested_by_name || 'N/A' %></p>
+          </div>
+          <% if (request.estimated_value) { %>
+            <div>
+              <p class="text-sm text-gray-500 mb-1">Valor Estimado</p>
+              <p class="text-gray-800 font-semibold">R$ <%= parseFloat(request.estimated_value).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+            </div>
+          <% } %>
+          <% if (request.budget_approved_amount) { %>
+            <div>
+              <p class="text-sm text-gray-500 mb-1">Valor Aprovado</p>
+              <p class="text-green-600 font-bold text-lg">R$ <%= parseFloat(request.budget_approved_amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+            </div>
+          <% } %>
+        </div>
+
+        <!-- Observações do Financeiro -->
+        <% if (request.financeiro_notes) { %>
+          <div class="mt-6 pt-6 border-t border-gray-200">
+            <p class="text-sm text-gray-500 mb-2">Observações do Financeiro</p>
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+              <p class="text-gray-800"><%= request.financeiro_notes %></p>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Observações do Síndico -->
+        <% if (request.sindico_notes) { %>
+          <div class="mt-6 pt-6 border-t border-gray-200">
+            <p class="text-sm text-gray-500 mb-2">Observações do Síndico</p>
+            <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
+              <p class="text-gray-800"><%= request.sindico_notes %></p>
+            </div>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Orçamentos Recebidos -->
+      <% if (request.quotes && request.quotes.length > 0) { %>
+        <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in mb-6">
+          <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <svg class="w-6 h-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Orçamentos Recebidos (<%= request.quotes.length %>)
+          </h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <% request.quotes.forEach((quote, index) => { %>
+              <div class="border-2 <%= 
+                quote.status === 'APPROVED' ? 'border-green-500 bg-green-50' : 
+                quote.status === 'REJECTED' ? 'border-red-300 bg-red-50' : 
+                'border-gray-300 bg-gray-50'
+              %> rounded-xl p-6">
+                <div class="flex items-start justify-between mb-4">
+                  <div class="flex-1">
+                    <h3 class="font-bold text-gray-800 text-lg"><%= quote.supplier_name %></h3>
+                    <% if (quote.supplier_contact) { %>
+                      <p class="text-sm text-gray-600 mt-1"><%= quote.supplier_contact %></p>
+                    <% } %>
+                  </div>
+                  <% if (quote.status === 'APPROVED') { %>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">Aprovado</span>
+                  <% } else if (quote.status === 'REJECTED') { %>
+                    <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">Rejeitado</span>
+                  <% } else { %>
+                    <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded">Pendente</span>
+                  <% } %>
+                </div>
+                
+                <div class="mt-4">
+                  <p class="text-3xl font-bold text-blue-600 mb-2">
+                    R$ <%= parseFloat(quote.quote_value).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                  </p>
+                  
+                  <% if (quote.quote_description) { %>
+                    <p class="text-sm text-gray-700 mt-3"><%= quote.quote_description %></p>
+                  <% } %>
+                  
+                  <% if (quote.quote_validity_date) { %>
+                    <p class="text-xs text-gray-500 mt-3">
+                      <strong>Válido até:</strong> <%= new Date(quote.quote_validity_date).toLocaleDateString('pt-BR') %>
+                    </p>
+                  <% } %>
+                  
+                  <% if (quote.approved_by_name) { %>
+                    <p class="text-xs text-gray-500 mt-2">
+                      <strong>Aprovado por:</strong> <%= quote.approved_by_name %>
+                    </p>
+                    <% if (quote.approved_at) { %>
+                      <p class="text-xs text-gray-500">
+                        <strong>Em:</strong> <%= new Date(quote.approved_at).toLocaleString('pt-BR') %>
+                      </p>
+                    <% } %>
+                  <% } %>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Anexos -->
+      <% if (request.attachments && request.attachments.length > 0) { %>
+        <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in mb-6">
+          <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <svg class="w-6 h-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a2 2 0 00-2.828-2.828L9 10.172 5.828 7l6.586-6.586a2 2 0 112.828 2.828L5.828 7l6.586 6.586z"></path>
+            </svg>
+            Anexos (<%= request.attachments.length %>)
+          </h2>
+          
+          <div class="space-y-3">
+            <% request.attachments.forEach(attachment => { %>
+              <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                <div class="flex items-center space-x-3">
+                  <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                  </svg>
+                  <div>
+                    <p class="font-semibold text-gray-800"><%= attachment.file_name %></p>
+                    <p class="text-xs text-gray-500">
+                      <%= attachment.file_type %> • 
+                      <%= (attachment.file_size / 1024).toFixed(2) %> KB • 
+                      <%= new Date(attachment.created_at).toLocaleDateString('pt-BR') %>
+                    </p>
+                  </div>
+                </div>
+                <a href="/<%= attachment.file_path %>" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-semibold">
+                  Abrir →
+                </a>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Botão Voltar -->
+      <div class="flex justify-end">
+        <a href="/administrativo/orcamentos" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold">
+          Voltar para Lista
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
