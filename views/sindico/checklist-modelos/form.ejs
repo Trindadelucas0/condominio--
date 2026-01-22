@@ -145,19 +145,65 @@
               <span class="ml-2 text-sm text-gray-700">Requer justificativa quando item não foi feito</span>
             </label>
 
-            <div>
-              <label for="defaultAssignedRole" class="block text-sm font-medium text-gray-700 mb-2">
-                Role Padrão para Atribuição
-              </label>
-              <select
-                id="defaultAssignedRole"
-                name="defaultAssignedRole"
-                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Automático (baseado no departamento)</option>
-                <option value="OPERACIONAL" <%= model && model.default_assigned_role === 'OPERACIONAL' ? 'selected' : '' %>>Operacional</option>
-                <option value="LIMPEZA" <%= model && model.default_assigned_role === 'LIMPEZA' ? 'selected' : '' %>>Limpeza</option>
-              </select>
+            <div class="pt-4 border-t border-gray-200">
+              <h3 class="text-sm font-semibold text-gray-800 mb-2">Atribuição por setor</h3>
+              <p class="text-sm text-gray-600 mb-3">Ao selecionar o <strong>Departamento</strong> acima, as pessoas do setor aparecem abaixo. Escolha como atribuir:</p>
+              <div class="space-y-4">
+                <label class="flex items-center p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 cursor-pointer transition assign-option" data-mode="todos">
+                  <input type="radio" name="assignMode" value="todos" class="rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 assign-mode-radio" <%= allAssigned ? 'checked' : '' %>>
+                  <span class="ml-3">
+                    <strong class="text-gray-800">Atribuir a todos do setor</strong>
+                    <span class="block text-sm text-gray-500">Todos do departamento selecionado recebem este checklist.</span>
+                  </span>
+                </label>
+                <label class="flex items-center p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 cursor-pointer transition assign-option" data-mode="especificas">
+                  <input type="radio" name="assignMode" value="especificas" class="rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 assign-mode-radio" <%= !allAssigned ? 'checked' : '' %>>
+                  <span class="ml-3">
+                    <strong class="text-gray-800">Atribuir a pessoas específicas</strong>
+                    <span class="block text-sm text-gray-500">Escolha quem deve receber. Com 10 no operacional, vincule só para quem quiser.</span>
+                  </span>
+                </label>
+              </div>
+              <input type="hidden" name="assignAllSetor" id="assignAllSetor" value="<%= allAssigned ? '1' : '0' %>">
+              <% 
+                const usersOp = typeof usersOperacional !== 'undefined' ? usersOperacional : [];
+                const usersLp = typeof usersLimpeza !== 'undefined' ? usersLimpeza : [];
+                const dep = model && model.department ? model.department : 'ZELADORIA';
+                const ids = model && model.assigned_user_ids ? model.assigned_user_ids : [];
+                const usersDept = dep === 'LIMPEZA' ? usersLp : usersOp;
+                const allAssigned = usersDept.length > 0 && ids.length === usersDept.length && usersDept.every(u => ids.includes(u.id));
+              %>
+              <div id="assign-container" class="mt-4 pt-4 border-t border-gray-200">
+                <p class="text-sm font-medium text-gray-700 mb-2">Pessoas do setor <span id="assign-setor-label"><%= dep === 'ZELADORIA' ? 'Zeladoria (Operacional)' : 'Limpeza' %></span>:</p>
+                <div id="assign-zeladoria" class="<%= dep === 'ZELADORIA' ? '' : 'hidden' %>">
+                  <% if (usersOp.length === 0) { %>
+                    <p class="text-sm text-amber-600">Nenhum usuário operacional cadastrado no condomínio.</p>
+                  <% } else { %>
+                    <div class="flex flex-wrap gap-3" id="assign-checkboxes-zeladoria">
+                      <% usersOp.forEach(u => { %>
+                        <label class="assign-person-label inline-flex items-center">
+                          <input type="checkbox" name="assignedUserIdsZeladoria" value="<%= u.id %>" class="assign-person-cb rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-dept="zeladoria" <%= ids.includes(u.id) && !allAssigned ? 'checked' : (allAssigned ? 'checked' : '') %>>
+                          <span class="ml-2 text-sm text-gray-700"><%= u.full_name %></span>
+                        </label>
+                      <% }); %>
+                    </div>
+                  <% } %>
+                </div>
+                <div id="assign-limpeza" class="<%= dep === 'LIMPEZA' ? '' : 'hidden' %>">
+                  <% if (usersLp.length === 0) { %>
+                    <p class="text-sm text-amber-600">Nenhum usuário de limpeza cadastrado no condomínio.</p>
+                  <% } else { %>
+                    <div class="flex flex-wrap gap-3" id="assign-checkboxes-limpeza">
+                      <% usersLp.forEach(u => { %>
+                        <label class="assign-person-label inline-flex items-center">
+                          <input type="checkbox" name="assignedUserIdsLimpeza" value="<%= u.id %>" class="assign-person-cb rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-dept="limpeza" <%= ids.includes(u.id) && !allAssigned ? 'checked' : (allAssigned ? 'checked' : '') %>>
+                          <span class="ml-2 text-sm text-gray-700"><%= u.full_name %></span>
+                        </label>
+                      <% }); %>
+                    </div>
+                  <% } %>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -288,6 +334,59 @@ function updateRemoveButtons() {
     }
   });
 }
+
+(function() {
+  const dept = document.getElementById('department');
+  const zel = document.getElementById('assign-zeladoria');
+  const lp = document.getElementById('assign-limpeza');
+  const label = document.getElementById('assign-setor-label');
+  const assignAllInput = document.getElementById('assignAllSetor');
+  const radTodos = document.querySelector('input[name="assignMode"][value="todos"]');
+  const radEspecificas = document.querySelector('input[name="assignMode"][value="especificas"]');
+
+  function getVisibleCheckboxes() {
+    if (!zel || !lp) return [];
+    const isZel = !zel.classList.contains('hidden');
+    const container = isZel ? zel : lp;
+    return [].slice.call(container.querySelectorAll('input.assign-person-cb'));
+  }
+
+  function applyAssignMode() {
+    const isTodos = radTodos && radTodos.checked;
+    const cbs = getVisibleCheckboxes();
+    if (assignAllInput) assignAllInput.value = isTodos ? '1' : '0';
+    cbs.forEach(function(cb) {
+      cb.disabled = isTodos;
+      if (isTodos) cb.checked = true;
+    });
+  }
+
+  function toggleDept() {
+    const v = (dept && dept.value) || 'ZELADORIA';
+    if (label) label.textContent = v === 'LIMPEZA' ? 'Limpeza' : 'Zeladoria (Operacional)';
+    if (zel && lp) {
+      if (v === 'LIMPEZA') {
+        zel.classList.add('hidden');
+        lp.classList.remove('hidden');
+        zel.querySelectorAll('input.assign-person-cb').forEach(function(c) { c.disabled = true; });
+        lp.querySelectorAll('input.assign-person-cb').forEach(function(c) { c.disabled = false; });
+      } else {
+        zel.classList.remove('hidden');
+        lp.classList.add('hidden');
+        lp.querySelectorAll('input.assign-person-cb').forEach(function(c) { c.disabled = true; });
+        zel.querySelectorAll('input.assign-person-cb').forEach(function(c) { c.disabled = false; });
+      }
+    }
+    applyAssignMode();
+  }
+
+  if (dept) dept.addEventListener('change', toggleDept);
+  if (radTodos) radTodos.addEventListener('change', applyAssignMode);
+  if (radEspecificas) radEspecificas.addEventListener('change', applyAssignMode);
+
+  toggleDept();
+  applyAssignMode();
+})();
 </script>
 
 <%- include('../../partials/footer') %>

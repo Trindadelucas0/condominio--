@@ -125,7 +125,7 @@ Condomínio: Residencial Jardim das Flores
    CEP: 01234567
    Telefone: 1134567890
    Email: contato@jardimflores.com.br
-   Limite de Aprovação Financeiro: 1000
+   Limite de Aprovação Financeiro: 1000  nao possui essa opçao 
    Status: ☑ Ativo
    ```
 6. **Clique:** Botão **"Salvar"**
@@ -206,12 +206,12 @@ Condomínio: Residencial Jardim das Flores
 
 ### **PASSO 3: Executar Checklist Diário**
 
-1. **No menu:** Clique em **"Checklists Diários"** ou acesse `/operacional/checklists-diarios`
+1. **No menu:** Clique em **"Checklists do Dia"** (barra superior) ou acesse **`/operacional/checklists-diarios`**
 2. **O que ver:**
-   - Lista de checklists (se houver)
+   - Lista de checklists do dia (se houver)
    - Botão **"Iniciar Checklist"** ou **"Ver Detalhes"**
 3. **Se não houver checklist:**
-   - **Ação:** Volte para o SÍNDICO criar um modelo primeiro (ver FLUXO 9)
+   - **Ação:** Volte como SÍNDICO e crie um modelo em **Modelos Checklist** (ver FLUXO 9). Verifique se o modelo está ativo, inclui o dia da semana de hoje e o departamento (Zeladoria/Limpeza).
 4. **Se houver checklist:**
    - Clique em **"Iniciar Checklist"** ou **"Ver Detalhes"**
    - **URL:** `/operacional/checklists-diarios/[ID]`
@@ -830,7 +830,7 @@ Condomínio: Residencial Jardim das Flores
 
 ### **PASSO 3: Criar Modelo de Checklist**
 
-1. **No menu:** Clique em **"Modelos de Checklist"** OU acesse `/sindico/checklist-modelos`
+1. **No menu:** Clique em **"Modelos Checklist"** OU acesse **`/sindico/checklist-modelos`**
 2. **Clique:** Botão **"Novo Modelo"** (canto superior direito)
 3. **URL:** `/sindico/checklist-modelos/novo`
 4. **Preencha o formulário:**
@@ -838,7 +838,7 @@ Condomínio: Residencial Jardim das Flores
    Nome: Checklist Diário - Manhã
    Descrição: Itens a verificar pela manhã
    Status: ☑ Ativo
-   
+
    Itens do Checklist:
    Item 1: Verificar portões elétricos
    Item 2: Verificar iluminação externa

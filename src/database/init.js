@@ -291,25 +291,93 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar campos da FASE 16:', error);
     }
 
-    // FASE 17: Comprovantes Saída
-    console.log('🔍 Verificando campos da FASE 17 (comprovantes saída)...');
+    // FASE 17: Modelos de checklist e checklists diários (checklist_models, daily_checklists, etc.)
+    console.log('🔍 Verificando tabelas da FASE 17 (checklist_models, checklists diários)...');
     try {
-      const columnExists = await query(`
+      const tableExists = await query(`
         SELECT EXISTS (
-          SELECT FROM information_schema.columns 
-          WHERE table_name = 'financial_exits' AND column_name = 'payment_receipt_pdf_path'
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'checklist_models'
         )
       `);
       
-      if (!columnExists.rows[0].exists) {
-        console.log('⚠️  Campos da FASE 17 não encontrados. Criando...');
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 17 não encontradas. Criando...');
         await executeSQLFile(path.join(__dirname, 'extendTablesPhase17.sql'));
-        console.log('✅ Campos da FASE 17 criados com sucesso');
+        console.log('✅ Tabelas da FASE 17 (checklist_models, etc.) criadas com sucesso');
       } else {
-        console.log('✅ Campos da FASE 17 já existem');
+        console.log('✅ Tabelas da FASE 17 já existem');
       }
     } catch (error) {
-      console.error('Erro ao verificar/criar campos da FASE 17:', error);
+      console.error('Erro ao verificar/criar tabelas da FASE 17:', error);
+    }
+
+    // Checklist Assignments: vínculo modelo → pessoas específicas (após FASE 17)
+    try {
+      const asgExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'checklist_model_assignments'
+        )
+      `);
+      if (!asgExists.rows[0].exists) {
+        console.log('🔍 Criando tabela checklist_model_assignments e ajustando unique em daily_checklists...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesChecklistAssignments.sql'));
+        console.log('✅ Checklist assignments criados');
+      }
+    } catch (e) {
+      console.warn('Aviso ao aplicar extendTablesChecklistAssignments:', e.message);
+    }
+
+    // Síndico acompanha checklists + questionar itens não feitos
+    try {
+      const colExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'daily_checklist_items' AND column_name = 'sindico_question'
+        )
+      `);
+      if (!colExists.rows[0].exists) {
+        console.log('🔍 Adicionando colunas sindico_question em daily_checklist_items...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesSindicoChecklist.sql'));
+        console.log('✅ Sindico checklist OK');
+      }
+    } catch (e) {
+      console.warn('Aviso ao aplicar extendTablesSindicoChecklist:', e.message);
+    }
+
+    // Síndico: exige resposta vs só comentário; resposta ao questionamento
+    try {
+      const respExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'daily_checklist_items' AND column_name = 'resposta_questionamento'
+        )
+      `);
+      if (!respExists.rows[0].exists) {
+        console.log('🔍 Adicionando colunas resposta_questionamento e sindico_exige_resposta...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesSindicoChecklistResposta.sql'));
+        console.log('✅ Sindico checklist resposta OK');
+      }
+    } catch (e) {
+      console.warn('Aviso ao aplicar extendTablesSindicoChecklistResposta:', e.message);
+    }
+
+    // SLA: sla_hours, sla_deadline em tasks e occurrences (criação de tarefas ADM, etc.)
+    try {
+      const slaExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'tasks' AND column_name = 'sla_hours'
+        )
+      `);
+      if (!slaExists.rows[0].exists) {
+        console.log('🔍 Adicionando colunas SLA (sla_hours, sla_deadline) em tasks e occurrences...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesSLA.sql'));
+        console.log('✅ SLA OK');
+      }
+    } catch (e) {
+      console.warn('Aviso ao aplicar extendTablesSLA:', e.message);
     }
 
     // FASE 18: Consumo Mensal

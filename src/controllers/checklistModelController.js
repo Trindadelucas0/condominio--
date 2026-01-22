@@ -28,12 +28,32 @@ const showModels = async (req, res) => {
 
 // Função para exibir formulário de criação
 // GET /sindico/checklist-modelos/novo
-const showCreateModel = (req, res) => {
-  res.render('sindico/checklist-modelos/form', {
-    title: 'Novo Modelo de Checklist',
-    user: req.user,
-    model: null,
-  });
+const showCreateModel = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return require('../utils/errorHandler').renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+    const [usersOperacional, usersLimpeza] = await Promise.all([
+      checklistModelService.listUsersByRole(req.user.condominiumId, 'OPERACIONAL'),
+      checklistModelService.listUsersByRole(req.user.condominiumId, 'LIMPEZA'),
+    ]);
+    res.render('sindico/checklist-modelos/form', {
+      title: 'Novo Modelo de Checklist',
+      user: req.user,
+      model: null,
+      usersOperacional: usersOperacional || [],
+      usersLimpeza: usersLimpeza || [],
+    });
+  } catch (e) {
+    console.error('Erro ao carregar formulário de novo modelo:', e);
+    res.render('sindico/checklist-modelos/form', {
+      title: 'Novo Modelo de Checklist',
+      user: req.user,
+      model: null,
+      usersOperacional: [],
+      usersLimpeza: [],
+    });
+  }
 };
 
 // Função para criar modelo
@@ -71,6 +91,20 @@ const createModel = async (req, res) => {
     if (req.body.saturday === 'on') daysOfWeek.push(6);
     if (req.body.sunday === 'on') daysOfWeek.push(0);
 
+    // Departamento → role: ZELADORIA = OPERACIONAL, LIMPEZA = LIMPEZA
+    const defaultAssignedRole = req.body.department === 'ZELADORIA' ? 'OPERACIONAL' : 'LIMPEZA';
+
+    let assignedUserIds = [];
+    const assignAllSetor = req.body.assignAllSetor === '1' || req.body.assignAllSetor === 'true';
+    if (assignAllSetor && req.body.department) {
+      const role = req.body.department === 'ZELADORIA' ? 'OPERACIONAL' : 'LIMPEZA';
+      const users = await checklistModelService.listUsersByRole(req.user.condominiumId, role);
+      assignedUserIds = (users || []).map((u) => u.id).filter(Boolean);
+    } else {
+      const byDept = req.body.department === 'LIMPEZA' ? (req.body.assignedUserIdsLimpeza || req.body['assignedUserIdsLimpeza[]']) : (req.body.assignedUserIdsZeladoria || req.body['assignedUserIdsZeladoria[]']);
+      assignedUserIds = [].concat(byDept || []).filter(Boolean).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n) && n > 0);
+    }
+
     const data = {
       name: req.body.name,
       description: req.body.description || null,
@@ -79,7 +113,8 @@ const createModel = async (req, res) => {
       isActive: req.body.isActive === 'true' || req.body.isActive === true,
       requiresPhoto: req.body.requiresPhoto === 'true' || req.body.requiresPhoto === true,
       requiresJustification: req.body.requiresJustification === 'true' || req.body.requiresJustification === true,
-      defaultAssignedRole: req.body.defaultAssignedRole || null,
+      defaultAssignedRole,
+      assignedUserIds,
       items
     };
 
@@ -87,10 +122,31 @@ const createModel = async (req, res) => {
 
     res.redirect('/sindico/checklist-modelos?success=created');
   } catch (error) {
+    let usersOperacional = [];
+    let usersLimpeza = [];
+    try {
+      [usersOperacional, usersLimpeza] = await Promise.all([
+        checklistModelService.listUsersByRole(req.user.condominiumId, 'OPERACIONAL'),
+        checklistModelService.listUsersByRole(req.user.condominiumId, 'LIMPEZA'),
+      ]);
+    } catch (_) {}
+    let ids = [];
+    const assignAll = req.body.assignAllSetor === '1' || req.body.assignAllSetor === 'true';
+    if (assignAll && req.body.department) {
+      const role = req.body.department === 'ZELADORIA' ? 'OPERACIONAL' : 'LIMPEZA';
+      const users = req.body.department === 'ZELADORIA' ? usersOperacional : usersLimpeza;
+      ids = (users || []).map((u) => u.id).filter(Boolean);
+    } else {
+      const byDept = req.body.department === 'LIMPEZA' ? (req.body.assignedUserIdsLimpeza || req.body['assignedUserIdsLimpeza[]']) : (req.body.assignedUserIdsZeladoria || req.body['assignedUserIdsZeladoria[]']);
+      ids = [].concat(byDept || []).filter(Boolean).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n) && n > 0);
+    }
+    const modelForForm = { ...req.body, assigned_user_ids: ids };
     res.render('sindico/checklist-modelos/form', {
       title: 'Novo Modelo de Checklist',
       user: req.user,
-      model: req.body,
+      model: modelForForm,
+      usersOperacional: usersOperacional || [],
+      usersLimpeza: usersLimpeza || [],
       error: error.message,
     });
   }
@@ -110,10 +166,17 @@ const showEditModel = async (req, res) => {
       return renderError(res, 404, 'Modelo não encontrado');
     }
 
+    const [usersOperacional, usersLimpeza] = await Promise.all([
+      checklistModelService.listUsersByRole(req.user.condominiumId, 'OPERACIONAL'),
+      checklistModelService.listUsersByRole(req.user.condominiumId, 'LIMPEZA'),
+    ]);
+
     res.render('sindico/checklist-modelos/form', {
       title: 'Editar Modelo de Checklist',
       user: req.user,
       model,
+      usersOperacional: usersOperacional || [],
+      usersLimpeza: usersLimpeza || [],
     });
   } catch (error) {
     console.error('Erro ao carregar modelo:', error);
@@ -124,6 +187,7 @@ const showEditModel = async (req, res) => {
 // Função para atualizar modelo
 // POST /sindico/checklist-modelos/:id
 const updateModel = async (req, res) => {
+  let items = [];
   try {
     if (!req.user.condominiumId) {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
@@ -133,7 +197,6 @@ const updateModel = async (req, res) => {
     const userAgent = req.get('user-agent');
 
     // Processa itens
-    const items = [];
     if (req.body.items && Array.isArray(req.body.items)) {
       req.body.items.forEach((item, index) => {
         if (item.name && item.name.trim() !== '') {
@@ -156,6 +219,20 @@ const updateModel = async (req, res) => {
     if (req.body.saturday === 'on') daysOfWeek.push(6);
     if (req.body.sunday === 'on') daysOfWeek.push(0);
 
+    // Departamento → role: ZELADORIA = OPERACIONAL, LIMPEZA = LIMPEZA
+    const defaultAssignedRole = req.body.department === 'ZELADORIA' ? 'OPERACIONAL' : 'LIMPEZA';
+
+    let assignedUserIds = [];
+    const assignAllSetor = req.body.assignAllSetor === '1' || req.body.assignAllSetor === 'true';
+    if (assignAllSetor && req.body.department) {
+      const role = req.body.department === 'ZELADORIA' ? 'OPERACIONAL' : 'LIMPEZA';
+      const users = await checklistModelService.listUsersByRole(req.user.condominiumId, role);
+      assignedUserIds = (users || []).map((u) => u.id).filter(Boolean);
+    } else {
+      const byDept = req.body.department === 'LIMPEZA' ? (req.body.assignedUserIdsLimpeza || req.body['assignedUserIdsLimpeza[]']) : (req.body.assignedUserIdsZeladoria || req.body['assignedUserIdsZeladoria[]']);
+      assignedUserIds = [].concat(byDept || []).filter(Boolean).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n) && n > 0);
+    }
+
     const data = {
       name: req.body.name,
       description: req.body.description || null,
@@ -164,7 +241,8 @@ const updateModel = async (req, res) => {
       isActive: req.body.isActive === 'true' || req.body.isActive === true,
       requiresPhoto: req.body.requiresPhoto === 'true' || req.body.requiresPhoto === true,
       requiresJustification: req.body.requiresJustification === 'true' || req.body.requiresJustification === true,
-      defaultAssignedRole: req.body.defaultAssignedRole || null,
+      defaultAssignedRole,
+      assignedUserIds,
       items
     };
 
@@ -179,15 +257,35 @@ const updateModel = async (req, res) => {
 
     res.redirect('/sindico/checklist-modelos?success=updated');
   } catch (error) {
+    let usersOperacional = [];
+    let usersLimpeza = [];
+    try {
+      [usersOperacional, usersLimpeza] = await Promise.all([
+        checklistModelService.listUsersByRole(req.user.condominiumId, 'OPERACIONAL'),
+        checklistModelService.listUsersByRole(req.user.condominiumId, 'LIMPEZA'),
+      ]);
+    } catch (_) {}
+    let assignIds = [];
+    const assignAll = req.body.assignAllSetor === '1' || req.body.assignAllSetor === 'true';
+    if (assignAll && req.body.department) {
+      const users = req.body.department === 'ZELADORIA' ? usersOperacional : usersLimpeza;
+      assignIds = (users || []).map((u) => u.id).filter(Boolean);
+    } else {
+      const byDept = req.body.department === 'LIMPEZA' ? (req.body.assignedUserIdsLimpeza || req.body['assignedUserIdsLimpeza[]']) : (req.body.assignedUserIdsZeladoria || req.body['assignedUserIdsZeladoria[]']);
+      assignIds = [].concat(byDept || []).filter(Boolean).map((id) => parseInt(id, 10)).filter((n) => !isNaN(n) && n > 0);
+    }
     try {
       const model = await checklistModelService.getModelById(parseInt(req.params.id), req.user.condominiumId);
+      const merged = { ...(model || req.body), ...req.body, items: items || (model && model.items) || [], assigned_user_ids: assignIds };
       res.render('sindico/checklist-modelos/form', {
         title: 'Editar Modelo de Checklist',
         user: req.user,
-        model: { ...req.body, items: items || [] },
+        model: merged,
+        usersOperacional: usersOperacional || [],
+        usersLimpeza: usersLimpeza || [],
         error: error.message,
       });
-    } catch (renderError) {
+    } catch (e) {
       renderError(res, 500, 'Erro ao processar atualização', error);
     }
   }

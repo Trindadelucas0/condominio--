@@ -387,6 +387,19 @@ const updateChecklistItem = async (checklistId, status, comment, userId, condomi
   }
 };
 
+// Função para adicionar evidência (foto) a uma tarefa
+// Recebe: taskId, filePath, fileName, fileType, userId
+// Retorna: evidência criada
+const addTaskEvidence = async (taskId, filePath, fileName, fileType, userId) => {
+  const res = await query(
+    `INSERT INTO task_evidences (task_id, file_path, file_name, file_type, evidence_type, uploaded_by)
+     VALUES ($1, $2, $3, $4, 'AFTER', $5)
+     RETURNING *`,
+    [taskId, filePath, fileName || 'evidencia', fileType || 'image/jpeg', userId]
+  );
+  return res.rows[0];
+};
+
 // Função para finalizar tarefa com dados estruturados
 // Recebe: taskId, userId, dados de conclusão (completionData)
 // Retorna: tarefa atualizada
@@ -688,18 +701,22 @@ const listOccurrences = async (userId, condominiumId, filters = {}) => {
       countParams.push(filters.status);
     }
 
-    // Filtro por data de criação (dateFrom)
+    // Filtro por data de criação (dateFrom) — comparação por data
     if (filters.dateFrom) {
-      sql += ` AND created_at >= $${paramCount++}`;
-      countSql += ` AND created_at >= $${countParamCount++}`;
+      sql += ` AND (created_at::date >= $${paramCount}::date)`;
+      countSql += ` AND (created_at::date >= $${countParamCount}::date)`;
+      paramCount++;
+      countParamCount++;
       params.push(filters.dateFrom);
       countParams.push(filters.dateFrom);
     }
 
-    // Filtro por data de criação (dateTo)
+    // Filtro por data de criação (dateTo) — até fim do dia
     if (filters.dateTo) {
-      sql += ` AND created_at <= $${paramCount++}`;
-      countSql += ` AND created_at <= $${countParamCount++}`;
+      sql += ` AND (created_at::date <= $${paramCount}::date)`;
+      countSql += ` AND (created_at::date <= $${countParamCount}::date)`;
+      paramCount++;
+      countParamCount++;
       params.push(filters.dateTo);
       countParams.push(filters.dateTo);
     }
@@ -891,6 +908,7 @@ module.exports = {
   listTasks,
   getTaskById,
   updateChecklistItem,
+  addTaskEvidence,
   completeTask,
   createOccurrence,
   listOccurrences,

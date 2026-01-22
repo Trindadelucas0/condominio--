@@ -25,7 +25,8 @@ router.post('/documentos/categorias', administrativoController.createCategoria);
 router.get('/documentos/:id/editar', administrativoController.showEditDocumento);
 router.post('/documentos/:id', administrativoController.updateDocumento);
 
-// Reabertura de tarefas
+// Reabertura de tarefas (GET = formulário, POST = enviar)
+router.get('/tarefas/:id/reabrir', reaberturaController.showReopenTask);
 router.post('/tarefas/:id/reabrir', reaberturaController.reopenTask);
 
 // Ocorrências (triagem)

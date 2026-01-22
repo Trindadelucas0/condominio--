@@ -50,6 +50,8 @@
                         <a href="/sindico/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências</a>
                         <a href="/sindico/aprovacoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Aprovações</a>
                         <a href="/sindico/manutencoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Manutenções</a>
+                        <a href="/sindico/checklist-modelos" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Modelos Checklist</a>
+                        <a href="/sindico/checklists-acompanhamento" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Acompanhar Checklists</a>
                         <a href="/sindico/alertas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Alertas</a>
                         <a href="/sindico/logs" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Logs</a>
                         <a href="/assembleias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Assembleias</a>
@@ -88,7 +90,8 @@
                     // OPERACIONAL
                     if (roles.includes('OPERACIONAL')) { %>
                         <a href="/operacional/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Operacional - Dashboard</a>
-                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklist</a>
+                        <a href="/operacional/checklists-diarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklists do Dia</a>
+                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
                         <a href="/operacional/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências</a>
                         <a href="/operacional/manutencoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Manutenções</a>
                     <% }
@@ -96,13 +99,15 @@
                     // LIMPEZA (tem suas próprias rotas de ocorrências)
                     if (roles.includes('LIMPEZA') && !roles.includes('OPERACIONAL')) { %>
                         <a href="/limpeza/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Limpeza - Dashboard</a>
-                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklist</a>
+                        <a href="/operacional/checklists-diarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklists do Dia</a>
+                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
                         <a href="/limpeza/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências de Limpeza</a>
                     <% } else if (roles.includes('LIMPEZA') && roles.includes('OPERACIONAL')) { %>
                         <!-- Se tem ambas, mostra ambos os menus -->
                         <a href="/operacional/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Operacional - Dashboard</a>
                         <a href="/limpeza/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Limpeza - Dashboard</a>
-                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklist</a>
+                        <a href="/operacional/checklists-diarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklists do Dia</a>
+                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
                         <a href="/operacional/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências (Zeladoria)</a>
                         <a href="/limpeza/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências (Limpeza)</a>
                     <% }
@@ -158,6 +163,26 @@
                         <a href="/sindico/tarefas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
                         <a href="/sindico/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
                         <a href="/sindico/aprovacoes" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Aprovações</a>
+                        <a href="/sindico/checklist-modelos" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Modelos Checklist</a>
+                        <a href="/sindico/checklists-acompanhamento" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Acompanhar Checklists</a>
+                        <a href="/sindico/manutencoes" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Manutenções</a>
+                        <a href="/sindico/alertas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Alertas</a>
+                        <a href="/sindico/logs" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Logs</a>
+                        <a href="/assembleias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Assembleias</a>
+                    <% }
+                    
+                    if (roles.includes('OPERACIONAL')) { %>
+                        <a href="/operacional/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Operacional - Dashboard</a>
+                        <a href="/operacional/checklists-diarios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Checklists do Dia</a>
+                        <a href="/operacional/checklist" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/operacional/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                    <% }
+                    
+                    if (roles.includes('LIMPEZA') && !roles.includes('OPERACIONAL')) { %>
+                        <a href="/limpeza/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Limpeza - Dashboard</a>
+                        <a href="/operacional/checklists-diarios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Checklists do Dia</a>
+                        <a href="/operacional/checklist" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/limpeza/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
                     <% }
                     
                     if (roles.includes('FINANCEIRO')) { %>
@@ -170,17 +195,6 @@
                         <a href="/administrativo/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Admin - Dashboard</a>
                         <a href="/administrativo/tarefas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
                         <a href="/administrativo/documentos" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Documentos</a>
-                    <% }
-                    
-                    if (roles.includes('OPERACIONAL')) { %>
-                        <a href="/operacional/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Operacional - Dashboard</a>
-                        <a href="/operacional/checklist" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Checklist</a>
-                        <a href="/operacional/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
-                    <% }
-                    
-                    if (roles.includes('LIMPEZA')) { %>
-                        <a href="/limpeza/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Limpeza - Dashboard</a>
-                        <a href="/limpeza/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
                     <% }
                     
                     if (roles.includes('CONSELHO')) { %>

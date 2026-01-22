@@ -17,7 +17,18 @@
 
   <!-- Formulário -->
   <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form method="POST" action="<%= condominio ? '/master/condominios/' + condominio.id : '/master/condominios' %>">
+    <% 
+      // Determina a action do formulário
+      // Só usa rota de atualização se condominio.id existir e for um número válido
+      let formAction = '/master/condominios';
+      if (condominio && condominio.id) {
+        const id = parseInt(condominio.id, 10);
+        if (!isNaN(id) && id > 0) {
+          formAction = '/master/condominios/' + id;
+        }
+      }
+    %>
+    <form method="POST" action="<%= formAction %>">
       <!-- Nome -->
       <div class="mb-4">
         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">

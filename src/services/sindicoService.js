@@ -1154,11 +1154,14 @@ const addObservation = async (entityType, entityId, observation, userId, condomi
     // Verifica se a entidade existe e pertence ao condomínio
     if (entityType === 'tasks') {
       const taskCheck = await query(
-        `SELECT id FROM tasks WHERE id = $1 AND condominium_id = $2`,
+        `SELECT id, status FROM tasks WHERE id = $1 AND condominium_id = $2`,
         [entityId, condominiumId]
       );
       if (taskCheck.rows.length === 0) {
         throw new Error('Tarefa não encontrada');
+      }
+      if (taskCheck.rows[0].status === 'COMPLETED') {
+        throw new Error('Tarefa concluída não pode receber observações nem ser enviada de volta.');
       }
     } else {
       const occurrenceCheck = await query(

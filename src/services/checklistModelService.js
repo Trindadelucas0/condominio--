@@ -40,9 +40,29 @@ const listModels = async (condominiumId) => {
   }
 };
 
+// Lista usuários do condomínio por role (OPERACIONAL ou LIMPEZA)
+// Usado no formulário para vincular checklist a pessoas específicas
+const listUsersByRole = async (condominiumId, roleName) => {
+  try {
+    const result = await query(
+      `SELECT u.id, u.full_name, u.username
+       FROM users u
+       INNER JOIN user_roles ur ON u.id = ur.user_id
+       INNER JOIN roles r ON ur.role_id = r.id
+       WHERE u.condominium_id = $1 AND r.name = $2 AND u.active = TRUE
+       ORDER BY u.full_name`,
+      [condominiumId, roleName]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar usuários por role:', error);
+    throw error;
+  }
+};
+
 // Função para buscar um modelo específico
 // Recebe: modelId, condominiumId
-// Retorna: modelo com seus itens
+// Retorna: modelo com seus itens e assigned_user_ids
 const getModelById = async (modelId, condominiumId) => {
   try {
     // Busca modelo
@@ -69,6 +89,17 @@ const getModelById = async (modelId, condominiumId) => {
     );
     model.items = itemsResult.rows;
 
+    // Busca usuários vinculados (pessoas específicas)
+    try {
+      const asgResult = await query(
+        `SELECT user_id FROM checklist_model_assignments WHERE model_id = $1`,
+        [modelId]
+      );
+      model.assigned_user_ids = (asgResult.rows || []).map((r) => r.user_id);
+    } catch (_) {
+      model.assigned_user_ids = [];
+    }
+
     return model;
   } catch (error) {
     console.error('Erro ao buscar modelo:', error);
@@ -90,6 +121,7 @@ const createModel = async (data, userId, condominiumId, ipAddress, userAgent) =>
       requiresPhoto,
       requiresJustification,
       defaultAssignedRole,
+      assignedUserIds, // Array de user_id: vincula a pessoas específicas
       items // Array de itens [{ name, order, requiresPhoto }]
     } = data;
 
@@ -132,6 +164,21 @@ const createModel = async (data, userId, condominiumId, ipAddress, userAgent) =>
     );
 
     const model = modelResult.rows[0];
+
+    // Vincula pessoas específicas (se informado)
+    const userIds = Array.isArray(assignedUserIds) ? assignedUserIds.filter((id) => id != null && String(id).trim() !== '') : [];
+    for (const uid of userIds) {
+      const id = typeof uid === 'number' ? uid : parseInt(uid, 10);
+      if (!isNaN(id) && id > 0) {
+        try {
+          await query(
+            `INSERT INTO checklist_model_assignments (model_id, user_id) VALUES ($1, $2)
+             ON CONFLICT (model_id, user_id) DO NOTHING`,
+            [model.id, id]
+          );
+        } catch (e) { /* ignora duplicata */ }
+      }
+    }
 
     // Cria itens do modelo
     for (const item of items) {
@@ -192,6 +239,7 @@ const updateModel = async (modelId, data, userId, condominiumId, ipAddress, user
       requiresPhoto,
       requiresJustification,
       defaultAssignedRole,
+      assignedUserIds,
       items
     } = data;
 
@@ -251,6 +299,24 @@ const updateModel = async (modelId, data, userId, condominiumId, ipAddress, user
         `UPDATE checklist_models SET ${updateFields.join(', ')} WHERE id = $${paramCount}`,
         updateValues
       );
+    }
+
+    // Atualiza vínculos com pessoas específicas
+    if (assignedUserIds !== undefined) {
+      await query(`DELETE FROM checklist_model_assignments WHERE model_id = $1`, [modelId]);
+      const userIds = Array.isArray(assignedUserIds) ? assignedUserIds.filter((id) => id != null && String(id).trim() !== '') : [];
+      for (const uid of userIds) {
+        const id = typeof uid === 'number' ? uid : parseInt(uid, 10);
+        if (!isNaN(id) && id > 0) {
+          try {
+            await query(
+              `INSERT INTO checklist_model_assignments (model_id, user_id) VALUES ($1, $2)
+               ON CONFLICT (model_id, user_id) DO NOTHING`,
+              [modelId, id]
+            );
+          } catch (e) { /* ignora */ }
+        }
+      }
     }
 
     // Se items foi fornecido, atualiza itens
@@ -345,6 +411,7 @@ const toggleModelActive = async (modelId, isActive, userId, condominiumId, ipAdd
 module.exports = {
   listModels,
   getModelById,
+  listUsersByRole,
   createModel,
   updateModel,
   toggleModelActive

@@ -22,6 +22,7 @@ router.get('/checklists-diarios', authorize('OPERACIONAL', 'LIMPEZA'), dailyChec
 router.get('/checklists-diarios/:id', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.showChecklist);
 router.post('/checklists-diarios/:id/iniciar', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.startChecklist);
 router.post('/checklists-diarios/:checklistId/items/:itemId', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.updateItem);
+router.post('/checklists-diarios/:checklistId/items/:itemId/responder-questionamento', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.responderQuestionamento);
 router.post('/checklists-diarios/:id/finalizar', authorize('OPERACIONAL', 'LIMPEZA'), dailyChecklistController.completeChecklist);
 
 // Upload de evidências (fotos)
@@ -53,11 +54,44 @@ const uploadEvidence = multer({
 
 router.post('/checklists-diarios/:id/evidencias', authorize('OPERACIONAL', 'LIMPEZA'), uploadEvidence.single('evidence'), dailyChecklistController.addEvidence);
 
+// Multer para evidências de tarefas (conclusão)
+const storageTaskEvidence = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = 'uploads/tasks';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'task_' + (req.params.id || '') + '_' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const uploadTaskEvidence = multer({
+  storage: storageTaskEvidence,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas'));
+    }
+  }
+});
+
 // Tarefas antigas (mantidas para compatibilidade)
 // OPERACIONAL e LIMPEZA podem acessar checklist antigo
 router.get('/checklist', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.showChecklist);
 router.post('/checklist/:id/atualizar', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.updateChecklistItem);
 router.post('/checklist/:id/completar', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.completeTask);
+
+// Tarefas: detalhe, concluir (formulário) e finalizar (POST com upload de fotos)
+// Rotas mais específicas primeiro (:id/concluir, :id/finalizar) para não bater em :id
+router.get('/tarefas/:id/concluir', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.showCompleteTask);
+router.post('/tarefas/:id/finalizar', authorize('OPERACIONAL', 'LIMPEZA'), uploadTaskEvidence.array('evidences', 5), operacionalController.completeTask);
+router.get('/tarefas/:id', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.showTask);
 
 // Ocorrências - apenas OPERACIONAL (LIMPEZA tem suas próprias rotas)
 router.get('/ocorrencias', authorize('OPERACIONAL'), operacionalController.showOcorrencias);

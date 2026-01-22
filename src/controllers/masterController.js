@@ -63,6 +63,16 @@ const showCreateCondominio = async (req, res) => {
 // POST /master/condominios
 const createCondominio = async (req, res) => {
   try {
+    // Valida que não está tentando criar com ID válido (deve ser criação, não atualização)
+    // Só redireciona se o ID for um número válido
+    if (req.body.id) {
+      const id = parseInt(req.body.id, 10);
+      if (!isNaN(id) && id > 0) {
+        console.warn('⚠️ Tentativa de criar condomínio com ID fornecido. Redirecionando para atualização.');
+        return res.redirect(`/master/condominios/${id}/editar`);
+      }
+    }
+
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
@@ -76,10 +86,17 @@ const createCondominio = async (req, res) => {
     res.redirect('/master/condominios?success=created');
   } catch (error) {
     console.error('Erro ao criar condomínio:', error);
+    // Remove ID do req.body se existir (para garantir que é criação, não edição)
+    // Mantém outros campos para preservar dados preenchidos pelo usuário
+    const condominioData = { ...req.body };
+    delete condominioData.id;
+    // Garante que não tem ID para o formulário não tentar usar rota de atualização
+    condominioData.id = undefined;
+    
     res.render('master/condominios/form', {
       title: 'Novo Condomínio',
       user: req.user,
-      condominio: req.body,
+      condominio: condominioData, // Passa dados sem ID para manter valores preenchidos
       action: 'create',
       error: error.message,
     });
@@ -90,6 +107,11 @@ const createCondominio = async (req, res) => {
 // GET /master/condominios/:id/editar
 const showEditCondominio = async (req, res) => {
   try {
+    // Valida se ID existe
+    if (!req.params.id || req.params.id === 'undefined') {
+      return renderError(res, 400, 'ID do condomínio não fornecido');
+    }
+
     const condominio = await masterService.getCondominiumById(req.params.id);
 
     res.render('master/condominios/form', {
@@ -108,6 +130,17 @@ const showEditCondominio = async (req, res) => {
 // POST /master/condominios/:id
 const updateCondominio = async (req, res) => {
   try {
+    // Valida se ID existe
+    if (!req.params.id || req.params.id === 'undefined') {
+      return res.status(400).render('master/condominios/form', {
+        title: 'Editar Condomínio',
+        user: req.user,
+        condominio: req.body,
+        action: 'edit',
+        error: 'ID do condomínio não fornecido',
+      });
+    }
+
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
@@ -137,7 +170,18 @@ const updateCondominio = async (req, res) => {
     res.redirect('/master/condominios?success=updated');
   } catch (error) {
     console.error('Erro ao atualizar condomínio:', error);
-    const condominio = await masterService.getCondominiumById(req.params.id).catch(() => req.body);
+    
+    // Se ID não existe ou é inválido, usa req.body como fallback
+    let condominio = req.body;
+    if (req.params.id && req.params.id !== 'undefined') {
+      try {
+        condominio = await masterService.getCondominiumById(req.params.id);
+      } catch (err) {
+        console.error('Erro ao buscar condomínio para exibir erro:', err);
+        // Mantém req.body como fallback
+      }
+    }
+    
     res.render('master/condominios/form', {
       title: 'Editar Condomínio',
       user: req.user,

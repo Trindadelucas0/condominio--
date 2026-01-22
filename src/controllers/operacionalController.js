@@ -36,6 +36,9 @@ const showChecklist = async (req, res) => {
     const filters = {
       status: req.query.status || undefined,
       search: req.query.search || undefined,
+      priority: req.query.priority || undefined,
+      dateFrom: req.query.dateFrom || undefined,
+      dateTo: req.query.dateTo || undefined,
       page: req.query.page || undefined,
       perPage: req.query.perPage || undefined,
     };
@@ -151,7 +154,7 @@ const showCompleteTask = async (req, res) => {
 };
 
 // Função para finalizar tarefa com dados estruturados
-// POST /operacional/tarefas/:id/finalizar
+// POST /operacional/tarefas/:id/finalizar (multipart: evidences opcional/múltiplas)
 const completeTask = async (req, res) => {
   try {
     if (!req.user.condominiumId) {
@@ -161,6 +164,20 @@ const completeTask = async (req, res) => {
     const taskId = req.params.id;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
+
+    // Salva evidências (fotos) enviadas no formulário
+    const files = req.files || [];
+    for (const f of files) {
+      if (f.path && f.filename) {
+        await operacionalService.addTaskEvidence(
+          parseInt(taskId, 10),
+          f.path,
+          f.originalname || f.filename,
+          f.mimetype,
+          req.user.id
+        );
+      }
+    }
 
     // Prepara dados de conclusão estruturados
     const completionData = {
@@ -187,7 +204,7 @@ const completeTask = async (req, res) => {
         error: error.message,
         formData: req.body,
       });
-    } catch (renderError) {
+    } catch (renderErr) {
       res.redirect('/operacional/checklist?error=' + encodeURIComponent(error.message));
     }
   }

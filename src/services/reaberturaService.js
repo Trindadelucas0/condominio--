@@ -90,9 +90,14 @@ const reopenTask = async (taskId, userId, condominiumId, reason, ipAddress, user
 
     const task = taskResult.rows[0];
 
-    // Verifica se está finalizada (COMPLETED ou CANCELLED)
-    if (task.status !== 'COMPLETED' && task.status !== 'CANCELLED') {
-      throw new Error('Apenas tarefas finalizadas ou canceladas podem ser reabertas');
+    // REGRA: Tarefa CONCLUÍDA não pode ser reaberta / enviada de volta
+    if (task.status === 'COMPLETED') {
+      throw new Error('Tarefa concluída não pode ser reaberta nem enviada de volta.');
+    }
+
+    // Apenas tarefas canceladas podem ser reabertas
+    if (task.status !== 'CANCELLED') {
+      throw new Error('Apenas tarefas canceladas podem ser reabertas');
     }
 
     // Verifica se já foi reaberta

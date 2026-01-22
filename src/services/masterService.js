@@ -99,9 +99,20 @@ const listCondominios = async (includeInactive = false) => {
 // Retorna: condomínio
 const getCondominiumById = async (id) => {
   try {
+    // Valida se ID existe e é válido
+    if (!id || id === 'undefined' || id === 'null') {
+      throw new Error('ID do condomínio não fornecido ou inválido');
+    }
+
+    // Converte para inteiro se for string numérica
+    const condominiumId = parseInt(id, 10);
+    if (isNaN(condominiumId)) {
+      throw new Error('ID do condomínio deve ser um número válido');
+    }
+
     const result = await query(
       `SELECT * FROM condominiums WHERE id = $1`,
-      [id]
+      [condominiumId]
     );
     if (result.rows.length === 0) {
       throw new Error('Condomínio não encontrado');
@@ -118,6 +129,17 @@ const getCondominiumById = async (id) => {
 // Retorna: condomínio atualizado
 // REGRA: Se condomínio for inativado, inativa todos os usuários desse condomínio
 const updateCondominium = async (id, data, userId, ipAddress, userAgent) => {
+  // Valida se ID existe e é válido
+  if (!id || id === 'undefined' || id === 'null') {
+    throw new Error('ID do condomínio não fornecido ou inválido');
+  }
+
+  // Converte para inteiro se for string numérica
+  const condominiumId = parseInt(id, 10);
+  if (isNaN(condominiumId)) {
+    throw new Error('ID do condomínio deve ser um número válido');
+  }
+
   const client = await require('../config/database').getClient();
   
   try {
@@ -126,7 +148,7 @@ const updateCondominium = async (id, data, userId, ipAddress, userAgent) => {
     const { name, address, cnpj, phone, email, active } = data;
 
     // Busca condomínio atual para log
-    const current = await getCondominiumById(id);
+    const current = await getCondominiumById(condominiumId);
 
     // Converte active para boolean
     // Se vier como string "true" ou "false", converte
@@ -156,7 +178,7 @@ const updateCondominium = async (id, data, userId, ipAddress, userAgent) => {
         phone ? phone.trim() : current.phone,
         email ? email.trim().toLowerCase() : current.email,
         activeValue,
-        id
+        condominiumId
       ]
     );
 
@@ -164,32 +186,32 @@ const updateCondominium = async (id, data, userId, ipAddress, userAgent) => {
 
     // Se condomínio foi INATIVADO, inativa todos os usuários desse condomínio
     if (current.active === true && activeValue === false) {
-      console.log(`🔒 Inativando condomínio ${id} - inativando todos os usuários...`);
+      console.log(`🔒 Inativando condomínio ${condominiumId} - inativando todos os usuários...`);
       
       const usersInactivated = await client.query(
         `UPDATE users 
          SET active = FALSE, updated_at = NOW()
          WHERE condominium_id = $1 AND active = TRUE
          RETURNING id, username`,
-        [id]
+        [condominiumId]
       );
 
-      console.log(`✅ ${usersInactivated.rows.length} usuários inativados do condomínio ${id}`);
+      console.log(`✅ ${usersInactivated.rows.length} usuários inativados do condomínio ${condominiumId}`);
     }
 
     // Se condomínio foi ATIVADO novamente, reativa todos os usuários desse condomínio
     if (current.active === false && activeValue === true) {
-      console.log(`🔓 Reativando condomínio ${id} - reativando todos os usuários...`);
+      console.log(`🔓 Reativando condomínio ${condominiumId} - reativando todos os usuários...`);
       
       const usersReactivated = await client.query(
         `UPDATE users 
          SET active = TRUE, updated_at = NOW()
          WHERE condominium_id = $1 AND active = FALSE
          RETURNING id, username`,
-        [id]
+        [condominiumId]
       );
 
-      console.log(`✅ ${usersReactivated.rows.length} usuários reativados do condomínio ${id}`);
+      console.log(`✅ ${usersReactivated.rows.length} usuários reativados do condomínio ${condominiumId}`);
     }
 
     await client.query('COMMIT'); // Confirma transação

@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const sindicoController = require('../controllers/sindicoController');
 const checklistModelController = require('../controllers/checklistModelController');
+const sindicoChecklistController = require('../controllers/sindicoChecklistController');
 const reportService = require('../services/reportService');
 const dashboardConfigService = require('../services/dashboardConfigService');
 const { authenticate, authorize } = require('../middlewares/auth');
@@ -124,6 +125,11 @@ router.post('/checklist-modelos', authorize('SINDICO', 'SUBSINDICO'), checklistM
 router.get('/checklist-modelos/:id/editar', authorize('SINDICO', 'SUBSINDICO'), checklistModelController.showEditModel);
 router.post('/checklist-modelos/:id', authorize('SINDICO', 'SUBSINDICO'), checklistModelController.updateModel);
 router.post('/checklist-modelos/:id/toggle', authorize('SINDICO', 'SUBSINDICO'), checklistModelController.toggleModel);
+
+// Acompanhar checklists completos e questionar itens não feitos (rotas específicas antes de :id)
+router.get('/checklists-acompanhamento', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), sindicoChecklistController.list);
+router.post('/checklists-acompanhamento/items/:id/questionar', authorize('SINDICO', 'SUBSINDICO'), sindicoChecklistController.questionar);
+router.get('/checklists-acompanhamento/:id', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), sindicoChecklistController.show);
 
 // Manutenções - FINANCEIRO pode visualizar, mas só SINDICO/SUBSINDICO pode criar/editar
 const manutencaoController = require('../controllers/manutencaoController');
