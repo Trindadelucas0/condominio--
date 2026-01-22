@@ -1211,29 +1211,29 @@ const reportService = {
           if (Object.keys(entriesByCostCenter).length === 0) {
             doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
               .text('Nenhuma entrada registrada com centro de custo.', 60, doc.y);
-            doc.moveDown(1);
+            doc.y += 20;
           } else {
             Object.entries(entriesByCostCenter)
               .sort((a, b) => b[1].total - a[1].total)
               .forEach(([ccName, data]) => {
-                checkPageBreak(35);
+                checkPageBreak(40);
                 const ccY = doc.y;
-                drawBox(60, ccY, 475, 25, '#f0f9ff');
+                drawBox(60, ccY, 475, 28, '#f0f9ff');
                 
                 doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary)
-                  .text(ccName, 70, ccY + 7);
+                  .text(ccName, 70, ccY + 8);
                 doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
-                  .text(`Total: ${formatCurrency(data.total)} | Recebido: ${formatCurrency(data.received)} | Qtd: ${data.count}`, 70, ccY + 18);
+                  .text(`Total: ${formatCurrency(data.total)} | Recebido: ${formatCurrency(data.received)} | Qtd: ${data.count}`, 70, ccY + 20);
                 
-                doc.y = ccY + 30;
+                doc.y = ccY + 32;
               });
           }
-          doc.moveDown(1);
+          doc.y += 18;
           
           // Saídas por centro de custo
           doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
             .text('2.2. Saídas por Centro de Custo', 60, doc.y);
-          doc.moveDown(0.5);
+          doc.y += 18;
           
           if (Object.keys(exitsByCostCenter).length === 0) {
             doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
