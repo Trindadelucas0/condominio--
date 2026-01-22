@@ -50,12 +50,13 @@ const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => 
     }
 
     // Verifica se o mês da data está fechado (e não reaberto)
+    // Se houver pelo menos um fechamento CLOSED (não reaberto), bloqueia
     const monthlyClosureService = require('./monthlyClosureService');
-    const exitMonth = new Date(exitDate).getMonth() + 1;
-    const exitYear = new Date(exitDate).getFullYear();
-    const closure = await monthlyClosureService.getClosureByMonth(condominiumId, exitMonth, exitYear);
+    const isClosed = await monthlyClosureService.isMonthClosed(condominiumId, exitDate);
     
-    if (closure && closure.status === 'CLOSED') {
+    if (isClosed) {
+      const exitMonth = new Date(exitDate).getMonth() + 1;
+      const exitYear = new Date(exitDate).getFullYear();
       throw new Error(`Não é possível criar saída financeira. O mês ${exitMonth}/${exitYear} está fechado. Reabra o mês primeiro se necessário.`);
     }
 
@@ -1052,12 +1053,13 @@ const createEntry = async (condominiumId, userId, data, ipAddress, userAgent) =>
     }
 
     // Verifica se o mês da data está fechado (e não reaberto)
+    // Se houver pelo menos um fechamento CLOSED (não reaberto), bloqueia
     const monthlyClosureService = require('./monthlyClosureService');
-    const entryMonth = new Date(entryDate).getMonth() + 1;
-    const entryYear = new Date(entryDate).getFullYear();
-    const closure = await monthlyClosureService.getClosureByMonth(condominiumId, entryMonth, entryYear);
+    const isClosed = await monthlyClosureService.isMonthClosed(condominiumId, entryDate);
     
-    if (closure && closure.status === 'CLOSED') {
+    if (isClosed) {
+      const entryMonth = new Date(entryDate).getMonth() + 1;
+      const entryYear = new Date(entryDate).getFullYear();
       throw new Error(`Não é possível criar entrada financeira. O mês ${entryMonth}/${entryYear} está fechado. Reabra o mês primeiro se necessário.`);
     }
 

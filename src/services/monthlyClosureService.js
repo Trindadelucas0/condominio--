@@ -380,37 +380,40 @@ const getClosureByMonth = async (condominiumId, month, year) => {
 // Função para verificar se mês está fechado (bloqueia edição)
 // Recebe: condominiumId, date
 // Retorna: boolean
-// NOTA: Se houver pelo menos um fechamento CLOSED (não reaberto), o mês está fechado
+// NOTA: Se houver pelo menos uma comanda REOPENED, o mês está ABERTO
+// Se houver pelo menos uma comanda CLOSED e nenhuma REOPENED, o mês está FECHADO
 const isMonthClosed = async (condominiumId, date) => {
   try {
     const month = new Date(date).getMonth() + 1;
     const year = new Date(date).getFullYear();
 
-    // Verifica se há algum fechamento CLOSED (não reaberto) para este mês
-    // Se todos foram reabertos, o mês não está fechado
-    const result = await query(
-      `SELECT COUNT(*) as total FROM monthly_closures 
-       WHERE condominium_id = $1 AND month = $2 AND year = $3 AND status = 'CLOSED'`,
+    // Busca TODOS os fechamentos do mês (pode ter múltiplas comandas)
+    const allClosuresResult = await query(
+      `SELECT status FROM monthly_closures 
+       WHERE condominium_id = $1 AND month = $2 AND year = $3`,
       [condominiumId, month, year]
     );
 
-    const closedCount = parseInt(result.rows[0].total);
+    const allClosures = allClosuresResult.rows;
     
-    // Se há fechamentos fechados, verifica se todos foram reabertos
-    if (closedCount > 0) {
-      const reopenedResult = await query(
-        `SELECT COUNT(*) as total FROM monthly_closures 
-         WHERE condominium_id = $1 AND month = $2 AND year = $3 AND status = 'REOPENED'`,
-        [condominiumId, month, year]
-      );
-      
-      const reopenedCount = parseInt(reopenedResult.rows[0].total);
-      
-      // Se todos os fechamentos foram reabertos, o mês não está fechado
-      return reopenedCount < closedCount;
+    // Se não há fechamentos, o mês está aberto
+    if (allClosures.length === 0) {
+      return false;
     }
 
-    return false;
+    // Verifica se há pelo menos uma comanda REOPENED
+    const hasReopened = allClosures.some(c => c.status === 'REOPENED');
+    
+    // Se há pelo menos uma comanda reaberta, o mês está ABERTO
+    if (hasReopened) {
+      return false; // Mês está aberto
+    }
+
+    // Se não há comandas reabertas, verifica se há pelo menos uma CLOSED
+    const hasClosed = allClosures.some(c => c.status === 'CLOSED');
+    
+    // Se há pelo menos uma comanda fechada e nenhuma reaberta, o mês está FECHADO
+    return hasClosed;
   } catch (error) {
     console.error('Erro ao verificar se mês está fechado:', error);
     return false; // Em caso de erro, não bloqueia

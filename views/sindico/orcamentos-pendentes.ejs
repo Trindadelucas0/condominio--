@@ -101,15 +101,27 @@
 
           <!-- Formulário de Aprovação -->
           <div class="border-t pt-4 mt-4">
+            <% 
+              // Define pendingQuotes no escopo do budget para usar no botão
+              let pendingQuotes = [];
+              if (budget.quotes && budget.quotes.length > 0) {
+                // Filtra apenas quotes pendentes para exibição
+                // Um quote está pendente se NÃO for APPROVED ou REJECTED
+                pendingQuotes = budget.quotes.filter(q => {
+                  const status = (q.status || '').toString().toUpperCase().trim();
+                  return status !== 'APPROVED' && status !== 'REJECTED';
+                });
+              }
+            %>
             <form method="POST" action="/sindico/orcamentos/<%= budget.id %>/aprovar" class="mb-4">
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Selecione o Orçamento para Aprovar <span class="text-red-500">*</span>
                 </label>
                 <% if (budget.quotes && budget.quotes.length > 0) { %>
-                  <div class="space-y-2">
-                    <% budget.quotes.forEach((quote) => { %>
-                      <% if (quote.status === 'PENDING') { %>
+                  <% if (pendingQuotes.length > 0) { %>
+                    <div class="space-y-2">
+                      <% pendingQuotes.forEach((quote) => { %>
                         <label class="flex items-center p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all">
                           <input
                             type="radio"
@@ -132,9 +144,32 @@
                             <% } %>
                           </div>
                         </label>
-                      <% } %>
-                    <% }); %>
-                  </div>
+                      <% }); %>
+                    </div>
+                  <% } else { %>
+                    <div class="text-sm text-yellow-600 bg-yellow-50 p-3 rounded border-2 border-yellow-300">
+                      <p class="font-semibold mb-2">⚠️ Nenhum orçamento disponível para seleção</p>
+                      <p class="text-xs text-gray-700 mt-2 mb-2">
+                        <strong>Total de orçamentos:</strong> <%= budget.quotes.length %>
+                      </p>
+                      <details class="mt-2">
+                        <summary class="cursor-pointer text-xs font-semibold text-gray-700 hover:text-gray-900">
+                          Ver detalhes dos status (clique para expandir)
+                        </summary>
+                        <div class="mt-2 p-2 bg-white rounded border border-yellow-200">
+                          <% budget.quotes.forEach((q, idx) => { %>
+                            <div class="text-xs py-1 border-b border-gray-100">
+                              <strong><%= q.supplier_name %></strong> (ID: <%= q.id %>): 
+                              <span class="<%= q.status === 'APPROVED' ? 'text-green-600' : q.status === 'REJECTED' ? 'text-red-600' : 'text-gray-600' %>">
+                                <strong><%= q.status || 'NULL/UNDEFINED' %></strong>
+                              </span>
+                              <span class="text-gray-400 ml-2">(tipo: <%= typeof q.status %>)</span>
+                            </div>
+                          <% }); %>
+                        </div>
+                      </details>
+                    </div>
+                  <% } %>
                 <% } else { %>
                   <p class="text-sm text-gray-500">Nenhum orçamento disponível para aprovação</p>
                 <% } %>
@@ -152,12 +187,14 @@
               </div>
               <button
                 type="submit"
-                class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
-                <%= (!budget.quotes || budget.quotes.length === 0 || budget.quotes.every(q => q.status !== 'PENDING')) ? 'disabled' : '' %>
+                id="approveBtn<%= budget.id %>"
+                class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition font-semibold <%= pendingQuotes.length === 0 ? 'opacity-50 cursor-not-allowed' : '' %>"
+                <%= pendingQuotes.length === 0 ? 'disabled' : '' %>
               >
                 ✓ Aprovar Orçamento Selecionado
               </button>
             </form>
+            
 
             <!-- Formulário de Rejeição -->
             <form method="POST" action="/sindico/orcamentos/<%= budget.id %>/rejeitar" class="border-t pt-4">
@@ -200,6 +237,31 @@
     // Esta função pode ser usada para atualizar algum campo se necessário
     // Por enquanto, o valor será pego do orçamento selecionado no backend
   }
+  
+  // Validação de todos os formulários de aprovação
+  document.addEventListener('DOMContentLoaded', function() {
+    const approveForms = document.querySelectorAll('form[action*="/orcamentos/"][action*="/aprovar"]');
+    
+    approveForms.forEach(function(form) {
+      form.addEventListener('submit', function(e) {
+        const selectedQuote = form.querySelector('input[name="approvedQuoteId"]:checked');
+        
+        if (!selectedQuote) {
+          e.preventDefault();
+          alert('Por favor, selecione um orçamento para aprovar.');
+          return false;
+        }
+        
+        // Confirmação antes de enviar
+        if (!confirm('Tem certeza que deseja aprovar este orçamento? Uma saída financeira será criada automaticamente.')) {
+          e.preventDefault();
+          return false;
+        }
+        
+        return true;
+      });
+    });
+  });
 </script>
 
 <%- include('../partials/footer') %>

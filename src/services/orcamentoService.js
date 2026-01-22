@@ -189,6 +189,8 @@ const getBudgetQuotes = async (budgetRequestId) => {
        ORDER BY bq.created_at ASC`,
       [budgetRequestId]
     );
+    
+    
     return result.rows;
   } catch (error) {
     console.error('Erro ao listar orçamentos:', error);

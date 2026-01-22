@@ -293,15 +293,27 @@ router.get('/orcamentos-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDI
     const orcamentoService = require('../services/orcamentoService');
     const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'PENDING_SINDICO');
     
-    // Busca orçamentos (quotes) para cada solicitação
+    // Busca orçamentos (quotes) para cada solicitação e filtra apenas os que têm quotes pendentes
+    const budgetsWithPendingQuotes = [];
     for (const budget of budgets) {
       budget.quotes = await orcamentoService.getBudgetQuotes(budget.id);
+      
+      // Verifica se há pelo menos um quote pendente (não APPROVED e não REJECTED)
+      const hasPendingQuotes = budget.quotes.some(q => {
+        const status = (q.status || '').toString().toUpperCase().trim();
+        return status !== 'APPROVED' && status !== 'REJECTED';
+      });
+      
+      // Só adiciona à lista se houver quotes pendentes
+      if (hasPendingQuotes) {
+        budgetsWithPendingQuotes.push(budget);
+      }
     }
     
     res.render('sindico/orcamentos-pendentes', {
       title: 'Orçamentos Aguardando Aprovação',
       user: req.user,
-      budgets: budgets,
+      budgets: budgetsWithPendingQuotes,
       req: req,
     });
   } catch (error) {
@@ -316,6 +328,19 @@ router.post('/orcamentos/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async
     if (!req.user.condominiumId) {
       return res.status(400).send('Usuário não está associado a um condomínio');
     }
+    
+    // Debug: verifica se approvedQuoteId foi enviado
+    console.log('[APROVAR ORÇAMENTO] Dados recebidos:', {
+      budgetRequestId: req.params.id,
+      approvedQuoteId: req.body.approvedQuoteId,
+      approvalNotes: req.body.approvalNotes,
+      body: req.body
+    });
+    
+    if (!req.body.approvedQuoteId) {
+      return res.redirect('/sindico/orcamentos-pendentes?error=' + encodeURIComponent('É necessário selecionar um orçamento para aprovar'));
+    }
+    
     const orcamentoService = require('../services/orcamentoService');
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
