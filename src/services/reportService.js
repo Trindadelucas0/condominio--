@@ -713,7 +713,7 @@ const reportService = {
             }
           });
           
-          // Garantir nome único para não sobrescrever - usando timestamp mais preciso
+          // Garantir nome único para não sobrescrever - usando múltiplas camadas de segurança
           const reportsDir = path.join(__dirname, '../../uploads/reports');
           
           // Criar diretório se não existir
@@ -721,43 +721,80 @@ const reportService = {
             fs.mkdirSync(reportsDir, { recursive: true });
           }
           
-          // Gerar nome único com timestamp preciso e ID aleatório
-          const timestamp = Date.now();
-          const randomId = Math.random().toString(36).substring(2, 9); // ID aleatório de 7 caracteres
-          const baseFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${timestamp}_${randomId}.pdf`;
+          // Função para gerar nome único garantido com múltiplos identificadores
+          const generateUniqueFileName = (counter = 0) => {
+            // Usar timestamp de alta precisão + ID aleatório + contador de processo + nanosegundos
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 9);
+            const processId = process.pid || Math.floor(Math.random() * 10000);
+            const hrtime = process.hrtime ? process.hrtime() : [0, 0];
+            const nanoseconds = hrtime[1] || Math.floor(Math.random() * 1000000000);
+            
+            // Formato: relatorio_mensal_YYYY_MM_timestamp_processId_nanoseconds_randomId_counter.pdf
+            const baseName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${timestamp}_${processId}_${nanoseconds}_${randomId}`;
+            
+            if (counter > 0) {
+              return `${baseName}_${counter}.pdf`;
+            }
+            return `${baseName}.pdf`;
+          };
           
-          // Verificar se arquivo já existe e gerar novo nome se necessário
-          let filePath = path.join(reportsDir, baseFileName);
-          let finalFileName = baseFileName;
-          let counter = 1;
-          let maxAttempts = 100; // Limite de segurança
+          // Gerar nome único e verificar
+          let finalFileName = generateUniqueFileName();
+          let filePath = path.join(reportsDir, finalFileName);
+          let counter = 0;
+          const maxAttempts = 100;
           
+          // Garantir que o arquivo não existe - tentar até encontrar nome único
           while (fs.existsSync(filePath) && counter < maxAttempts) {
-            const newFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${timestamp}_${randomId}_${counter}.pdf`;
-            filePath = path.join(reportsDir, newFileName);
-            finalFileName = newFileName;
             counter++;
-          }
-          
-          if (counter >= maxAttempts) {
-            // Se chegou no limite, usar timestamp adicional
-            const extraTimestamp = Date.now();
-            finalFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${timestamp}_${extraTimestamp}.pdf`;
+            finalFileName = generateUniqueFileName(counter);
             filePath = path.join(reportsDir, finalFileName);
           }
           
-          // Verificação final de segurança
+          // Se ainda existir após todas as tentativas, usar UUID completo
           if (fs.existsSync(filePath)) {
-            // Última tentativa com timestamp único
-            const finalTimestamp = Date.now() + Math.random() * 1000;
+            // Gerar UUID v4 completo
+            const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+              const r = Math.random() * 16 | 0;
+              const v = c === 'x' ? r : (r & 0x3 | 0x8);
+              return v.toString(16);
+            });
+            finalFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${uuid.replace(/-/g, '')}.pdf`;
+            filePath = path.join(reportsDir, finalFileName);
+          }
+          
+          // Verificação final de segurança antes de criar o stream
+          if (fs.existsSync(filePath)) {
+            // Última tentativa com timestamp único garantido
+            const finalTimestamp = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}_${process.hrtime ? process.hrtime()[1] : Math.random()}`;
             finalFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${finalTimestamp}.pdf`;
             filePath = path.join(reportsDir, finalFileName);
+            
+            // Se ainda existir, lançar erro (caso extremamente raro)
+            if (fs.existsSync(filePath)) {
+              throw new Error(`Erro crítico: Não foi possível gerar nome de arquivo único após ${maxAttempts + 2} tentativas.`);
+            }
           }
           
-          console.log(`Gerando relatório com nome único: ${finalFileName}`);
+          console.log(`📄 Gerando relatório com nome único: ${finalFileName} (tentativas: ${counter})`);
           
-          const stream = fs.createWriteStream(filePath);
+          // Verificação final antes de criar o stream (proteção contra race condition)
+          if (fs.existsSync(filePath)) {
+            // Se por algum motivo o arquivo foi criado entre a verificação e agora, gerar novo nome
+            const emergencyTimestamp = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+            finalFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_EMERGENCY_${emergencyTimestamp}.pdf`;
+            filePath = path.join(reportsDir, finalFileName);
+            console.log(`AVISO: Arquivo detectado no ultimo momento, usando nome de emergencia: ${finalFileName}`);
+          }
+          
+          // Criar stream de escrita (modo 'wx' garante que falha se arquivo existir)
+          // Mas como já verificamos, vamos usar modo normal
+          const stream = fs.createWriteStream(filePath, { flags: 'w' });
           doc.pipe(stream);
+          
+          // Log adicional para debug
+          console.log(`OK: Arquivo sera criado em: ${filePath}`);
           
           // Cores do tema
           const colors = {
@@ -961,110 +998,251 @@ const reportService = {
           
           doc.y = statsY + statsHeight + 20;
           
-          // ========== GRÁFICOS VISUAIS ==========
-          checkPageBreak(200);
+          // ========== GRÁFICOS VISUAIS PROFISSIONAIS ==========
+          checkPageBreak(250);
           const chartsY = doc.y;
           doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
-            .text('1.4. ANÁLISE VISUAL', 50, chartsY);
-          drawLine(chartsY + 25, colors.primary, 200);
+            .text('1.4. ANÁLISE VISUAL COM GRÁFICOS', 50, chartsY);
+          drawLine(chartsY + 25, colors.primary, 350);
           doc.y = chartsY + 35;
           
-          // Gráfico de Barras - Entradas vs Saídas
+          // Gráfico de Barras Vertical Profissional - Entradas vs Saídas
           const chartY = doc.y;
-          const chartHeight = 120;
+          const chartHeight = 180;
           const chartWidth = 495;
           const chartBoxY = chartY;
           
-          drawBox(50, chartBoxY, chartWidth, chartHeight, '#ffffff');
+          // Box do gráfico com sombra visual
+          drawBox(50, chartBoxY, chartWidth, chartHeight, '#fafafa');
+          drawBox(52, chartBoxY + 2, chartWidth - 4, chartHeight - 4, '#ffffff');
           
-          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
-            .text('Comparação Entradas vs Saídas', 60, chartBoxY + 10);
+          doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('Gráfico 1: Comparação Entradas vs Saídas', 60, chartBoxY + 15);
           
           // Calcular valores para o gráfico
-          const maxValue = Math.max(totalEntriesReceived, totalExitsPaid, 1000);
-          const barWidth = 200;
-          const barStartX = 100;
-          const barStartY = chartBoxY + 40;
-          const maxBarHeight = 60;
+          const maxValue = Math.max(totalEntriesReceived, totalExitsPaid, balance > 0 ? balance : 0, 1000);
+          const chartAreaX = 80;
+          const chartAreaY = chartBoxY + 50;
+          const chartAreaWidth = 435;
+          const chartAreaHeight = 100;
+          const maxBarHeight = chartAreaHeight - 20;
           
-          // Barra de Entradas
-          const entriesBarHeight = (totalEntriesReceived / maxValue) * maxBarHeight;
-          const entriesBarY = barStartY + maxBarHeight - entriesBarHeight;
-          doc.rect(barStartX, entriesBarY, barWidth, entriesBarHeight)
-            .fillColor(colors.success).fill();
-          doc.rect(barStartX, entriesBarY, barWidth, entriesBarHeight)
-            .strokeColor(colors.success).lineWidth(1).stroke();
+          // Eixos do gráfico
+          // Linha horizontal (eixo X)
+          doc.moveTo(chartAreaX, chartAreaY + maxBarHeight + 10)
+            .lineTo(chartAreaX + chartAreaWidth, chartAreaY + maxBarHeight + 10)
+            .strokeColor('#cccccc').lineWidth(1).stroke();
           
-          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.success)
-            .text('ENTRADAS', barStartX, entriesBarY - 15, { width: barWidth, align: 'center' });
-          doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
-            .text(formatCurrency(totalEntriesReceived), barStartX, entriesBarY + entriesBarHeight + 5, { width: barWidth, align: 'center' });
+          // Linha vertical (eixo Y)
+          doc.moveTo(chartAreaX, chartAreaY)
+            .lineTo(chartAreaX, chartAreaY + maxBarHeight + 10)
+            .strokeColor('#cccccc').lineWidth(1).stroke();
           
-          // Barra de Saídas
-          const exitsBarHeight = (totalExitsPaid / maxValue) * maxBarHeight;
-          const exitsBarY = barStartY + maxBarHeight - exitsBarHeight;
-          doc.rect(barStartX + barWidth + 20, exitsBarY, barWidth, exitsBarHeight)
-            .fillColor(colors.danger).fill();
-          doc.rect(barStartX + barWidth + 20, exitsBarY, barWidth, exitsBarHeight)
-            .strokeColor(colors.danger).lineWidth(1).stroke();
-          
-          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.danger)
-            .text('SAÍDAS', barStartX + barWidth + 20, exitsBarY - 15, { width: barWidth, align: 'center' });
-          doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
-            .text(formatCurrency(totalExitsPaid), barStartX + barWidth + 20, exitsBarY + exitsBarHeight + 5, { width: barWidth, align: 'center' });
-          
-          // Saldo
-          if (balance > 0) {
-            const balanceBarHeight = (balance / maxValue) * maxBarHeight;
-            const balanceBarY = barStartY + maxBarHeight - balanceBarHeight;
-            doc.rect(barStartX + (barWidth * 2) + 40, balanceBarY, barWidth, balanceBarHeight)
-              .fillColor(colors.success).fill();
-            doc.rect(barStartX + (barWidth * 2) + 40, balanceBarY, barWidth, balanceBarHeight)
-              .strokeColor(colors.success).lineWidth(1).stroke();
+          // Grade horizontal (linhas de referência)
+          for (let i = 0; i <= 4; i++) {
+            const gridY = chartAreaY + (maxBarHeight / 4) * i;
+            doc.moveTo(chartAreaX, gridY)
+              .lineTo(chartAreaX + chartAreaWidth, gridY)
+              .strokeColor('#e5e7eb').lineWidth(0.5).stroke();
             
-            doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.success)
-              .text('SALDO', barStartX + (barWidth * 2) + 40, balanceBarY - 15, { width: barWidth, align: 'center' });
-            doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
-              .text(formatCurrency(balance), barStartX + (barWidth * 2) + 40, balanceBarY + balanceBarHeight + 5, { width: barWidth, align: 'center' });
+            // Valores no eixo Y
+            const gridValue = maxValue - (maxValue / 4) * i;
+            doc.fontSize(7).font('Helvetica').fillColor('#6b7280')
+              .text(formatCurrency(gridValue), chartAreaX - 75, gridY - 3, { width: 70, align: 'right' });
           }
           
-          doc.y = chartBoxY + chartHeight + 20;
+          // Barra de Entradas (com gradiente visual)
+          const entriesBarHeight = Math.max((totalEntriesReceived / maxValue) * maxBarHeight, 5);
+          const entriesBarY = chartAreaY + maxBarHeight + 10 - entriesBarHeight;
+          const entriesBarX = chartAreaX + 40;
+          const entriesBarWidth = 100;
           
-          // Gráfico de Pizza Simples - Distribuição por Categoria (Saídas)
+          // Barra principal
+          doc.rect(entriesBarX, entriesBarY, entriesBarWidth, entriesBarHeight)
+            .fillColor(colors.success).fill();
+          // Borda
+          doc.rect(entriesBarX, entriesBarY, entriesBarWidth, entriesBarHeight)
+            .strokeColor('#059669').lineWidth(1.5).stroke();
+          // Destaque superior (simula gradiente)
+          doc.rect(entriesBarX, entriesBarY, entriesBarWidth, Math.min(entriesBarHeight * 0.3, 10))
+            .fillColor('#34d399').fill();
+          
+          // Label e valor
+          doc.fontSize(10).font('Helvetica-Bold').fillColor(colors.success)
+            .text('ENTRADAS', entriesBarX, entriesBarY - 18, { width: entriesBarWidth, align: 'center' });
+          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
+            .text(formatCurrency(totalEntriesReceived), entriesBarX, entriesBarY + entriesBarHeight + 5, { width: entriesBarWidth, align: 'center' });
+          
+          // Barra de Saídas
+          const exitsBarHeight = Math.max((totalExitsPaid / maxValue) * maxBarHeight, 5);
+          const exitsBarY = chartAreaY + maxBarHeight + 10 - exitsBarHeight;
+          const exitsBarX = entriesBarX + entriesBarWidth + 40;
+          
+          // Barra principal
+          doc.rect(exitsBarX, exitsBarY, entriesBarWidth, exitsBarHeight)
+            .fillColor(colors.danger).fill();
+          // Borda
+          doc.rect(exitsBarX, exitsBarY, entriesBarWidth, exitsBarHeight)
+            .strokeColor('#dc2626').lineWidth(1.5).stroke();
+          // Destaque superior
+          doc.rect(exitsBarX, exitsBarY, entriesBarWidth, Math.min(exitsBarHeight * 0.3, 10))
+            .fillColor('#f87171').fill();
+          
+          // Label e valor
+          doc.fontSize(10).font('Helvetica-Bold').fillColor(colors.danger)
+            .text('SAÍDAS', exitsBarX, exitsBarY - 18, { width: entriesBarWidth, align: 'center' });
+          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
+            .text(formatCurrency(totalExitsPaid), exitsBarX, exitsBarY + exitsBarHeight + 5, { width: entriesBarWidth, align: 'center' });
+          
+          // Barra de Saldo (se positivo)
+          if (balance > 0) {
+            const balanceBarHeight = Math.max((balance / maxValue) * maxBarHeight, 5);
+            const balanceBarY = chartAreaY + maxBarHeight + 10 - balanceBarHeight;
+            const balanceBarX = exitsBarX + entriesBarWidth + 40;
+            
+            // Barra principal
+            doc.rect(balanceBarX, balanceBarY, entriesBarWidth, balanceBarHeight)
+              .fillColor('#10b981').fill();
+            // Borda
+            doc.rect(balanceBarX, balanceBarY, entriesBarWidth, balanceBarHeight)
+              .strokeColor('#059669').lineWidth(1.5).stroke();
+            // Destaque superior
+            doc.rect(balanceBarX, balanceBarY, entriesBarWidth, Math.min(balanceBarHeight * 0.3, 10))
+              .fillColor('#34d399').fill();
+            
+            // Label e valor
+            doc.fontSize(10).font('Helvetica-Bold').fillColor('#059669')
+              .text('SALDO', balanceBarX, balanceBarY - 18, { width: entriesBarWidth, align: 'center' });
+            doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
+              .text(formatCurrency(balance), balanceBarX, balanceBarY + balanceBarHeight + 5, { width: entriesBarWidth, align: 'center' });
+          }
+          
+          doc.y = chartBoxY + chartHeight + 25;
+          
+          // Gráfico de Barras Horizontais Profissional - Distribuição por Categoria
           if (Object.keys(exitsByCategory).length > 0) {
-            checkPageBreak(150);
+            checkPageBreak(180);
             const pieChartY = doc.y;
-            const pieChartHeight = 100;
-            drawBox(50, pieChartY, 495, pieChartHeight, '#ffffff');
+            const pieChartHeight = 150;
             
-            doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
-              .text('Distribuição de Saídas por Categoria', 60, pieChartY + 10);
+            // Box do gráfico
+            drawBox(50, pieChartY, 495, pieChartHeight, '#fafafa');
+            drawBox(52, pieChartY + 2, 491, pieChartHeight - 4, '#ffffff');
             
-            // Criar gráfico de barras horizontais para categorias
-            const categoryColors = [colors.danger, colors.warning, colors.secondary, '#8b5cf6', '#ec4899'];
+            doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.dark)
+              .text('Gráfico 2: Distribuição de Saídas por Categoria', 60, pieChartY + 15);
+            
+            // Criar gráfico de barras horizontais melhorado
+            const categoryColors = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
             let catIndex = 0;
-            let catBarY = pieChartY + 35;
-            const catBarMaxWidth = 400;
-            const catBarHeight = 8;
+            let catBarY = pieChartY + 45;
+            const catBarMaxWidth = 380;
+            const catBarHeight = 16;
+            const catBarSpacing = 20;
             
             Object.entries(exitsByCategory)
               .sort((a, b) => b[1].total - a[1].total)
               .slice(0, 5) // Top 5 categorias
               .forEach(([cat, data]) => {
+                const percentage = (data.total / totalExits) * 100;
                 const catBarWidth = (data.total / totalExits) * catBarMaxWidth;
                 const catColor = categoryColors[catIndex % categoryColors.length];
                 
-                doc.rect(60, catBarY, catBarWidth, catBarHeight)
+                // Barra de fundo (cinza claro)
+                doc.rect(70, catBarY, catBarMaxWidth, catBarHeight)
+                  .fillColor('#f3f4f6').fill();
+                
+                // Barra de valor (colorida)
+                doc.rect(70, catBarY, catBarWidth, catBarHeight)
                   .fillColor(catColor).fill();
                 
-                doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
-                  .text(`${cat}: ${formatCurrency(data.total)} (${((data.total / totalExits) * 100).toFixed(1)}%)`, 60, catBarY - 2);
+                // Borda da barra
+                doc.rect(70, catBarY, catBarWidth, catBarHeight)
+                  .strokeColor(catColor).lineWidth(0.5).stroke();
                 
-                catBarY += 15;
+                // Label da categoria
+                doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
+                  .text(cat, 70, catBarY + 4, { width: 120 });
+                
+                // Valor e percentual dentro da barra
+                if (catBarWidth > 150) {
+                  doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff')
+                    .text(`${formatCurrency(data.total)} (${percentage.toFixed(1)}%)`, 75, catBarY + 5);
+                } else {
+                  // Se a barra for pequena, colocar o texto fora
+                  doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+                    .text(`${formatCurrency(data.total)} (${percentage.toFixed(1)}%)`, 75 + catBarWidth + 5, catBarY + 5);
+                }
+                
+                catBarY += catBarSpacing;
                 catIndex++;
               });
             
-            doc.y = pieChartY + pieChartHeight + 15;
+            // Legenda de cores (se houver mais de uma categoria)
+            if (Object.keys(exitsByCategory).length > 1) {
+              const legendY = pieChartY + pieChartHeight - 25;
+              doc.fontSize(8).font('Helvetica').fillColor('#6b7280')
+                .text('Legenda: Cada barra representa o valor total gasto em cada categoria', 70, legendY);
+            }
+            
+            doc.y = pieChartY + pieChartHeight + 20;
+          }
+          
+          // Gráfico de Comparação Temporal (se houver dados do mês anterior)
+          if (prevEntries > 0 || prevExits > 0) {
+            checkPageBreak(180);
+            const temporalChartY = doc.y;
+            const temporalChartHeight = 150;
+            
+            drawBox(50, temporalChartY, 495, temporalChartHeight, '#fafafa');
+            drawBox(52, temporalChartY + 2, 491, temporalChartHeight - 4, '#ffffff');
+            
+            doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.dark)
+              .text('Gráfico 3: Evolução Mensal (Comparação)', 60, temporalChartY + 15);
+            
+            // Gráfico de linha simples com duas barras lado a lado
+            const tempChartAreaX = 80;
+            const tempChartAreaY = temporalChartY + 45;
+            const tempChartAreaWidth = 400;
+            const tempChartAreaHeight = 80;
+            const tempMaxValue = Math.max(prevEntries, prevExits, totalEntriesReceived, totalExitsPaid, 1000);
+            const tempMaxBarHeight = tempChartAreaHeight - 10;
+            
+            // Mês anterior
+            const prevEntriesBar = Math.max((prevEntries / tempMaxValue) * tempMaxBarHeight, 3);
+            const prevExitsBar = Math.max((prevExits / tempMaxValue) * tempMaxBarHeight, 3);
+            const prevBarX = tempChartAreaX + 50;
+            const prevBarWidth = 60;
+            
+            doc.rect(prevBarX, tempChartAreaY + tempMaxBarHeight - prevEntriesBar, prevBarWidth, prevEntriesBar)
+              .fillColor('#93c5fd').fill();
+            doc.rect(prevBarX, tempChartAreaY + tempMaxBarHeight - prevExitsBar, prevBarWidth, prevExitsBar)
+              .fillColor('#fca5a5').fill();
+            
+            doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+              .text(`${prevMonth}/${prevYear}`, prevBarX, tempChartAreaY + tempMaxBarHeight + 5, { width: prevBarWidth, align: 'center' });
+            
+            // Mês atual
+            const currEntriesBar = Math.max((totalEntriesReceived / tempMaxValue) * tempMaxBarHeight, 3);
+            const currExitsBar = Math.max((totalExitsPaid / tempMaxValue) * tempMaxBarHeight, 3);
+            const currBarX = prevBarX + prevBarWidth + 80;
+            
+            doc.rect(currBarX, tempChartAreaY + tempMaxBarHeight - currEntriesBar, prevBarWidth, currEntriesBar)
+              .fillColor(colors.success).fill();
+            doc.rect(currBarX, tempChartAreaY + tempMaxBarHeight - currExitsBar, prevBarWidth, currExitsBar)
+              .fillColor(colors.danger).fill();
+            
+            doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+              .text(`${month}/${year}`, currBarX, tempChartAreaY + tempMaxBarHeight + 5, { width: prevBarWidth, align: 'center' });
+            
+            // Legenda
+            const legendY = tempChartAreaY - 20;
+            doc.fontSize(8).font('Helvetica').fillColor(colors.success)
+              .text('Entradas', tempChartAreaX + 200, legendY);
+            doc.fontSize(8).font('Helvetica').fillColor(colors.danger)
+              .text('Saídas', tempChartAreaX + 280, legendY);
+            
+            doc.y = temporalChartY + temporalChartHeight + 20;
           }
           
           // ========== EXPLICAÇÃO DO CÁLCULO DO SALDO ==========
@@ -1096,7 +1274,7 @@ const reportService = {
           if (totalExitsApproved > 0) {
             calcY += 15;
             doc.font('Helvetica').fontSize(9).fillColor(colors.warning)
-              .text(`⚠ Observação: Existem ${formatCurrency(totalExitsApproved)} em saídas aprovadas que ainda não foram pagas.`, 70, calcY);
+              .text(`ATENCAO: Existem ${formatCurrency(totalExitsApproved)} em saidas aprovadas que ainda nao foram pagas.`, 70, calcY);
           }
           
           doc.y = calculationY + calculationHeight + 20;
@@ -1380,24 +1558,24 @@ const reportService = {
               let infoY = entryY + 25;
               
               // Primeira linha
-              doc.text(`📅 Data da Entrada: ${formatDate(entry.entry_date)}`, 60, infoY);
+              doc.text(`Data da Entrada: ${formatDate(entry.entry_date)}`, 60, infoY);
               doc.fillColor(colors.success)
-                .text(`💰 Valor: ${formatCurrency(entry.amount)}`, 300, infoY);
+                .text(`Valor: ${formatCurrency(entry.amount)}`, 300, infoY);
               infoY += 12;
               
               // Segunda linha
               doc.fillColor(colors.dark)
-                .text(`📁 Categoria: ${entry.category || 'N/A'}`, 60, infoY);
+                .text(`Categoria: ${entry.category || 'N/A'}`, 60, infoY);
               if (entry.cost_center_name) {
-                doc.text(`🏢 Centro de Custo: ${entry.cost_center_name}`, 300, infoY);
+                doc.text(`Centro de Custo: ${entry.cost_center_name}`, 300, infoY);
               }
               infoY += 12;
               
               // Terceira linha - Status
               const statusColor = entry.received ? colors.success : colors.warning;
               const statusText = entry.received 
-                ? `✅ RECEBIDO em ${formatDate(entry.received_at)}` 
-                : '⏳ PENDENTE DE RECEBIMENTO';
+                ? `RECEBIDO em ${formatDate(entry.received_at)}` 
+                : 'PENDENTE DE RECEBIMENTO';
               doc.fillColor(statusColor).font('Helvetica-Bold')
                 .text(`Status: ${statusText}`, 60, infoY);
               infoY += 12;
@@ -1415,7 +1593,7 @@ const reportService = {
               // Quinta linha - Observações
               if (entry.review_notes) {
                 doc.fontSize(7).fillColor('#6b7280')
-                  .text(`Observações: ${entry.review_notes}`, 60, infoY, { width: 475 });
+                  .text(`Observacoes: ${entry.review_notes}`, 60, infoY, { width: 475 });
               }
               
               doc.y = entryY + entryHeight + 10;
@@ -1478,20 +1656,20 @@ const reportService = {
               
               // Status
               let statusColor = colors.dark;
-              let statusSymbol = '⏳';
+              let statusSymbol = 'PEND';
               if (exit.payment_status === 'PAID') {
                 statusColor = colors.success;
-                statusSymbol = '✓';
+                statusSymbol = 'PAGO';
               } else if (exit.payment_status === 'APPROVED') {
                 statusColor = colors.secondary;
-                statusSymbol = '✓';
+                statusSymbol = 'APROV';
               } else if (exit.payment_status === 'REJECTED') {
                 statusColor = colors.danger;
-                statusSymbol = '✗';
+                statusSymbol = 'REJ';
               }
               
               doc.fillColor(statusColor)
-                .text(`${statusSymbol} ${exit.payment_status || 'Pendente'}`, 445, rowY + 4, { width: 90 });
+                .text(`${statusSymbol}`, 445, rowY + 4, { width: 90 });
               
               doc.y = rowY + rowHeight + 2;
               doc.fillColor('#000000');
@@ -1538,16 +1716,16 @@ const reportService = {
               let infoY = exitY + 25;
               
               // Primeira linha
-              doc.text(`📅 Data da Saída: ${formatDate(exit.exit_date)}`, 60, infoY);
+              doc.text(`Data da Saida: ${formatDate(exit.exit_date)}`, 60, infoY);
               doc.fillColor(colors.danger)
-                .text(`💰 Valor: ${formatCurrency(exit.amount)}`, 300, infoY);
+                .text(`Valor: ${formatCurrency(exit.amount)}`, 300, infoY);
               infoY += 12;
               
               // Segunda linha
               doc.fillColor(colors.dark)
-                .text(`📁 Categoria: ${exit.category || 'N/A'}`, 60, infoY);
+                .text(`Categoria: ${exit.category || 'N/A'}`, 60, infoY);
               if (exit.cost_center_name) {
-                doc.text(`🏢 Centro de Custo: ${exit.cost_center_name}`, 300, infoY);
+                doc.text(`Centro de Custo: ${exit.cost_center_name}`, 300, infoY);
               }
               infoY += 12;
               
@@ -1556,16 +1734,16 @@ const reportService = {
               let statusText = exit.payment_status || 'Pendente';
               if (exit.payment_status === 'PAID') {
                 statusColor = colors.success;
-                statusText = `✅ PAGO em ${formatDate(exit.paid_at)}`;
+                statusText = `PAGO em ${formatDate(exit.paid_at)}`;
               } else if (exit.payment_status === 'APPROVED') {
                 statusColor = colors.secondary;
-                statusText = `✓ APROVADO por ${exit.approved_by_name || 'N/A'} em ${formatDate(exit.approved_at)}`;
+                statusText = `APROVADO por ${exit.approved_by_name || 'N/A'} em ${formatDate(exit.approved_at)}`;
               } else if (exit.payment_status === 'REJECTED') {
                 statusColor = colors.danger;
-                statusText = '✗ REJEITADO';
+                statusText = 'REJEITADO';
               } else {
                 statusColor = colors.warning;
-                statusText = '⏳ AGUARDANDO APROVAÇÃO';
+                statusText = 'AGUARDANDO APROVACAO';
               }
               
               doc.fillColor(statusColor).font('Helvetica-Bold')
@@ -1575,12 +1753,12 @@ const reportService = {
               // Quarta linha - Informações adicionais
               if (exit.bill_name) {
                 doc.font('Helvetica').fillColor(colors.dark)
-                  .text(`💳 Conta Relacionada: ${exit.bill_name} (${exit.bill_type || 'N/A'})`, 60, infoY);
+                  .text(`Conta Relacionada: ${exit.bill_name} (${exit.bill_type || 'N/A'})`, 60, infoY);
                 infoY += 12;
               }
               
               if (exit.requires_approval) {
-                doc.text(`🔐 Requer Aprovação: Sim (Limite: ${formatCurrency(exit.approval_limit || 0)})`, 60, infoY);
+                doc.text(`Requer Aprovacao: Sim (Limite: ${formatCurrency(exit.approval_limit || 0)})`, 60, infoY);
                 infoY += 12;
               }
               
@@ -1592,7 +1770,7 @@ const reportService = {
               
               // Sexta linha - Método de pagamento (se pago)
               if (exit.payment_status === 'PAID' && exit.payment_method) {
-                doc.text(`Método de Pagamento: ${exit.payment_method}`, 60, infoY);
+                doc.text(`Metodo de Pagamento: ${exit.payment_method}`, 60, infoY);
                 if (exit.payment_details) {
                   doc.text(` | Detalhes: ${exit.payment_details}`, 300, infoY);
                 }
@@ -1677,22 +1855,22 @@ const reportService = {
           doc.font('Helvetica-Bold').text('Comparação com Mês Anterior:', 60, trendY);
           trendY += 12;
           
-          const entriesTrend = entriesVariation >= 0 ? '📈 AUMENTO' : '📉 REDUÇÃO';
+          const entriesTrend = entriesVariation >= 0 ? 'AUMENTO' : 'REDUCAO';
           const entriesTrendColor = entriesVariation >= 0 ? colors.success : colors.danger;
           doc.fillColor(entriesTrendColor)
-            .text(`  Entradas: ${entriesTrend} de ${Math.abs(entriesVariation).toFixed(2)}% (${formatCurrency(prevEntries)} → ${formatCurrency(totalEntriesReceived)})`, 70, trendY);
+            .text(`  Entradas: ${entriesTrend} de ${Math.abs(entriesVariation).toFixed(2)}% (${formatCurrency(prevEntries)} -> ${formatCurrency(totalEntriesReceived)})`, 70, trendY);
           trendY += 12;
           
-          const exitsTrend = exitsVariation >= 0 ? '📈 AUMENTO' : '📉 REDUÇÃO';
+          const exitsTrend = exitsVariation >= 0 ? 'AUMENTO' : 'REDUCAO';
           const exitsTrendColor = exitsVariation >= 0 ? colors.danger : colors.success;
           doc.fillColor(exitsTrendColor)
-            .text(`  Saídas: ${exitsTrend} de ${Math.abs(exitsVariation).toFixed(2)}% (${formatCurrency(prevExits)} → ${formatCurrency(totalExitsPaid)})`, 70, trendY);
+            .text(`  Saidas: ${exitsTrend} de ${Math.abs(exitsVariation).toFixed(2)}% (${formatCurrency(prevExits)} -> ${formatCurrency(totalExitsPaid)})`, 70, trendY);
           trendY += 12;
           
           // Análise do saldo
           const balanceChange = balance - (prevEntries - prevExits);
           if (balanceChange !== 0) {
-            const balanceTrend = balanceChange >= 0 ? '📈 MELHOROU' : '📉 PIOROU';
+            const balanceTrend = balanceChange >= 0 ? 'MELHOROU' : 'PIOROU';
             const balanceTrendColor = balanceChange >= 0 ? colors.success : colors.danger;
             doc.fillColor(balanceTrendColor)
               .text(`  Saldo: ${balanceTrend} em ${formatCurrency(Math.abs(balanceChange))}`, 70, trendY);
@@ -1713,34 +1891,34 @@ const reportService = {
           doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
           let noteY = notesY + 30;
           
-          doc.text('📋 Informações Gerais:', 60, noteY);
+          doc.font('Helvetica-Bold').text('INFORMACOES GERAIS:', 60, noteY);
           noteY += 12;
-          doc.text('  • Este relatório foi gerado automaticamente pelo sistema de gestão condominial.', 70, noteY);
+          doc.font('Helvetica').text('  • Este relatorio foi gerado automaticamente pelo sistema de gestao condominial.', 70, noteY);
           noteY += 10;
-          doc.text('  • Todos os valores estão em Reais (R$).', 70, noteY);
+          doc.text('  • Todos os valores estao em Reais (R$).', 70, noteY);
           noteY += 10;
-          doc.text('  • O saldo do mês considera apenas entradas recebidas e saídas pagas.', 70, noteY);
+          doc.text('  • O saldo do mes considera apenas entradas recebidas e saidas pagas.', 70, noteY);
           noteY += 15;
           
           // Alertas importantes
           if (totalExitsApproved > 0 || totalEntriesPending > 0 || totalExitsPending > 0) {
             doc.font('Helvetica-Bold').fillColor(colors.warning)
-              .text('⚠️ ATENÇÕES IMPORTANTES:', 60, noteY);
+              .text('ATENCOES IMPORTANTES:', 60, noteY);
             noteY += 12;
             
             if (totalExitsApproved > 0) {
-              doc.fillColor(colors.warning)
-                .text(`  • Existem ${exits.filter(e => e.payment_status === 'APPROVED').length} saída(s) aprovada(s) no valor de ${formatCurrency(totalExitsApproved)} que ainda não foram pagas.`, 70, noteY);
+              doc.font('Helvetica').fillColor(colors.warning)
+                .text(`  • Existem ${exits.filter(e => e.payment_status === 'APPROVED').length} saida(s) aprovada(s) no valor de ${formatCurrency(totalExitsApproved)} que ainda nao foram pagas.`, 70, noteY);
               noteY += 10;
             }
             if (totalEntriesPending > 0) {
               doc.fillColor(colors.warning)
-                .text(`  • Existem ${entries.filter(e => !e.received && e.review_status === 'APPROVED').length} entrada(s) pendente(s) no valor de ${formatCurrency(totalEntriesPending)} que ainda não foram recebidas.`, 70, noteY);
+                .text(`  • Existem ${entries.filter(e => !e.received && e.review_status === 'APPROVED').length} entrada(s) pendente(s) no valor de ${formatCurrency(totalEntriesPending)} que ainda nao foram recebidas.`, 70, noteY);
               noteY += 10;
             }
             if (totalExitsPending > 0) {
               doc.fillColor(colors.warning)
-                .text(`  • Existem ${exits.filter(e => e.payment_status === 'PENDING').length} saída(s) pendente(s) no valor de ${formatCurrency(totalExitsPending)} aguardando aprovação.`, 70, noteY);
+                .text(`  • Existem ${exits.filter(e => e.payment_status === 'PENDING').length} saida(s) pendente(s) no valor de ${formatCurrency(totalExitsPending)} aguardando aprovacao.`, 70, noteY);
               noteY += 10;
             }
             noteY += 5;
@@ -1748,30 +1926,30 @@ const reportService = {
           
           // Recomendações
           doc.font('Helvetica-Bold').fillColor(colors.primary)
-            .text('💡 Recomendações:', 60, noteY);
+            .text('RECOMENDACOES:', 60, noteY);
           noteY += 12;
           
           if (balance < 0) {
             doc.font('Helvetica').fillColor(colors.danger)
-              .text('  • O saldo está negativo. Considere revisar as despesas e aumentar as receitas.', 70, noteY);
+              .text('  • O saldo esta negativo. Considere revisar as despesas e aumentar as receitas.', 70, noteY);
             noteY += 10;
           }
           
           if (totalExitsApproved > balance && balance > 0) {
             doc.font('Helvetica').fillColor(colors.warning)
-              .text('  • As saídas aprovadas superam o saldo atual. Planeje o fluxo de caixa com cuidado.', 70, noteY);
+              .text('  • As saidas aprovadas superam o saldo atual. Planeje o fluxo de caixa com cuidado.', 70, noteY);
             noteY += 10;
           }
           
           if (entriesVariation < -10) {
             doc.font('Helvetica').fillColor(colors.warning)
-              .text('  • As entradas diminuíram significativamente em relação ao mês anterior. Verifique a cobrança de taxas.', 70, noteY);
+              .text('  • As entradas diminuíram significativamente em relacao ao mes anterior. Verifique a cobranca de taxas.', 70, noteY);
             noteY += 10;
           }
           
           if (exitsVariation > 20) {
             doc.font('Helvetica').fillColor(colors.warning)
-              .text('  • As saídas aumentaram significativamente. Revise os gastos para identificar possíveis otimizações.', 70, noteY);
+              .text('  • As saidas aumentaram significativamente. Revise os gastos para identificar possiveis otimizacoes.', 70, noteY);
           }
           
           doc.y = notesY + notesHeight + 15;
