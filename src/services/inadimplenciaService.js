@@ -94,24 +94,27 @@ const listApartments = async (condominiumId, filters = {}) => {
   }
 };
 
-// Função para criar taxa mensal
+// Função para criar ou atualizar taxa mensal
 const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgent) => {
   try {
-    const { apartmentId, month, year, amount, dueDate } = data;
+    const { apartmentId, month, year, amount, dueDate, manualLateFee, manualInterest } = data;
 
     if (!apartmentId || !month || !year || !amount || !dueDate) {
       throw new Error('Todos os campos são obrigatórios');
     }
 
-    // Verifica se já existe
+    // Verifica se já existe - se existir, atualiza ao invés de criar nova
     const existingResult = await query(
       `SELECT * FROM monthly_fees 
        WHERE apartment_id = $1 AND month = $2 AND year = $3`,
       [apartmentId, month, year]
     );
 
-    if (existingResult.rows.length > 0) {
-      throw new Error('Taxa já cadastrada para este apartamento/mês/ano');
+    const existingFee = existingResult.rows.length > 0 ? existingResult.rows[0] : null;
+    
+    // Se já existe e está paga, não permite editar
+    if (existingFee && existingFee.paid) {
+      throw new Error('Taxa já foi paga e não pode ser editada');
     }
 
     // Busca dados do apartamento para descrição da entrada
@@ -129,111 +132,131 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
       ? `Apt ${apartment.number} - Bloco ${apartment.block}` 
       : `Apt ${apartment.number}`;
 
-    // Verifica se há taxas em atraso (inadimplência) para este apartamento
-    // Se houver, calcula multa e juros e adiciona ao valor da nova taxa
-    const overdueFeesResult = await query(
-      `SELECT id, amount, due_date, late_fee, interest, days_overdue
-       FROM monthly_fees 
-       WHERE apartment_id = $1 
-       AND condominium_id = $2 
-       AND paid = FALSE 
-       AND due_date < CURRENT_DATE
-       ORDER BY due_date ASC`,
-      [apartmentId, condominiumId]
-    );
-
-    const overdueFees = overdueFeesResult.rows;
-    let totalOverdueAmount = 0;
-    let totalLateFee = 0;
-    let totalInterest = 0;
-
-    // Calcula multa e juros das taxas em atraso
-    if (overdueFees.length > 0) {
-      for (const overdueFee of overdueFees) {
-        // Atualiza dias em atraso
-        await updateOverdueDays(overdueFee.id);
-        
-        // Busca a taxa atualizada com multa e juros
-        const updatedOverdueResult = await query(
-          `SELECT amount, late_fee, interest FROM monthly_fees WHERE id = $1`,
-          [overdueFee.id]
-        );
-        
-        if (updatedOverdueResult.rows.length > 0) {
-          const updated = updatedOverdueResult.rows[0];
-          totalOverdueAmount += parseFloat(updated.amount || 0);
-          totalLateFee += parseFloat(updated.late_fee || 0);
-          totalInterest += parseFloat(updated.interest || 0);
-        }
-      }
-    }
-
     // Valor base da nova taxa
     const baseAmount = parseFloat(amount);
     
-    // Valor total da nova taxa = valor base + multas e juros das taxas em atraso
-    // As multas e juros das taxas anteriores são adicionadas à nova taxa
+    // Multa e juros: se informados manualmente, usa eles; senão, calcula automaticamente
+    // IMPORTANTE: Multa e juros são calculados apenas para a NOVA taxa, não somados das taxas anteriores
+    let totalLateFee = 0;
+    let totalInterest = 0;
+
+    // Se multa foi fornecida manualmente, usa ela
+    if (manualLateFee !== undefined && manualLateFee !== null && manualLateFee !== '') {
+      totalLateFee = parseFloat(manualLateFee) || 0;
+    }
+    // Se não foi informada manualmente, não calcula automaticamente
+    // (multa só é aplicada quando a taxa está em atraso, não na criação)
+
+    // Se juros foram fornecidos manualmente, usa eles
+    if (manualInterest !== undefined && manualInterest !== null && manualInterest !== '') {
+      totalInterest = parseFloat(manualInterest) || 0;
+    }
+    // Se não foram informados manualmente, não calcula automaticamente
+    // (juros só são aplicados quando a taxa está em atraso, não na criação)
+    
+    // Valor total da nova taxa = valor base + multa + juros
+    // Cálculo simples: taxa + multa + juros
     const totalAmount = baseAmount + totalLateFee + totalInterest;
 
-    // Cria a taxa
-    // O campo 'amount' recebe o valor total (base + multas + juros)
-    // Os campos 'late_fee' e 'interest' registram apenas as multas e juros das taxas anteriores
-    const result = await query(
-      `INSERT INTO monthly_fees (
-        apartment_id, condominium_id, month, year, amount, due_date,
-        late_fee, interest
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *`,
-      [
-        apartmentId, 
-        condominiumId, 
-        month, 
-        year, 
-        totalAmount, // Valor total incluindo multas e juros das taxas anteriores
-        dueDate,
-        totalLateFee, // Multa das taxas em atraso (para referência)
-        totalInterest // Juros das taxas em atraso (para referência)
-      ]
-    );
-
-    const fee = result.rows[0];
-
-    // Cria entrada financeira automaticamente para atualizar o saldo
-    // A entrada é criada com o valor total (taxa + multas e juros de inadimplência)
-    // A entrada é criada como "não recebida" inicialmente (received = FALSE)
-    // Será marcada como recebida quando a taxa for paga
-    const financeiroService = require('./financeiroService');
-    
-    // Descrição da entrada inclui informação sobre multas se houver
-    let entryDescription = `Taxa de Condomínio - ${apartmentLabel} - ${String(month).padStart(2, '0')}/${year}`;
-    if (totalLateFee > 0 || totalInterest > 0) {
-      entryDescription += ` (Inclui multa: R$ ${totalLateFee.toFixed(2)} e juros: R$ ${totalInterest.toFixed(2)} de ${overdueFees.length} taxa(s) em atraso)`;
+    // Se já existe, atualiza; senão, cria nova
+    let fee;
+    if (existingFee) {
+      // Atualiza taxa existente
+      const updateResult = await query(
+        `UPDATE monthly_fees 
+         SET amount = $1, due_date = $2, late_fee = $3, interest = $4, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $5
+         RETURNING *`,
+        [
+          totalAmount,
+          dueDate,
+          totalLateFee,
+          totalInterest,
+          existingFee.id
+        ]
+      );
+      fee = updateResult.rows[0];
+      
+      // Se tinha entrada financeira vinculada, atualiza ela também
+      if (existingFee.financial_entry_id) {
+        const financeiroService = require('./financeiroService');
+        try {
+          await query(
+            `UPDATE financial_entries 
+             SET amount = $1, description = $2, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3 AND condominium_id = $4`,
+            [
+              totalAmount,
+              `Taxa de Condomínio - ${apartmentLabel} - ${String(month).padStart(2, '0')}/${year}${totalLateFee > 0 || totalInterest > 0 ? ` (Inclui multa: R$ ${totalLateFee.toFixed(2)} e juros: R$ ${totalInterest.toFixed(2)})` : ''}`,
+              existingFee.financial_entry_id,
+              condominiumId
+            ]
+          );
+        } catch (entryError) {
+          console.warn('Erro ao atualizar entrada financeira:', entryError.message);
+        }
+      }
+    } else {
+      // Cria nova taxa
+      // O campo 'amount' recebe o valor total (base + multas + juros)
+      // Os campos 'late_fee' e 'interest' registram as multas e juros (manuais ou calculados)
+      const result = await query(
+        `INSERT INTO monthly_fees (
+          apartment_id, condominium_id, month, year, amount, due_date,
+          late_fee, interest
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *`,
+        [
+          apartmentId, 
+          condominiumId, 
+          month, 
+          year, 
+          totalAmount, // Valor total incluindo multas e juros
+          dueDate,
+          totalLateFee, // Multa (manual ou calculada)
+          totalInterest // Juros (manual ou calculado)
+        ]
+      );
+      fee = result.rows[0];
     }
-    
-    const financialEntry = await financeiroService.createEntry(
-      condominiumId,
-      userId,
-      {
-        description: entryDescription,
-        amount: totalAmount, // Valor total incluindo multas e juros
-        entryDate: dueDate, // Usa a data de vencimento como data da entrada
-        category: 'TAXA',
-        received: false, // Não recebida ainda, será marcada quando a taxa for paga
-        linkedToId: fee.id,
-        linkedToType: 'MONTHLY_FEE'
-      },
-      ipAddress,
-      userAgent
-    );
 
-    // Atualiza a taxa com o ID da entrada financeira
-    await query(
-      `UPDATE monthly_fees SET financial_entry_id = $1 WHERE id = $2`,
-      [financialEntry.id, fee.id]
-    );
+    // Cria entrada financeira automaticamente apenas se for nova taxa
+    // Se for atualização, a entrada já existe e foi atualizada acima
+    if (!existingFee) {
+      const financeiroService = require('./financeiroService');
+      
+      // Descrição da entrada inclui informação sobre multas se houver
+      let entryDescription = `Taxa de Condomínio - ${apartmentLabel} - ${String(month).padStart(2, '0')}/${year}`;
+      if (totalLateFee > 0 || totalInterest > 0) {
+        entryDescription += ` (Multa: R$ ${totalLateFee.toFixed(2)} + Juros: R$ ${totalInterest.toFixed(2)})`;
+      }
+      
+      const financialEntry = await financeiroService.createEntry(
+        condominiumId,
+        userId,
+        {
+          description: entryDescription,
+          amount: totalAmount, // Valor total incluindo multas e juros
+          entryDate: dueDate, // Usa a data de vencimento como data da entrada
+          category: 'TAXA',
+          received: false, // Não recebida ainda, será marcada quando a taxa for paga
+          linkedToId: fee.id,
+          linkedToType: 'MONTHLY_FEE'
+        },
+        ipAddress,
+        userAgent
+      );
+
+      // Atualiza a taxa com o ID da entrada financeira
+      await query(
+        `UPDATE monthly_fees SET financial_entry_id = $1 WHERE id = $2`,
+        [financialEntry.id, fee.id]
+      );
+    }
 
     // Atualiza dias em atraso
+    // A função updateOverdueDays agora preserva automaticamente multa e juros se existirem
     await updateOverdueDays(fee.id);
 
     // Busca a taxa atualizada
@@ -246,10 +269,11 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
     await logAction({
       userId: userId,
       condominiumId: condominiumId,
-      action: 'CREATE',
+      action: existingFee ? 'UPDATE' : 'CREATE',
       module: 'FINANCIAL',
       entityType: 'monthly_fees',
       entityId: updatedFee.id,
+      beforeData: existingFee || null,
       afterData: updatedFee,
       ipAddress: ipAddress,
       userAgent: userAgent,
@@ -263,6 +287,8 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
 };
 
 // Função para atualizar dias em atraso
+// REGRA: Se a taxa tem multa ou juros > 0, eles são FIXOS e NUNCA são recalculados
+// Apenas atualiza os dias em atraso, preservando multa e juros existentes
 const updateOverdueDays = async (feeId) => {
   try {
     const feeResult = await query(
@@ -284,7 +310,19 @@ const updateOverdueDays = async (feeId) => {
 
     const daysOverdue = Math.max(0, Math.floor((new Date() - new Date(fee.due_date)) / (1000 * 60 * 60 * 24)));
 
-    // Calcula multa e juros (exemplo: 2% multa + 1% ao mês de juros)
+    // REGRA IMPORTANTE: Se multa ou juros já existem (> 0), são FIXOS e NUNCA são recalculados
+    // Apenas atualiza os dias em atraso, preservando os valores de multa e juros
+    if (parseFloat(fee.late_fee || 0) > 0 || parseFloat(fee.interest || 0) > 0) {
+      // Valores são fixos - apenas atualiza dias em atraso
+      await query(
+        `UPDATE monthly_fees SET days_overdue = $1 WHERE id = $2`,
+        [daysOverdue, feeId]
+      );
+      return;
+    }
+
+    // Se não tem multa nem juros, pode calcular automaticamente (apenas para taxas sem valores manuais)
+    // Mas isso só acontece se a taxa foi criada sem multa/juros
     const lateFee = daysOverdue > 0 ? fee.amount * 0.02 : 0;
     const monthsOverdue = Math.floor(daysOverdue / 30);
     const interest = monthsOverdue > 0 ? fee.amount * 0.01 * monthsOverdue : 0;
@@ -325,7 +363,9 @@ const markFeeAsPaid = async (feeId, condominiumId, userId, paymentData, ipAddres
       throw new Error('Taxa já foi paga');
     }
 
-    const totalAmount = parseFloat(fee.amount) + parseFloat(fee.late_fee || 0) + parseFloat(fee.interest || 0);
+    // O campo 'amount' já inclui multas e juros (foi calculado assim na criação)
+    // Portanto, não precisa somar novamente
+    const totalAmount = parseFloat(fee.amount);
 
     const updateResult = await query(
       `UPDATE monthly_fees 
@@ -545,6 +585,7 @@ const listMonthlyFees = async (condominiumId, filters = {}) => {
     const result = await query(queryText, params);
 
     // Atualiza dias em atraso
+    // A função updateOverdueDays preserva automaticamente multa e juros se existirem
     for (const fee of result.rows) {
       if (!fee.paid) {
         await updateOverdueDays(fee.id);

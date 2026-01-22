@@ -46,20 +46,63 @@
 
   <!-- Filtros -->
   <div class="bg-white rounded-lg shadow p-4 mb-6">
-    <form method="GET" class="flex flex-wrap gap-4">
-      <select name="paid" class="px-3 py-2 border border-gray-300 rounded-md">
-        <option value="">Todos</option>
-        <option value="true" <%= req.query.paid === 'true' ? 'selected' : '' %>>Pagas</option>
-        <option value="false" <%= req.query.paid === 'false' ? 'selected' : '' %>>Não Pagas</option>
-      </select>
-      <button type="submit" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+    <form method="GET" action="/financeiro/taxas" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label for="paid" class="block text-xs text-gray-600 mb-1">Status</label>
+        <select name="paid" id="paid" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          <option value="true" <%= req.query.paid === 'true' ? 'selected' : '' %>>Pagas</option>
+          <option value="false" <%= req.query.paid === 'false' ? 'selected' : '' %>>Não Pagas</option>
+        </select>
+      </div>
+      
+      <div>
+        <label for="month" class="block text-xs text-gray-600 mb-1">Mês</label>
+        <select name="month" id="month" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          <% for (let i = 1; i <= 12; i++) { %>
+            <option value="<%= i %>" <%= req.query.month && parseInt(req.query.month) === i ? 'selected' : '' %>>
+              <%= new Date(2000, i - 1).toLocaleDateString('pt-BR', { month: 'long' }) %>
+            </option>
+          <% } %>
+        </select>
+      </div>
+      
+      <div>
+        <label for="year" class="block text-xs text-gray-600 mb-1">Ano</label>
+        <select name="year" id="year" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          <% for (let y = new Date().getFullYear(); y >= new Date().getFullYear() - 2; y--) { %>
+            <option value="<%= y %>" <%= req.query.year && parseInt(req.query.year) === y ? 'selected' : '' %>><%= y %></option>
+          <% } %>
+        </select>
+      </div>
+      
+      <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
         Filtrar
       </button>
-      <a href="/financeiro/taxas?overdue=true" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+      
+      <% if (req.query.paid || req.query.month || req.query.year || req.query.overdue) { %>
+        <a href="/financeiro/taxas" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+          Limpar Filtros
+        </a>
+      <% } %>
+      
+      <a href="/financeiro/taxas?overdue=true" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
         Ver Inadimplentes
       </a>
     </form>
   </div>
+
+  <!-- Resultados -->
+  <% if (fees && fees.length > 0) { %>
+    <div class="mb-4 text-sm text-gray-600">
+      <strong><%= fees.length %></strong> taxa(s) encontrada(s)
+      <% if (req.query.paid || req.query.month || req.query.year || req.query.overdue) { %>
+        com os filtros aplicados
+      <% } %>
+    </div>
+  <% } %>
 
   <!-- Tabela de Taxas -->
   <div class="bg-white rounded-lg shadow-lg overflow-hidden">

@@ -68,7 +68,11 @@ const createBudgetRequest = async (data, files, userId, condominiumId, ipAddress
 
     // Se há arquivos, cria anexos
     if (files && files.length > 0) {
+      const path = require('path');
       for (const file of files) {
+        // Caminho relativo para acessar via /uploads/budget-attachments/
+        const relativePath = path.relative(path.join(__dirname, '../../'), file.path).replace(/\\/g, '/');
+        
         await query(
           `INSERT INTO budget_request_attachments (
             budget_request_id, file_path, file_name, file_type, file_size, uploaded_by
@@ -76,7 +80,7 @@ const createBudgetRequest = async (data, files, userId, condominiumId, ipAddress
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [
             request.id,
-            file.path,
+            relativePath,
             file.originalname,
             file.mimetype,
             file.size,

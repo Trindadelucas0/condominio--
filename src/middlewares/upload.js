@@ -115,10 +115,65 @@ const uploadContract = uploadContracts.array('contractFiles', 10); // Máximo 10
 // Middleware para upload de um único arquivo PDF (para assembleias, etc)
 const uploadSingleContract = uploadContracts.single('file');
 
+// Configuração para upload de anexos de orçamentos
+const budgetAttachmentsDir = path.join(__dirname, '../../uploads/budget-attachments');
+if (!fs.existsSync(budgetAttachmentsDir)) {
+  fs.mkdirSync(budgetAttachmentsDir, { recursive: true });
+}
+
+const budgetAttachmentsStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, budgetAttachmentsDir);
+  },
+  filename: function (req, file, cb) {
+    // Nome do arquivo: budget_{userId}_{timestamp}_{originalName}
+    const userId = req.user ? req.user.id : 'unknown';
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const originalName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const ext = path.extname(originalName) || path.extname(file.originalname) || '';
+    const nameWithoutExt = path.basename(originalName, ext);
+    const filename = `budget_${userId}_${timestamp}_${randomSuffix}_${nameWithoutExt}${ext}`;
+    cb(null, filename);
+  }
+});
+
+// Filtro para aceitar PDFs, DOC, DOCX e imagens
+const budgetFileFilter = (req, file, cb) => {
+  const allowedMimes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/jpg',
+    'image/png'
+  ];
+  
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Apenas arquivos PDF, DOC, DOCX, JPG e PNG são permitidos'), false);
+  }
+};
+
+const uploadBudgetAttachments = multer({
+  storage: budgetAttachmentsStorage,
+  fileFilter: budgetFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // Limite de 10MB por arquivo
+  },
+  // Preserva os nomes dos campos com colchetes
+  preservePath: false
+});
+
+// Middleware para upload de múltiplos anexos de orçamentos
+const uploadBudgetAttachmentsMiddleware = uploadBudgetAttachments.array('attachments', 10); // Máximo 10 arquivos
+
 module.exports = {
   uploadReceipt,
   uploadPayment,
   uploadContract,
   uploadSingleContract,
+  uploadBudgetAttachments: uploadBudgetAttachmentsMiddleware,
   uploadsDir: receiptsDir
 };

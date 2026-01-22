@@ -5,7 +5,7 @@ const router = express.Router();
 const administrativoController = require('../controllers/administrativoController');
 const reaberturaController = require('../controllers/reaberturaController');
 const { authenticate, authorize } = require('../middlewares/auth');
-const { uploadContract } = require('../middlewares/upload');
+const { uploadContract, uploadBudgetAttachments } = require('../middlewares/upload');
 
 router.use(authenticate);
 router.use(authorize('ADMINISTRATIVO'));
@@ -38,7 +38,7 @@ router.post('/ocorrencias/:id/triar', administrativoController.triarOcorrencia);
 // Solicitações de orçamento (ADM → Síndico)
 router.get('/orcamentos', administrativoController.showOrcamentos);
 router.get('/orcamentos/novo', administrativoController.showCreateOrcamento);
-router.post('/orcamentos', uploadContract, administrativoController.createOrcamento);
+router.post('/orcamentos', uploadBudgetAttachments, administrativoController.createOrcamento);
 
 // Comunicados operacionais
 router.get('/comunicados', administrativoController.showComunicados);

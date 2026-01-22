@@ -60,13 +60,38 @@ const listMonthlyFees = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const fees = await inadimplenciaService.listMonthlyFees(req.user.condominiumId, {
-      paid: req.query.paid !== undefined ? req.query.paid === 'true' : undefined,
-      overdue: req.query.overdue === 'true',
-      month: req.query.month ? parseInt(req.query.month) : undefined,
-      year: req.query.year ? parseInt(req.query.year) : undefined,
+    // Processa filtros
+    const filters = {
       limit: 1000
-    });
+    };
+    
+    // Filtro por status de pagamento
+    if (req.query.paid !== undefined && req.query.paid !== '') {
+      filters.paid = req.query.paid === 'true';
+    }
+    
+    // Filtro por inadimplência
+    if (req.query.overdue === 'true') {
+      filters.overdue = true;
+    }
+    
+    // Filtro por mês
+    if (req.query.month && req.query.month !== '') {
+      const month = parseInt(req.query.month);
+      if (!isNaN(month) && month >= 1 && month <= 12) {
+        filters.month = month;
+      }
+    }
+    
+    // Filtro por ano
+    if (req.query.year && req.query.year !== '') {
+      const year = parseInt(req.query.year);
+      if (!isNaN(year)) {
+        filters.year = year;
+      }
+    }
+
+    const fees = await inadimplenciaService.listMonthlyFees(req.user.condominiumId, filters);
 
     const delinquency = await inadimplenciaService.calculateDelinquency(req.user.condominiumId);
 

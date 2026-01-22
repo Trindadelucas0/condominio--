@@ -581,26 +581,71 @@ const createOrcamento = async (req, res) => {
     // Processa múltiplos orçamentos do formulário
     // O formulário envia como quotes[1][supplierName], quotes[2][supplierName], etc.
     const quotes = [];
-    const quoteKeys = Object.keys(req.body).filter(key => key.startsWith('quotes['));
+    
+    // Debug: log dos dados recebidos
+    console.log('📋 Dados recebidos do formulário:');
+    console.log('req.body keys:', Object.keys(req.body));
+    console.log('req.body sample:', JSON.stringify(req.body).substring(0, 500));
+    
+    // Procura por campos que começam com "quotes["
+    const allKeys = Object.keys(req.body);
+    const quoteKeys = allKeys.filter(key => key.includes('quotes[') || key.includes('supplierName') || key.includes('quoteValue'));
+    
+    console.log('Keys relacionadas a orçamentos:', quoteKeys);
     
     // Agrupa os dados por índice do orçamento
     const quoteIndices = new Set();
     quoteKeys.forEach(key => {
-      const match = key.match(/quotes\[(\d+)\]/);
-      if (match) {
-        quoteIndices.add(match[1]);
+      // Tenta diferentes padrões de nome
+      const patterns = [
+        /quotes\[(\d+)\]/,
+        /quotes\.(\d+)\./,
+        /quote(\d+)/,
+      ];
+      
+      for (const pattern of patterns) {
+        const match = key.match(pattern);
+        if (match) {
+          quoteIndices.add(match[1]);
+          break;
+        }
       }
     });
 
+    console.log('Índices de orçamentos encontrados:', Array.from(quoteIndices));
+
     // Constrói array de orçamentos
     quoteIndices.forEach(index => {
-      const supplierName = req.body[`quotes[${index}][supplierName]`];
-      const supplierContact = req.body[`quotes[${index}][supplierContact]`];
-      const quoteValue = req.body[`quotes[${index}][quoteValue]`];
-      const quoteDescription = req.body[`quotes[${index}][quoteDescription]`];
-      const quoteValidityDate = req.body[`quotes[${index}][quoteValidityDate]`];
+      // Tenta diferentes formatos de acesso
+      const supplierName = req.body[`quotes[${index}][supplierName]`] || 
+                          req.body[`quotes.${index}.supplierName`] ||
+                          req.body[`quote${index}supplierName`];
+      
+      const supplierContact = req.body[`quotes[${index}][supplierContact]`] || 
+                             req.body[`quotes.${index}.supplierContact`] ||
+                             req.body[`quote${index}supplierContact`] || null;
+      
+      const quoteValue = req.body[`quotes[${index}][quoteValue]`] || 
+                        req.body[`quotes.${index}.quoteValue`] ||
+                        req.body[`quote${index}quoteValue`];
+      
+      const quoteDescription = req.body[`quotes[${index}][quoteDescription]`] || 
+                               req.body[`quotes.${index}.quoteDescription`] ||
+                               req.body[`quote${index}quoteDescription`] || null;
+      
+      const quoteValidityDate = req.body[`quotes[${index}][quoteValidityDate]`] || 
+                                req.body[`quotes.${index}.quoteValidityDate`] ||
+                                req.body[`quote${index}quoteValidityDate`] || null;
 
-      if (supplierName && quoteValue) {
+      console.log(`Orçamento ${index}:`, {
+        supplierName,
+        supplierContact,
+        quoteValue,
+        quoteDescription,
+        quoteValidityDate
+      });
+
+      if (supplierName && supplierName.trim() && quoteValue && !isNaN(parseFloat(quoteValue))) {
         quotes.push({
           supplierName: supplierName.trim(),
           supplierContact: supplierContact ? supplierContact.trim() : null,
@@ -610,6 +655,47 @@ const createOrcamento = async (req, res) => {
         });
       }
     });
+
+    console.log('Orçamentos processados:', quotes.length, quotes);
+
+    // Se ainda não encontrou orçamentos, tenta processar todos os campos manualmente
+    if (quotes.length === 0) {
+      console.log('⚠️ Tentando processar todos os campos manualmente...');
+      
+      // Itera por todos os campos do body procurando padrões
+      const quoteMap = new Map();
+      
+      Object.keys(req.body).forEach(key => {
+        // Procura por padrão quotes[N][campo]
+        const match = key.match(/quotes\[(\d+)\]\[(\w+)\]/);
+        if (match) {
+          const index = match[1];
+          const field = match[2];
+          
+          if (!quoteMap.has(index)) {
+            quoteMap.set(index, {});
+          }
+          
+          const quote = quoteMap.get(index);
+          quote[field] = req.body[key];
+        }
+      });
+      
+      // Converte o Map em array
+      quoteMap.forEach((quote, index) => {
+        if (quote.supplierName && quote.supplierName.trim() && quote.quoteValue && !isNaN(parseFloat(quote.quoteValue))) {
+          quotes.push({
+            supplierName: quote.supplierName.trim(),
+            supplierContact: quote.supplierContact ? quote.supplierContact.trim() : null,
+            quoteValue: parseFloat(quote.quoteValue),
+            quoteDescription: quote.quoteDescription ? quote.quoteDescription.trim() : null,
+            quoteValidityDate: quote.quoteValidityDate || null,
+          });
+        }
+      });
+      
+      console.log('Orçamentos encontrados após processamento manual:', quotes.length);
+    }
 
     const data = {
       title: req.body.title,
@@ -621,7 +707,14 @@ const createOrcamento = async (req, res) => {
       quotes: quotes, // Array de orçamentos
     };
 
-    const files = req.files && req.files.attachments ? (Array.isArray(req.files.attachments) ? req.files.attachments : [req.files.attachments]) : [];
+    // req.files é um array quando usa .array() no multer
+    const files = req.files || [];
+
+    console.log('📤 Enviando para service:', {
+      title: data.title,
+      quotesCount: quotes.length,
+      filesCount: files.length
+    });
 
     await orcamentoService.createBudgetRequest(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
 

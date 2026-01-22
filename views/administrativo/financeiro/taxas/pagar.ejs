@@ -11,18 +11,45 @@
     <div class="mb-6 p-4 bg-gray-50 rounded-lg">
       <p class="text-sm text-gray-600 mb-1">Apartamento</p>
       <p class="text-lg font-semibold"><%= fee.apartment_number %><%= fee.block ? ' - ' + fee.block : '' %></p>
-      <p class="text-sm text-gray-600 mb-1 mt-2">Valor Original</p>
-      <p class="text-lg font-semibold">R$ <%= parseFloat(fee.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
-      <% if (fee.late_fee > 0 || fee.interest > 0) { %>
-        <p class="text-sm text-gray-600 mb-1 mt-2">Multa</p>
-        <p class="text-sm">R$ <%= parseFloat(fee.late_fee || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
-        <p class="text-sm text-gray-600 mb-1 mt-2">Juros</p>
-        <p class="text-sm">R$ <%= parseFloat(fee.interest || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
-        <p class="text-sm text-gray-600 mb-1 mt-2">Total a Pagar</p>
-        <p class="text-xl font-bold text-red-600">
-          R$ <%= (parseFloat(fee.amount) + parseFloat(fee.late_fee || 0) + parseFloat(fee.interest || 0)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
-        </p>
-      <% } %>
+      
+      <% 
+        // O campo 'amount' já inclui multa e juros
+        // Calcula o valor base subtraindo multa e juros
+        const baseAmount = parseFloat(fee.amount) - parseFloat(fee.late_fee || 0) - parseFloat(fee.interest || 0);
+        const totalAmount = parseFloat(fee.amount); // Já inclui tudo
+        const lateFee = parseFloat(fee.late_fee || 0);
+        const interest = parseFloat(fee.interest || 0);
+      %>
+      
+      <div class="mt-4 space-y-2">
+        <div class="flex justify-between items-center">
+          <p class="text-sm text-gray-600">Valor Base da Taxa:</p>
+          <p class="text-sm font-semibold">R$ <%= baseAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+        </div>
+        
+        <% if (lateFee > 0) { %>
+          <div class="flex justify-between items-center">
+            <p class="text-sm text-gray-600">Multa:</p>
+            <p class="text-sm font-semibold text-orange-600">R$ <%= lateFee.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+          </div>
+        <% } %>
+        
+        <% if (interest > 0) { %>
+          <div class="flex justify-between items-center">
+            <p class="text-sm text-gray-600">Juros:</p>
+            <p class="text-sm font-semibold text-orange-600">R$ <%= interest.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+          </div>
+        <% } %>
+        
+        <div class="border-t border-gray-300 pt-2 mt-2">
+          <div class="flex justify-between items-center">
+            <p class="text-base font-semibold text-gray-800">Total a Pagar:</p>
+            <p class="text-xl font-bold text-red-600">
+              R$ <%= totalAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <form method="POST" action="/financeiro/taxas/<%= fee.id %>/pagar" enctype="multipart/form-data">
