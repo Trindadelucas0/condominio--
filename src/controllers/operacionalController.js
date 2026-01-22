@@ -224,6 +224,7 @@ const showOcorrencias = async (req, res) => {
       dateFrom: req.query.dateFrom || undefined,
       dateTo: req.query.dateTo || undefined,
       priority: req.query.priority || undefined,
+      assignedToMe: req.query.assignedToMe || undefined,
       page: req.query.page || undefined,
       perPage: req.query.perPage || undefined,
     };
@@ -280,7 +281,25 @@ const createOcorrencia = async (req, res) => {
       isRoutineTask: req.body.isRoutineTask === 'true',
     };
 
-    await operacionalService.createOccurrence(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    // Processa upload de imagens se houver
+    const files = req.files || [];
+    const occurrence = await operacionalService.createOccurrence(data, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+
+    // Salva as imagens se houver
+    if (files.length > 0 && occurrence) {
+      for (const file of files) {
+        if (file.path && file.filename) {
+          await operacionalService.addOccurrenceImage(
+            occurrence.id,
+            file.path,
+            file.originalname || file.filename,
+            file.mimetype,
+            file.size,
+            req.user.id
+          );
+        }
+      }
+    }
 
     res.redirect('/operacional/ocorrencias?success=created');
   } catch (error) {
@@ -317,6 +336,15 @@ const showOcorrencia = async (req, res) => {
     }
 
     const occurrence = occurrenceResult.rows[0];
+
+    // Busca imagens da ocorrência
+    const imagesResult = await query(
+      `SELECT * FROM occurrence_images 
+       WHERE occurrence_id = $1 
+       ORDER BY created_at`,
+      [occurrenceId]
+    );
+    occurrence.images = imagesResult.rows;
 
     res.render('operacional/ocorrencia-detail', {
       title: 'Detalhes da Ocorrência',

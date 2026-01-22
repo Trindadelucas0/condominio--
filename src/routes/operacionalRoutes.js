@@ -81,6 +81,33 @@ const uploadTaskEvidence = multer({
   }
 });
 
+// Multer para imagens de ocorrências
+const storageOccurrenceImage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = 'uploads/occurrences';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'occurrence_' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const uploadOccurrenceImage = multer({
+  storage: storageOccurrenceImage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas'));
+    }
+  }
+});
+
 // Tarefas antigas (mantidas para compatibilidade)
 // OPERACIONAL e LIMPEZA podem acessar checklist antigo
 router.get('/checklist', authorize('OPERACIONAL', 'LIMPEZA'), operacionalController.showChecklist);
@@ -96,7 +123,7 @@ router.get('/tarefas/:id', authorize('OPERACIONAL', 'LIMPEZA'), operacionalContr
 // Ocorrências - apenas OPERACIONAL (LIMPEZA tem suas próprias rotas)
 router.get('/ocorrencias', authorize('OPERACIONAL'), operacionalController.showOcorrencias);
 router.get('/ocorrencias/nova', authorize('OPERACIONAL'), operacionalController.showCreateOcorrencia);
-router.post('/ocorrencias', authorize('OPERACIONAL'), operacionalController.createOcorrencia);
+router.post('/ocorrencias', authorize('OPERACIONAL'), uploadOccurrenceImage.array('images', 10), operacionalController.createOcorrencia);
 router.get('/ocorrencias/:id', authorize('OPERACIONAL'), operacionalController.showOcorrencia);
 router.get('/ocorrencias/:id/resolver', authorize('OPERACIONAL'), operacionalController.showResolveOcorrencia);
 router.post('/ocorrencias/:id/resolver', authorize('OPERACIONAL'), operacionalController.resolveOcorrencia);

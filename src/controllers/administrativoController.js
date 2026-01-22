@@ -521,6 +521,11 @@ const showOrcamentos = async (req, res) => {
 
     const requests = await orcamentoService.listBudgetRequests(req.user.condominiumId, filters);
 
+    // Busca orçamentos (quotes) para cada solicitação
+    for (const request of requests) {
+      request.quotes = await orcamentoService.getBudgetQuotes(request.id);
+    }
+
     res.render('administrativo/orcamentos/list', {
       title: 'Solicitações de Orçamento',
       user: req.user,
@@ -573,6 +578,39 @@ const createOrcamento = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
+    // Processa múltiplos orçamentos do formulário
+    // O formulário envia como quotes[1][supplierName], quotes[2][supplierName], etc.
+    const quotes = [];
+    const quoteKeys = Object.keys(req.body).filter(key => key.startsWith('quotes['));
+    
+    // Agrupa os dados por índice do orçamento
+    const quoteIndices = new Set();
+    quoteKeys.forEach(key => {
+      const match = key.match(/quotes\[(\d+)\]/);
+      if (match) {
+        quoteIndices.add(match[1]);
+      }
+    });
+
+    // Constrói array de orçamentos
+    quoteIndices.forEach(index => {
+      const supplierName = req.body[`quotes[${index}][supplierName]`];
+      const supplierContact = req.body[`quotes[${index}][supplierContact]`];
+      const quoteValue = req.body[`quotes[${index}][quoteValue]`];
+      const quoteDescription = req.body[`quotes[${index}][quoteDescription]`];
+      const quoteValidityDate = req.body[`quotes[${index}][quoteValidityDate]`];
+
+      if (supplierName && quoteValue) {
+        quotes.push({
+          supplierName: supplierName.trim(),
+          supplierContact: supplierContact ? supplierContact.trim() : null,
+          quoteValue: parseFloat(quoteValue),
+          quoteDescription: quoteDescription ? quoteDescription.trim() : null,
+          quoteValidityDate: quoteValidityDate || null,
+        });
+      }
+    });
+
     const data = {
       title: req.body.title,
       description: req.body.description,
@@ -580,9 +618,10 @@ const createOrcamento = async (req, res) => {
       priority: req.body.priority || 'NORMAL',
       relatedOccurrenceId: req.body.relatedOccurrenceId || null,
       relatedTaskId: req.body.relatedTaskId || null,
+      quotes: quotes, // Array de orçamentos
     };
 
-    const files = req.files || [];
+    const files = req.files && req.files.attachments ? (Array.isArray(req.files.attachments) ? req.files.attachments : [req.files.attachments]) : [];
 
     await orcamentoService.createBudgetRequest(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
 

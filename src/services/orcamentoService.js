@@ -5,15 +5,20 @@ const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
 const { createNotification } = require('./automationService');
 
-// Função para criar solicitação de orçamento
+// Função para criar solicitação de orçamento com múltiplos orçamentos
 // Recebe: data, files, userId, condominiumId
-// Retorna: solicitação criada
+// Retorna: solicitação criada com orçamentos
 const createBudgetRequest = async (data, files, userId, condominiumId, ipAddress, userAgent) => {
   try {
-    const { title, description, estimatedValue, priority, relatedOccurrenceId, relatedTaskId } = data;
+    const { title, description, estimatedValue, priority, relatedOccurrenceId, relatedTaskId, quotes } = data;
 
     if (!title || !description) {
       throw new Error('Título e descrição são obrigatórios');
+    }
+
+    // Valida que há pelo menos um orçamento
+    if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
+      throw new Error('É necessário adicionar pelo menos um orçamento');
     }
 
     // Cria solicitação com status PENDING_FINANCEIRO
@@ -37,6 +42,29 @@ const createBudgetRequest = async (data, files, userId, condominiumId, ipAddress
     );
 
     const request = result.rows[0];
+
+    // Cria os orçamentos (quotes)
+    for (const quote of quotes) {
+      if (!quote.supplierName || !quote.quoteValue) {
+        throw new Error('Nome do fornecedor e valor são obrigatórios para cada orçamento');
+      }
+
+      await query(
+        `INSERT INTO budget_quotes (
+          budget_request_id, supplier_name, supplier_contact, quote_value,
+          quote_description, quote_validity_date, status
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')`,
+        [
+          request.id,
+          quote.supplierName.trim(),
+          quote.supplierContact ? quote.supplierContact.trim() : null,
+          parseFloat(quote.quoteValue),
+          quote.quoteDescription ? quote.quoteDescription.trim() : null,
+          quote.quoteValidityDate || null,
+        ]
+      );
+    }
 
     // Se há arquivos, cria anexos
     if (files && files.length > 0) {
@@ -144,6 +172,60 @@ const getBudgetRequestAttachments = async (budgetRequestId) => {
   }
 };
 
+// Função para obter orçamentos (quotes) de uma solicitação
+// Recebe: budgetRequestId
+// Retorna: lista de orçamentos
+const getBudgetQuotes = async (budgetRequestId) => {
+  try {
+    const result = await query(
+      `SELECT bq.*, u.full_name as approved_by_name
+       FROM budget_quotes bq
+       LEFT JOIN users u ON bq.approved_by = u.id
+       WHERE bq.budget_request_id = $1
+       ORDER BY bq.created_at ASC`,
+      [budgetRequestId]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar orçamentos:', error);
+    throw error;
+  }
+};
+
+// Função para obter uma solicitação completa com orçamentos
+// Recebe: budgetRequestId, condominiumId
+// Retorna: solicitação com orçamentos e anexos
+const getBudgetRequestById = async (budgetRequestId, condominiumId) => {
+  try {
+    const requestResult = await query(
+      `SELECT br.*, u.full_name as requested_by_name, u2.full_name as approved_by_name, u3.full_name as financeiro_reviewed_by_name
+       FROM budget_requests br
+       LEFT JOIN users u ON br.requested_by = u.id
+       LEFT JOIN users u2 ON br.approved_by = u2.id
+       LEFT JOIN users u3 ON br.financeiro_reviewed_by = u3.id
+       WHERE br.id = $1 AND br.condominium_id = $2`,
+      [budgetRequestId, condominiumId]
+    );
+
+    if (requestResult.rows.length === 0) {
+      return null;
+    }
+
+    const request = requestResult.rows[0];
+
+    // Busca orçamentos
+    request.quotes = await getBudgetQuotes(budgetRequestId);
+
+    // Busca anexos
+    request.attachments = await getBudgetRequestAttachments(budgetRequestId);
+
+    return request;
+  } catch (error) {
+    console.error('Erro ao buscar solicitação:', error);
+    throw error;
+  }
+};
+
 // Função para financeiro revisar orçamento
 // Recebe: budgetRequestId, userId, condominiumId, financeiroNotes, costCenterId
 // Retorna: orçamento atualizado
@@ -216,23 +298,19 @@ const reviewByFinanceiro = async (budgetRequestId, userId, condominiumId, data, 
 };
 
 // Função para síndico aprovar/rejeitar orçamento
-// Recebe: budgetRequestId, userId, condominiumId, action, budgetApprovedAmount, sindicoNotes, rejectionReason
+// NOVO: Agora aprova um orçamento específico (quote) ao invés da solicitação inteira
+// Recebe: budgetRequestId, userId, condominiumId, action, approvedQuoteId, sindicoNotes, rejectionReason
 // Retorna: orçamento atualizado
 const approveOrRejectBySindico = async (budgetRequestId, userId, condominiumId, action, data, ipAddress, userAgent) => {
   try {
-    const { budgetApprovedAmount, sindicoNotes, rejectionReason } = data;
+    const { approvedQuoteId, sindicoNotes, rejectionReason } = data;
 
-    // Busca orçamento
-    const requestResult = await query(
-      `SELECT * FROM budget_requests WHERE id = $1 AND condominium_id = $2`,
-      [budgetRequestId, condominiumId]
-    );
+    // Busca solicitação com orçamentos
+    const request = await getBudgetRequestById(budgetRequestId, condominiumId);
 
-    if (requestResult.rows.length === 0) {
+    if (!request) {
       throw new Error('Solicitação de orçamento não encontrada');
     }
-
-    const request = requestResult.rows[0];
 
     if (request.status !== 'PENDING_SINDICO') {
       throw new Error('Orçamento não está aguardando aprovação do síndico');
@@ -241,11 +319,41 @@ const approveOrRejectBySindico = async (budgetRequestId, userId, condominiumId, 
     let newStatus, updateFields = [];
     const updateValues = [];
     let paramCount = 1;
+    let approvedQuote = null;
+    let financialExitId = null;
 
     if (action === 'APPROVE') {
-      if (!budgetApprovedAmount) {
-        throw new Error('Valor aprovado é obrigatório');
+      if (!approvedQuoteId) {
+        throw new Error('É necessário selecionar um orçamento para aprovar');
       }
+
+      // Busca o orçamento selecionado
+      const quoteResult = await query(
+        `SELECT * FROM budget_quotes WHERE id = $1 AND budget_request_id = $2`,
+        [approvedQuoteId, budgetRequestId]
+      );
+
+      if (quoteResult.rows.length === 0) {
+        throw new Error('Orçamento selecionado não encontrado');
+      }
+
+      approvedQuote = quoteResult.rows[0];
+
+      // Atualiza o orçamento selecionado como aprovado
+      await query(
+        `UPDATE budget_quotes
+         SET status = 'APPROVED', approved_by = $1, approved_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [userId, approvedQuoteId]
+      );
+
+      // Rejeita todos os outros orçamentos
+      await query(
+        `UPDATE budget_quotes
+         SET status = 'REJECTED'
+         WHERE budget_request_id = $1 AND id != $2`,
+        [budgetRequestId, approvedQuoteId]
+      );
 
       newStatus = 'APPROVED';
       updateFields.push(`status = $${paramCount++}`);
@@ -254,15 +362,62 @@ const approveOrRejectBySindico = async (budgetRequestId, userId, condominiumId, 
       updateValues.push(userId);
       updateFields.push(`approved_at = CURRENT_TIMESTAMP`);
       updateFields.push(`budget_approved_amount = $${paramCount++}`);
-      updateValues.push(parseFloat(budgetApprovedAmount));
+      updateValues.push(parseFloat(approvedQuote.quote_value));
+      updateFields.push(`approved_quote_id = $${paramCount++}`);
+      updateValues.push(approvedQuoteId);
       if (sindicoNotes) {
         updateFields.push(`sindico_notes = $${paramCount++}`);
         updateValues.push(sindicoNotes.trim());
       }
+
+      // CRIA SAÍDA FINANCEIRA AUTOMATICAMENTE
+      const financeiroService = require('./financeiroService');
+      const exitData = {
+        description: request.title,
+        amount: approvedQuote.quote_value,
+        exitDate: new Date().toISOString().split('T')[0], // Data atual
+        costCenterId: null, // Será preenchido pelo financeiro
+        category: 'MANUTENCAO', // Categoria padrão
+        requiresApproval: false, // Já foi aprovado pelo síndico
+        needsVerification: true, // Precisa verificação do financeiro
+        relatedBudgetRequestId: budgetRequestId,
+        relatedBudgetQuoteId: approvedQuoteId,
+      };
+
+      const financialExit = await financeiroService.createExit(
+        condominiumId,
+        userId, // Criado pelo sistema (síndico)
+        exitData,
+        ipAddress,
+        userAgent
+      );
+
+      financialExitId = financialExit.id;
+
+      // Atualiza a saída para vincular ao orçamento
+      await query(
+        `UPDATE financial_exits
+         SET related_budget_request_id = $1, related_budget_quote_id = $2
+         WHERE id = $3`,
+        [budgetRequestId, approvedQuoteId, financialExitId]
+      );
+
+      // Atualiza a solicitação para referenciar a saída criada
+      updateFields.push(`related_financial_exit_id = $${paramCount++}`);
+      updateValues.push(financialExitId);
+
     } else if (action === 'REJECT') {
       if (!rejectionReason || !rejectionReason.trim()) {
         throw new Error('Motivo da rejeição é obrigatório');
       }
+
+      // Rejeita todos os orçamentos
+      await query(
+        `UPDATE budget_quotes
+         SET status = 'REJECTED'
+         WHERE budget_request_id = $1`,
+        [budgetRequestId]
+      );
 
       newStatus = 'REJECTED';
       updateFields.push(`status = $${paramCount++}`);
@@ -278,7 +433,7 @@ const approveOrRejectBySindico = async (budgetRequestId, userId, condominiumId, 
 
     updateValues.push(budgetRequestId, condominiumId);
 
-    // Atualiza orçamento
+    // Atualiza solicitação
     const result = await query(
       `UPDATE budget_requests
        SET ${updateFields.join(', ')}
@@ -298,7 +453,7 @@ const approveOrRejectBySindico = async (budgetRequestId, userId, condominiumId, 
       entityType: 'budget_requests',
       entityId: budgetRequestId,
       beforeData: request,
-      afterData: updated,
+      afterData: { ...updated, approvedQuote: approvedQuote, financialExitId: financialExitId },
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
@@ -309,11 +464,22 @@ const approveOrRejectBySindico = async (budgetRequestId, userId, condominiumId, 
       await notificationService.createNotificationForRole(
         'FINANCEIRO',
         condominiumId,
-        'Orçamento Aprovado',
-        `O orçamento "${request.title}" foi aprovado pelo síndico. Valor aprovado: R$ ${budgetApprovedAmount}`,
+        'Orçamento Aprovado - Verificação Necessária',
+        `O orçamento "${request.title}" foi aprovado pelo síndico. Valor: R$ ${approvedQuote.quote_value}. Uma saída financeira foi criada e aguarda sua verificação.`,
         'BUDGET_APPROVED',
         'budget_requests',
         budgetRequestId
+      );
+
+      // Notifica também sobre a saída criada
+      await notificationService.createNotificationForRole(
+        'FINANCEIRO',
+        condominiumId,
+        'Nova Saída para Verificação',
+        `Uma saída financeira foi criada automaticamente a partir do orçamento aprovado "${request.title}". Por favor, verifique e complete os dados.`,
+        'FINANCIAL_EXIT_NEEDS_VERIFICATION',
+        'financial_exits',
+        financialExitId
       );
     } else {
       await notificationService.createNotificationForRole(
@@ -469,6 +635,8 @@ module.exports = {
   createBudgetRequest,
   listBudgetRequests,
   getBudgetRequestAttachments,
+  getBudgetQuotes,
+  getBudgetRequestById,
   reviewByFinanceiro,
   approveOrRejectBySindico,
   releaseOrReturnByFinanceiro,

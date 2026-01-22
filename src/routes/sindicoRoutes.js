@@ -292,6 +292,12 @@ router.get('/orcamentos-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDI
     }
     const orcamentoService = require('../services/orcamentoService');
     const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'PENDING_SINDICO');
+    
+    // Busca orçamentos (quotes) para cada solicitação
+    for (const budget of budgets) {
+      budget.quotes = await orcamentoService.getBudgetQuotes(budget.id);
+    }
+    
     res.render('sindico/orcamentos-pendentes', {
       title: 'Orçamentos Aguardando Aprovação',
       user: req.user,
@@ -319,7 +325,7 @@ router.post('/orcamentos/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async
       req.user.condominiumId,
       'APPROVE',
       {
-        budgetApprovedAmount: req.body.budgetApprovedAmount,
+        approvedQuoteId: req.body.approvedQuoteId, // ID do orçamento selecionado
         sindicoNotes: req.body.approvalNotes,
       },
       ipAddress,

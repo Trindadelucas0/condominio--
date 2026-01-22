@@ -1,0 +1,76 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-gray-800 mb-6">Saídas para Verificação</h1>
+  <p class="text-gray-600 mb-6">Verifique e complete os dados das saídas criadas automaticamente a partir de orçamentos aprovados</p>
+
+  <% if (typeof req !== 'undefined' && req.query.success === 'verified') { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Saída verificada e completada com sucesso!
+    </div>
+  <% } %>
+  <% if (typeof req !== 'undefined' && req.query.error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= decodeURIComponent(req.query.error) %>
+    </div>
+  <% } %>
+
+  <% if (exits && exits.length > 0) { %>
+    <div class="space-y-4">
+      <% exits.forEach(exit => { %>
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
+          <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-gray-800"><%= exit.description %></h3>
+              <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p class="text-gray-500">Valor:</p>
+                  <p class="font-semibold text-blue-600">R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+                </div>
+                <div>
+                  <p class="text-gray-500">Data:</p>
+                  <p class="font-medium"><%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %></p>
+                </div>
+                <div>
+                  <p class="text-gray-500">Status:</p>
+                  <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">Aguardando Verificação</span>
+                </div>
+              </div>
+              <% if (exit.budget_title) { %>
+                <div class="mt-3 bg-blue-50 border border-blue-200 rounded p-3">
+                  <p class="text-xs font-semibold text-blue-800">Orçamento Relacionado:</p>
+                  <p class="text-sm text-blue-700"><%= exit.budget_title %></p>
+                  <% if (exit.supplier_name) { %>
+                    <p class="text-xs text-blue-600 mt-1">Fornecedor: <%= exit.supplier_name %></p>
+                  <% } %>
+                </div>
+              <% } %>
+            </div>
+          </div>
+          <div class="border-t pt-4">
+            <a 
+              href="/financeiro/saidas/<%= exit.id %>/verificar" 
+              class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition inline-flex items-center space-x-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>Verificar e Completar</span>
+            </a>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+      <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <p class="text-gray-500 text-lg">Nenhuma saída aguardando verificação</p>
+      <p class="text-gray-400 text-sm mt-2">Todas as saídas foram verificadas</p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>

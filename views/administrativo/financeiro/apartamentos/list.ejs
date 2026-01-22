@@ -32,7 +32,6 @@
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bloco</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proprietário</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documento</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fração Ideal</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
         </tr>
       </thead>
@@ -44,7 +43,6 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= apt.block || '-' %></td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><%= apt.owner_name || '-' %></td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= apt.owner_document || '-' %></td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= apt.fraction_ideal ? (apt.fraction_ideal * 100).toFixed(2) + '%' : '-' %></td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 py-1 text-xs font-semibold rounded-full <%= apt.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
                   <%= apt.active ? 'Ativo' : 'Inativo' %>

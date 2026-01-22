@@ -434,6 +434,13 @@ const reportService = {
     try {
       const { query } = require('../config/database');
       const { logAction } = require('../utils/logger');
+      const monthlyClosureService = require('./monthlyClosureService');
+      
+      // Verifica se o mês está fechado - só permite gerar relatório se estiver fechado
+      const closure = await monthlyClosureService.getClosureByMonth(condominiumId, month, year);
+      if (!closure || closure.status !== 'CLOSED') {
+        throw new Error('Relatório só pode ser gerado para meses fechados. Por favor, feche o mês primeiro.');
+      }
       
       // Buscar nome do condomínio
       const condominiumResult = await query(

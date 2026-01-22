@@ -660,6 +660,94 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar tabelas da FASE 26:', error);
     }
 
+    // FASE 27: Melhorias de Documentos
+    console.log('🔍 Verificando tabelas da FASE 27 (melhorias de documentos)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'document_versions'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 27 não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase27.sql'));
+        console.log('✅ Tabelas da FASE 27 criadas com sucesso');
+      } else {
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase27.sql'));
+        console.log('✅ Tabelas da FASE 27 atualizadas');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 27:', error);
+    }
+
+    // FASE 28: Imagens de Ocorrências
+    console.log('🔍 Verificando tabelas da FASE 28 (imagens de ocorrências)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'occurrence_images'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 28 não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase28.sql'));
+        console.log('✅ Tabelas da FASE 28 criadas com sucesso');
+      } else {
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase28.sql'));
+        console.log('✅ Tabelas da FASE 28 atualizadas');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 28:', error);
+    }
+
+    // FASE 29: Múltiplos Orçamentos por Solicitação
+    console.log('🔍 Verificando tabelas da FASE 29 (múltiplos orçamentos)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'budget_quotes'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas da FASE 29 não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase29.sql'));
+        console.log('✅ Tabelas da FASE 29 criadas com sucesso');
+      } else {
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase29.sql'));
+        console.log('✅ Tabelas da FASE 29 atualizadas');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas da FASE 29:', error);
+    }
+
+    // FASE 30: Vinculação Taxas com Entradas Financeiras
+    console.log('🔍 Verificando campos da FASE 30 (vinculação taxas com entradas financeiras)...');
+    try {
+      const columnExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'monthly_fees' AND column_name = 'financial_entry_id'
+        )
+      `);
+      
+      if (!columnExists.rows[0].exists) {
+        console.log('⚠️  Campos da FASE 30 não encontrados. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase30.sql'));
+        console.log('✅ Campos da FASE 30 criados com sucesso');
+      } else {
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase30.sql'));
+        console.log('✅ Campos da FASE 30 atualizados');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar campos da FASE 30:', error);
+    }
+
     console.log('✅ Inicialização do banco de dados concluída!');
   } catch (error) {
     console.error('❌ Erro crítico na inicialização do banco de dados:', error);

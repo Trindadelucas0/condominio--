@@ -114,19 +114,134 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
       throw new Error('Taxa já cadastrada para este apartamento/mês/ano');
     }
 
+    // Busca dados do apartamento para descrição da entrada
+    const apartmentResult = await query(
+      `SELECT number, block, owner_name FROM apartments WHERE id = $1 AND condominium_id = $2`,
+      [apartmentId, condominiumId]
+    );
+
+    if (apartmentResult.rows.length === 0) {
+      throw new Error('Apartamento não encontrado');
+    }
+
+    const apartment = apartmentResult.rows[0];
+    const apartmentLabel = apartment.block 
+      ? `Apt ${apartment.number} - Bloco ${apartment.block}` 
+      : `Apt ${apartment.number}`;
+
+    // Verifica se há taxas em atraso (inadimplência) para este apartamento
+    // Se houver, calcula multa e juros e adiciona ao valor da nova taxa
+    const overdueFeesResult = await query(
+      `SELECT id, amount, due_date, late_fee, interest, days_overdue
+       FROM monthly_fees 
+       WHERE apartment_id = $1 
+       AND condominium_id = $2 
+       AND paid = FALSE 
+       AND due_date < CURRENT_DATE
+       ORDER BY due_date ASC`,
+      [apartmentId, condominiumId]
+    );
+
+    const overdueFees = overdueFeesResult.rows;
+    let totalOverdueAmount = 0;
+    let totalLateFee = 0;
+    let totalInterest = 0;
+
+    // Calcula multa e juros das taxas em atraso
+    if (overdueFees.length > 0) {
+      for (const overdueFee of overdueFees) {
+        // Atualiza dias em atraso
+        await updateOverdueDays(overdueFee.id);
+        
+        // Busca a taxa atualizada com multa e juros
+        const updatedOverdueResult = await query(
+          `SELECT amount, late_fee, interest FROM monthly_fees WHERE id = $1`,
+          [overdueFee.id]
+        );
+        
+        if (updatedOverdueResult.rows.length > 0) {
+          const updated = updatedOverdueResult.rows[0];
+          totalOverdueAmount += parseFloat(updated.amount || 0);
+          totalLateFee += parseFloat(updated.late_fee || 0);
+          totalInterest += parseFloat(updated.interest || 0);
+        }
+      }
+    }
+
+    // Valor base da nova taxa
+    const baseAmount = parseFloat(amount);
+    
+    // Valor total da nova taxa = valor base + multas e juros das taxas em atraso
+    // As multas e juros das taxas anteriores são adicionadas à nova taxa
+    const totalAmount = baseAmount + totalLateFee + totalInterest;
+
+    // Cria a taxa
+    // O campo 'amount' recebe o valor total (base + multas + juros)
+    // Os campos 'late_fee' e 'interest' registram apenas as multas e juros das taxas anteriores
     const result = await query(
       `INSERT INTO monthly_fees (
-        apartment_id, condominium_id, month, year, amount, due_date
+        apartment_id, condominium_id, month, year, amount, due_date,
+        late_fee, interest
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [apartmentId, condominiumId, month, year, parseFloat(amount), dueDate]
+      [
+        apartmentId, 
+        condominiumId, 
+        month, 
+        year, 
+        totalAmount, // Valor total incluindo multas e juros das taxas anteriores
+        dueDate,
+        totalLateFee, // Multa das taxas em atraso (para referência)
+        totalInterest // Juros das taxas em atraso (para referência)
+      ]
     );
 
     const fee = result.rows[0];
 
+    // Cria entrada financeira automaticamente para atualizar o saldo
+    // A entrada é criada com o valor total (taxa + multas e juros de inadimplência)
+    // A entrada é criada como "não recebida" inicialmente (received = FALSE)
+    // Será marcada como recebida quando a taxa for paga
+    const financeiroService = require('./financeiroService');
+    
+    // Descrição da entrada inclui informação sobre multas se houver
+    let entryDescription = `Taxa de Condomínio - ${apartmentLabel} - ${String(month).padStart(2, '0')}/${year}`;
+    if (totalLateFee > 0 || totalInterest > 0) {
+      entryDescription += ` (Inclui multa: R$ ${totalLateFee.toFixed(2)} e juros: R$ ${totalInterest.toFixed(2)} de ${overdueFees.length} taxa(s) em atraso)`;
+    }
+    
+    const financialEntry = await financeiroService.createEntry(
+      condominiumId,
+      userId,
+      {
+        description: entryDescription,
+        amount: totalAmount, // Valor total incluindo multas e juros
+        entryDate: dueDate, // Usa a data de vencimento como data da entrada
+        category: 'TAXA',
+        received: false, // Não recebida ainda, será marcada quando a taxa for paga
+        linkedToId: fee.id,
+        linkedToType: 'MONTHLY_FEE'
+      },
+      ipAddress,
+      userAgent
+    );
+
+    // Atualiza a taxa com o ID da entrada financeira
+    await query(
+      `UPDATE monthly_fees SET financial_entry_id = $1 WHERE id = $2`,
+      [financialEntry.id, fee.id]
+    );
+
     // Atualiza dias em atraso
     await updateOverdueDays(fee.id);
+
+    // Busca a taxa atualizada
+    const updatedFeeResult = await query(
+      `SELECT * FROM monthly_fees WHERE id = $1`,
+      [fee.id]
+    );
+    const updatedFee = updatedFeeResult.rows[0];
 
     await logAction({
       userId: userId,
@@ -134,13 +249,13 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
       action: 'CREATE',
       module: 'FINANCIAL',
       entityType: 'monthly_fees',
-      entityId: fee.id,
-      afterData: fee,
+      entityId: updatedFee.id,
+      afterData: updatedFee,
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
 
-    return fee;
+    return updatedFee;
   } catch (error) {
     console.error('Erro ao criar taxa mensal:', error);
     throw error;
@@ -225,6 +340,107 @@ const markFeeAsPaid = async (feeId, condominiumId, userId, paymentData, ipAddres
     );
 
     const updated = updateResult.rows[0];
+
+    // IMPORTANTE: Marca a entrada financeira vinculada como recebida para atualizar o saldo
+    // O saldo financeiro é calculado como: entradas recebidas - saídas pagas
+    // Portanto, ao marcar a entrada como recebida, o saldo é atualizado automaticamente
+    if (fee.financial_entry_id) {
+      const financeiroService = require('./financeiroService');
+      const cacheService = require('./cacheService');
+      
+      // Busca a entrada financeira
+      const entryResult = await query(
+        `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+        [fee.financial_entry_id, condominiumId]
+      );
+
+      if (entryResult.rows.length > 0) {
+        const entry = entryResult.rows[0];
+        
+        // Se a entrada não está aprovada, aprova primeiro
+        if (entry.review_status === 'PENDING_REVIEW') {
+          try {
+            await financeiroService.approveEntry(
+              entry.id,
+              userId,
+              condominiumId,
+              'Aprovado automaticamente ao marcar taxa como paga',
+              ipAddress,
+              userAgent
+            );
+          } catch (approveError) {
+            console.warn('Não foi possível aprovar entrada automaticamente:', approveError.message);
+            // Continua mesmo assim - tenta marcar como recebida diretamente
+          }
+        }
+
+        // Marca como recebida (atualiza o saldo financeiro)
+        // Se não conseguir usar a função markEntryAsReceived, atualiza diretamente no banco
+        if (!entry.received) {
+          try {
+            // Tenta usar a função do service primeiro (validações completas)
+            const receiptPdfPath = paymentReceiptPath || 'taxa_paga_sem_comprovante.pdf';
+            const receiptDetails = `Pagamento da taxa de condomínio - ${paymentMethod}`;
+            
+            await financeiroService.markEntryAsReceived(
+              entry.id,
+              condominiumId,
+              userId,
+              {
+                receiptMethod: paymentMethod,
+                receiptPdfPath: receiptPdfPath,
+                receiptDetails: receiptDetails,
+                receiptNotes: `Taxa marcada como paga automaticamente${fee.late_fee > 0 || fee.interest > 0 ? '. Valor inclui multas e juros de taxas anteriores em atraso.' : ''}`
+              },
+              ipAddress,
+              userAgent
+            );
+          } catch (receiveError) {
+            // Se falhar (ex: validações de comprovante), atualiza diretamente no banco
+            // Isso garante que o saldo seja atualizado mesmo sem comprovante
+            console.warn('Não foi possível usar markEntryAsReceived, atualizando diretamente:', receiveError.message);
+            
+            await query(
+              `UPDATE financial_entries 
+               SET received = TRUE, 
+                   received_at = CURRENT_TIMESTAMP,
+                   receipt_method = $1,
+                   receipt_details = $2,
+                   receipt_pdf_path = $3,
+                   receipt_notes = $4,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $5 AND condominium_id = $6 AND received = FALSE`,
+              [
+                paymentMethod,
+                `Pagamento da taxa de condomínio - ${paymentMethod}`,
+                paymentReceiptPath || 'taxa_paga_sem_comprovante.pdf',
+                `Taxa marcada como paga automaticamente${fee.late_fee > 0 || fee.interest > 0 ? '. Valor inclui multas e juros de taxas anteriores em atraso.' : ''}`,
+                entry.id,
+                condominiumId
+              ]
+            );
+
+            // Registra no log
+            await logAction({
+              userId: userId,
+              condominiumId: condominiumId,
+              action: 'MARK_RECEIVED',
+              module: 'FINANCIAL',
+              entityType: 'financial_entries',
+              entityId: entry.id,
+              beforeData: entry,
+              afterData: { ...entry, received: true, received_at: new Date() },
+              ipAddress: ipAddress,
+              userAgent: userAgent,
+            });
+          }
+
+          // Invalida cache do dashboard para atualizar saldo imediatamente
+          cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+          cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
+        }
+      }
+    }
 
     await logAction({
       userId: userId,

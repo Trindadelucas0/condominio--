@@ -74,7 +74,7 @@
 
       <!-- Formulário Moderno -->
       <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in">
-        <form method="POST" action="/operacional/ocorrencias">
+        <form method="POST" action="/operacional/ocorrencias" enctype="multipart/form-data">
           <div class="space-y-6">
             <!-- Título -->
             <div>
@@ -236,6 +236,30 @@
               </div>
             </div>
 
+            <!-- Upload de Imagens -->
+            <div>
+              <label for="images" class="flex items-center text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Imagens (opcional)
+              </label>
+              <div class="mt-2">
+                <input
+                  type="file"
+                  id="images"
+                  name="images"
+                  multiple
+                  accept="image/*"
+                  class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200"
+                />
+                <p class="text-xs text-gray-500 mt-2">Você pode selecionar até 10 imagens. Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 10MB por imagem.</p>
+              </div>
+              <div id="imagePreview" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 hidden">
+                <!-- Preview das imagens será inserido aqui via JavaScript -->
+              </div>
+            </div>
+
             <!-- Botões -->
             <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
               <a href="/operacional/ocorrencias" class="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-all duration-200 inline-flex items-center space-x-2">
@@ -292,7 +316,59 @@
   document.addEventListener('DOMContentLoaded', function() {
     toggleApprovalFields();
     toggleApprovalDetails();
+    
+    // Preview de imagens
+    const imageInput = document.getElementById('images');
+    const imagePreview = document.getElementById('imagePreview');
+    
+    if (imageInput) {
+      imageInput.addEventListener('change', function(e) {
+        const files = e.target.files;
+        imagePreview.innerHTML = '';
+        
+        if (files.length > 0) {
+          imagePreview.classList.remove('hidden');
+          
+          Array.from(files).forEach((file, index) => {
+            if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'relative';
+                div.innerHTML = `
+                  <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-32 object-cover rounded-lg border-2 border-gray-200">
+                  <button type="button" onclick="removeImage(${index})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                `;
+                imagePreview.appendChild(div);
+              };
+              reader.readAsDataURL(file);
+            }
+          });
+        } else {
+          imagePreview.classList.add('hidden');
+        }
+      });
+    }
   });
+  
+  function removeImage(index) {
+    const imageInput = document.getElementById('images');
+    const dt = new DataTransfer();
+    const files = Array.from(imageInput.files);
+    
+    files.forEach((file, i) => {
+      if (i !== index) {
+        dt.items.add(file);
+      }
+    });
+    
+    imageInput.files = dt.files;
+    imageInput.dispatchEvent(new Event('change'));
+  }
 </script>
 
 <%- include('../partials/footer') %>

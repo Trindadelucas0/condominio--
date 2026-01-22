@@ -79,12 +79,13 @@ const getDashboardStats = async (userId, condominiumId) => {
     );
     const overdueTasks = parseInt(overdueTasksResult.rows[0].total);
 
-    // Conta ocorrências abertas reportadas pelo usuário
+    // Conta ocorrências abertas reportadas pelo usuário ou atribuídas a ele
     const openOccurrencesResult = await query(
       `SELECT COUNT(*) as total FROM occurrences 
-       WHERE reported_by = $1 AND status IN ('ABERTA', 'EM_ATENDIMENTO') 
+       WHERE (reported_by = $1 OR assigned_to = $1) 
+         AND status IN ('ABERTA', 'EM_ATENDIMENTO') 
          AND condominium_id = $2 
-         AND (occurrence_type = 'ZELADORIA' OR occurrence_type IS NULL)`,
+         AND (occurrence_type != 'LIMPEZA' OR occurrence_type IS NULL)`,
       [userId, condominiumId]
     );
     const openOccurrences = parseInt(openOccurrencesResult.rows[0].total);
@@ -400,6 +401,24 @@ const addTaskEvidence = async (taskId, filePath, fileName, fileType, userId) => 
   return res.rows[0];
 };
 
+// Função para adicionar imagem a uma ocorrência
+// Recebe: occurrenceId, filePath, fileName, fileType, fileSize, userId
+// Retorna: imagem criada
+const addOccurrenceImage = async (occurrenceId, filePath, fileName, fileType, fileSize, userId) => {
+  try {
+    const res = await query(
+      `INSERT INTO occurrence_images (occurrence_id, file_path, file_name, file_type, file_size, uploaded_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [occurrenceId, filePath, fileName || 'imagem', fileType || 'image/jpeg', fileSize || 0, userId]
+    );
+    return res.rows[0];
+  } catch (error) {
+    console.error('Erro ao adicionar imagem à ocorrência:', error);
+    throw error;
+  }
+};
+
 // Função para finalizar tarefa com dados estruturados
 // Recebe: taskId, userId, dados de conclusão (completionData)
 // Retorna: tarefa atualizada
@@ -674,22 +693,34 @@ const listOccurrences = async (userId, condominiumId, filters = {}) => {
     const offset = (page - 1) * perPage;
 
     // Query base para contar total
+    // IMPORTANTE: Mostra ocorrências que:
+    // 1. O usuário reportou (e não são de limpeza)
+    // 2. OU foram atribuídas a ele (independente do tipo, exceto limpeza que tem módulo próprio)
     let countSql = `
       SELECT COUNT(*) as total
       FROM occurrences 
       WHERE condominium_id = $1 
-        AND (reported_by = $2 OR assigned_to = $2)
-        AND (occurrence_type = 'ZELADORIA' OR occurrence_type IS NULL)
+        AND (
+          (reported_by = $2 AND (occurrence_type != 'LIMPEZA' OR occurrence_type IS NULL))
+          OR 
+          (assigned_to = $2 AND occurrence_type != 'LIMPEZA')
+        )
     `;
     const countParams = [condominiumId, userId];
     let countParamCount = 3;
 
     // Query principal
+    // IMPORTANTE: Mostra ocorrências que:
+    // 1. O usuário reportou (e não são de limpeza)
+    // 2. OU foram atribuídas a ele (independente do tipo, exceto limpeza que tem módulo próprio)
     let sql = `
       SELECT * FROM occurrences 
       WHERE condominium_id = $1 
-        AND (reported_by = $2 OR assigned_to = $2)
-        AND (occurrence_type = 'ZELADORIA' OR occurrence_type IS NULL)
+        AND (
+          (reported_by = $2 AND (occurrence_type != 'LIMPEZA' OR occurrence_type IS NULL))
+          OR 
+          (assigned_to = $2 AND occurrence_type != 'LIMPEZA')
+        )
     `;
     const params = [condominiumId, userId];
     let paramCount = 3;
@@ -727,6 +758,19 @@ const listOccurrences = async (userId, condominiumId, filters = {}) => {
       countSql += ` AND priority = $${countParamCount++}`;
       params.push(filters.priority);
       countParams.push(filters.priority);
+    }
+
+    // Filtro por tipo (atribuídas a mim ou criadas por mim)
+    if (filters.assignedToMe === 'assigned') {
+      // Apenas ocorrências atribuídas a mim (mas não criadas por mim)
+      // Adiciona condição adicional para restringir apenas assigned_to
+      sql += ` AND assigned_to = $2 AND reported_by != $2`;
+      countSql += ` AND assigned_to = $2 AND reported_by != $2`;
+    } else if (filters.assignedToMe === 'reported') {
+      // Apenas ocorrências criadas por mim
+      // Adiciona condição adicional para restringir apenas reported_by
+      sql += ` AND reported_by = $2 AND assigned_to IS NULL`;
+      countSql += ` AND reported_by = $2 AND assigned_to IS NULL`;
     }
 
     // Busca textual (se fornecido)
@@ -911,6 +955,7 @@ module.exports = {
   addTaskEvidence,
   completeTask,
   createOccurrence,
+  addOccurrenceImage,
   listOccurrences,
   resolveOccurrence,
 };

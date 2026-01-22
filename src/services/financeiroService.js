@@ -12,7 +12,7 @@ const { validateCondominiumOwnership, validateUserBelongsToCondominium } = requi
 // Retorna: saída criada
 const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => {
   try {
-    const { description, amount, exitDate, costCenterId, category, billId, requiresApproval, approvalLimit, isRecurring, recurrenceType, isVariable, averageAmount } = data;
+    const { description, amount, exitDate, costCenterId, category, billId, requiresApproval, approvalLimit, isRecurring, recurrenceType, isVariable, averageAmount, needsVerification, relatedBudgetRequestId, relatedBudgetQuoteId } = data;
 
     // Validações obrigatórias
     if (!description || !description.trim()) {
@@ -49,6 +49,16 @@ const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => 
       throw new Error(dateValidation.error);
     }
 
+    // Verifica se o mês da data está fechado (e não reaberto)
+    const monthlyClosureService = require('./monthlyClosureService');
+    const exitMonth = new Date(exitDate).getMonth() + 1;
+    const exitYear = new Date(exitDate).getFullYear();
+    const closure = await monthlyClosureService.getClosureByMonth(condominiumId, exitMonth, exitYear);
+    
+    if (closure && closure.status === 'CLOSED') {
+      throw new Error(`Não é possível criar saída financeira. O mês ${exitMonth}/${exitYear} está fechado. Reabra o mês primeiro se necessário.`);
+    }
+
     // Valida que usuário pertence ao condomínio
     const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
     if (!userBelongs) {
@@ -73,33 +83,54 @@ const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => 
     }
 
     // Se requer aprovação e valor é maior que o limite, cria aprovação pendente
+    // Se precisa verificação (criado automaticamente de orçamento), status é PENDING
     const needsApproval = requiresApproval && amountValue > limitValue;
-    const paymentStatus = needsApproval ? 'PENDING' : 'APPROVED';
+    const paymentStatus = needsVerification ? 'PENDING' : (needsApproval ? 'PENDING' : 'APPROVED');
+
+    // Monta campos dinamicamente para suportar campos opcionais
+    const insertFields = ['condominium_id', 'description', 'amount', 'exit_date', 'cost_center_id', 'category', 'bill_id', 'requires_approval', 'approval_limit', 'payment_status', 'created_by', 'is_recurring', 'recurrence_type', 'is_variable', 'average_amount'];
+    const insertValues = [condominiumId, description.trim(), amountValue, exitDate, costCenterId || null, category || 'OUTRA', billId || null, requiresApproval || false, limitValue, paymentStatus, userId, isRecurring || false, recurrenceType || 'UNIQUE', isVariable || false, averageAmount || null];
+    let paramCount = insertValues.length + 1;
+
+    // Adiciona campos opcionais se existirem
+    if (needsVerification !== undefined) {
+      insertFields.push('needs_verification');
+      insertValues.push(needsVerification);
+      paramCount++;
+    }
+
+    if (relatedBudgetRequestId) {
+      insertFields.push('related_budget_request_id');
+      insertValues.push(relatedBudgetRequestId);
+      paramCount++;
+    }
+
+    if (relatedBudgetQuoteId) {
+      insertFields.push('related_budget_quote_id');
+      insertValues.push(relatedBudgetQuoteId);
+      paramCount++;
+    }
+
+    const placeholders = insertFields.map((_, index) => `$${index + 1}`).join(', ');
 
     const result = await query(
-      `INSERT INTO financial_exits (condominium_id, description, amount, exit_date, cost_center_id, category, bill_id, requires_approval, approval_limit, payment_status, created_by, is_recurring, recurrence_type, is_variable, average_amount)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO financial_exits (${insertFields.join(', ')})
+       VALUES (${placeholders})
        RETURNING *`,
-      [
-        condominiumId, 
-        description.trim(), 
-        amountValue, 
-        exitDate, 
-        costCenterId || null, 
-        category || 'OUTRA', 
-        billId || null,
-        requiresApproval || false,
-        limitValue,
-        paymentStatus,
-        userId,
-        isRecurring || false,
-        recurrenceType || 'UNIQUE',
-        isVariable || false,
-        averageAmount || null
-      ]
+      insertValues
     );
 
     const exit = result.rows[0];
+
+    // Se precisa de aprovação do síndico (valor > limite), cria registro em approvals
+    // para que apareça em /sindico/aprovacoes
+    if (needsApproval) {
+      await query(
+        `INSERT INTO approvals (condominium_id, approval_type, entity_type, entity_id, requested_by, requested_amount, description, status)
+         VALUES ($1, 'FINANCIAL_EXIT', 'financial_exits', $2, $3, $4, $5, 'PENDING')`,
+        [condominiumId, exit.id, userId, amountValue, description.trim()]
+      );
+    }
 
     // Registra no log
     await logAction({
@@ -676,6 +707,11 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
       userAgent: userAgent,
     });
 
+    // Invalidar cache do dashboard para o saldo refletir a saída concluída (paga)
+    const cacheServicePay = require('./cacheService');
+    cacheServicePay.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheServicePay.deletePattern(`dashboard:analytics:${condominiumId}`);
+
     return updated;
   } catch (error) {
     console.error('Erro ao marcar saída como paga:', error);
@@ -1013,6 +1049,16 @@ const createEntry = async (condominiumId, userId, data, ipAddress, userAgent) =>
 
     if (!dateValidation.valid) {
       throw new Error(dateValidation.error);
+    }
+
+    // Verifica se o mês da data está fechado (e não reaberto)
+    const monthlyClosureService = require('./monthlyClosureService');
+    const entryMonth = new Date(entryDate).getMonth() + 1;
+    const entryYear = new Date(entryDate).getFullYear();
+    const closure = await monthlyClosureService.getClosureByMonth(condominiumId, entryMonth, entryYear);
+    
+    if (closure && closure.status === 'CLOSED') {
+      throw new Error(`Não é possível criar entrada financeira. O mês ${entryMonth}/${entryYear} está fechado. Reabra o mês primeiro se necessário.`);
     }
 
     // Valida que usuário pertence ao condomínio
@@ -1878,10 +1924,6 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
       throw new Error('Método de recebimento é obrigatório');
     }
 
-    if (!receiptPdfPath || !receiptPdfPath.trim()) {
-      throw new Error('Comprovante em PDF é obrigatório');
-    }
-
     if (!receiptDetails || !receiptDetails.trim()) {
       throw new Error('Detalhes do recebimento são obrigatórios');
     }
@@ -1915,7 +1957,20 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
       throw new Error('Entrada já foi marcada como recebida');
     }
 
+    // Verifica se é entrada vinculada a taxa (permite comprovante opcional)
+    const isTaxaEntry = current.linked_to_type === 'MONTHLY_FEE';
+    
+    // Para taxas, se não tiver comprovante, usa valor padrão
+    let finalReceiptPdfPath = receiptPdfPath;
+    if (isTaxaEntry && (!receiptPdfPath || !receiptPdfPath.trim())) {
+      finalReceiptPdfPath = 'taxa_paga_sem_comprovante.pdf';
+    } else if (!receiptPdfPath || !receiptPdfPath.trim()) {
+      throw new Error('Comprovante em PDF é obrigatório');
+    }
+
     // Atualiza entrada como recebida
+    // IMPORTANTE: Isso atualiza o saldo financeiro automaticamente
+    // O saldo é calculado como: entradas recebidas (received = TRUE) - saídas pagas
     const updateResult = await query(
       `UPDATE financial_entries 
        SET received = TRUE, 
@@ -1928,7 +1983,7 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
        WHERE id = $5 AND condominium_id = $6 AND received = FALSE
        RETURNING *`,
       [
-        receiptPdfPath.trim(),
+        finalReceiptPdfPath.trim(),
         receiptMethod.trim(),
         receiptDetails.trim(),
         receiptNotes ? receiptNotes.trim() : null,
@@ -1956,6 +2011,11 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
+
+    // Invalidar cache do dashboard para o saldo refletir a entrada concluída
+    const cacheService = require('./cacheService');
+    cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
 
     return updated;
   } catch (error) {

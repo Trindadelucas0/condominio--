@@ -358,6 +358,12 @@ router.get('/orcamentos-pendentes', async (req, res) => {
     }
     const orcamentoService = require('../services/orcamentoService');
     const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'PENDING_FINANCEIRO');
+    
+    // Busca orçamentos (quotes) para cada solicitação
+    for (const budget of budgets) {
+      budget.quotes = await orcamentoService.getBudgetQuotes(budget.id);
+    }
+    
     res.render('financeiro/orcamentos-pendentes', {
       title: 'Orçamentos Aguardando Análise',
       user: req.user,
@@ -404,6 +410,12 @@ router.get('/orcamentos-aprovados', async (req, res) => {
     }
     const orcamentoService = require('../services/orcamentoService');
     const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'APPROVED');
+    
+    // Busca orçamentos (quotes) para cada solicitação
+    for (const budget of budgets) {
+      budget.quotes = await orcamentoService.getBudgetQuotes(budget.id);
+    }
+    
     res.render('financeiro/orcamentos-aprovados', {
       title: 'Orçamentos Aprovados',
       user: req.user,
@@ -413,6 +425,131 @@ router.get('/orcamentos-aprovados', async (req, res) => {
   } catch (error) {
     console.error('Erro ao listar orçamentos aprovados:', error);
     res.status(500).send('Erro ao carregar orçamentos');
+  }
+});
+
+// Saídas que precisam verificação (criadas automaticamente de orçamentos)
+router.get('/saidas-verificacao', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const financeiroService = require('../services/financeiroService');
+    const { query } = require('../config/database');
+    
+    // Busca saídas que precisam verificação
+    const exitsResult = await query(
+      `SELECT fe.*, br.title as budget_title, bq.supplier_name, bq.quote_value
+       FROM financial_exits fe
+       LEFT JOIN budget_requests br ON fe.related_budget_request_id = br.id
+       LEFT JOIN budget_quotes bq ON fe.related_budget_quote_id = bq.id
+       WHERE fe.condominium_id = $1 
+         AND fe.needs_verification = TRUE
+         AND fe.verified = FALSE
+       ORDER BY fe.created_at DESC`,
+      [req.user.condominiumId]
+    );
+    
+    const exits = exitsResult.rows;
+    
+    res.render('financeiro/saidas-verificacao', {
+      title: 'Saídas para Verificação',
+      user: req.user,
+      exits: exits,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao listar saídas para verificação:', error);
+    res.status(500).send('Erro ao carregar saídas');
+  }
+});
+
+// Verificar e completar saída
+router.get('/saidas/:id/verificar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const financeiroService = require('../services/financeiroService');
+    const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
+    const exit = exits.find(e => e.id === parseInt(req.params.id));
+    
+    if (!exit) {
+      return res.status(404).send('Saída não encontrada');
+    }
+    
+    if (!exit.needs_verification || exit.verified) {
+      return res.redirect('/financeiro/saidas-verificacao?error=already_verified');
+    }
+    
+    // Busca informações do orçamento relacionado
+    const orcamentoService = require('../services/orcamentoService');
+    let budgetRequest = null;
+    if (exit.related_budget_request_id) {
+      budgetRequest = await orcamentoService.getBudgetRequestById(exit.related_budget_request_id, req.user.condominiumId);
+    }
+    
+    // Busca centros de custo
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+    
+    res.render('financeiro/saidas/verificar', {
+      title: 'Verificar e Completar Saída',
+      user: req.user,
+      exit: exit,
+      budgetRequest: budgetRequest,
+      costCenters: costCenters,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar formulário de verificação:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+});
+
+router.post('/saidas/:id/verificar', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const financeiroService = require('../services/financeiroService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    
+    // Atualiza a saída com os dados verificados
+    const updateData = {
+      description: req.body.description,
+      amount: req.body.amount,
+      exitDate: req.body.exitDate,
+      costCenterId: req.body.costCenterId || null,
+      category: req.body.category || 'MANUTENCAO',
+    };
+    
+    // Obtém roles do usuário
+    const userRoles = req.user.role ? [req.user.role] : [];
+    
+    await financeiroService.updateExit(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      updateData,
+      userRoles,
+      ipAddress,
+      userAgent
+    );
+    
+    // Marca como verificada
+    const { query } = require('../config/database');
+    await query(
+      `UPDATE financial_exits
+       SET verified = TRUE, verified_by = $1, verified_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND condominium_id = $3`,
+      [req.user.id, req.params.id, req.user.condominiumId]
+    );
+    
+    res.redirect('/financeiro/saidas-verificacao?success=verified');
+  } catch (error) {
+    console.error('Erro ao verificar saída:', error);
+    res.redirect('/financeiro/saidas/' + req.params.id + '/verificar?error=' + encodeURIComponent(error.message));
   }
 });
 

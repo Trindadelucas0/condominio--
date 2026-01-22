@@ -217,6 +217,8 @@ const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, 
 // Função para reabrir mês fechado
 // Recebe: closureId, condominiumId, userId, reason
 // Retorna: fechamento atualizado
+// IMPORTANTE: Quando um mês é reaberto, todos os registros criados a partir daquele momento
+// que tenham data dentro do mês reaberto serão automaticamente associados a esse mês
 const reopenMonth = async (closureId, condominiumId, userId, reason, ipAddress, userAgent) => {
   try {
     // Valida que usuário pertence ao condomínio
@@ -247,7 +249,7 @@ const reopenMonth = async (closureId, condominiumId, userId, reason, ipAddress, 
       throw new Error('Apenas meses fechados podem ser reabertos');
     }
 
-    // Atualiza status
+    // Atualiza status para REOPENED
     const updateResult = await query(
       `UPDATE monthly_closures 
        SET status = 'REOPENED',
@@ -262,6 +264,11 @@ const reopenMonth = async (closureId, condominiumId, userId, reason, ipAddress, 
 
     const updated = updateResult.rows[0];
 
+    // IMPORTANTE: A partir deste momento, todos os registros financeiros criados
+    // com data dentro do mês reaberto serão automaticamente associados a esse mês
+    // Isso é feito através da validação de data nas funções createEntry e createExit
+    // que verificam se o mês está fechado antes de criar
+
     // Registra no log
     await logAction({
       userId: userId,
@@ -274,6 +281,7 @@ const reopenMonth = async (closureId, condominiumId, userId, reason, ipAddress, 
       afterData: updated,
       ipAddress: ipAddress,
       userAgent: userAgent,
+      notes: `Mês reaberto. Motivo: ${reason.trim()}. A partir de agora, registros com data neste mês serão aceitos.`
     });
 
     return updated;

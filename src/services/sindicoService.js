@@ -64,7 +64,7 @@ const getDashboardStats = async (condominiumId) => {
     // Saldo financeiro (entradas recebidas - saídas pagas - saídas aprovadas mas não pagas)
     const entriesResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
-       WHERE condominium_id = $1 AND received = TRUE`,
+       WHERE condominium_id = $1 AND received = TRUE AND deleted_at IS NULL`,
       [condominiumId]
     );
     const totalEntries = parseFloat(entriesResult.rows[0].total);
@@ -463,6 +463,12 @@ const processApproval = async (approvalId, action, reason, userId, condominiumId
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
+
+    // Quando aprovação é de saída financeira, o saldo muda; invalidar cache do dashboard
+    if (approval.entity_type === 'financial_exits') {
+      cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+      cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
+    }
 
     return updated;
   } catch (error) {

@@ -64,42 +64,98 @@
             </div>
           </div>
 
+          <!-- Lista de Orçamentos (Quotes) -->
+          <% if (budget.quotes && budget.quotes.length > 0) { %>
+            <div class="border-t pt-4 mt-4">
+              <h4 class="text-md font-semibold text-gray-800 mb-4">Orçamentos Recebidos:</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <% budget.quotes.forEach((quote, index) => { %>
+                  <div class="border-2 <%= quote.status === 'APPROVED' ? 'border-green-500 bg-green-50' : quote.status === 'REJECTED' ? 'border-red-300 bg-red-50' : 'border-gray-300' %> rounded-lg p-4">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex-1">
+                        <h5 class="font-semibold text-gray-800"><%= quote.supplier_name %></h5>
+                        <% if (quote.supplier_contact) { %>
+                          <p class="text-xs text-gray-600 mt-1"><%= quote.supplier_contact %></p>
+                        <% } %>
+                      </div>
+                      <% if (quote.status === 'APPROVED') { %>
+                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">Aprovado</span>
+                      <% } else if (quote.status === 'REJECTED') { %>
+                        <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">Rejeitado</span>
+                      <% } %>
+                    </div>
+                    <div class="mt-3">
+                      <p class="text-2xl font-bold text-blue-600">R$ <%= parseFloat(quote.quote_value).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+                      <% if (quote.quote_description) { %>
+                        <p class="text-sm text-gray-600 mt-2"><%= quote.quote_description %></p>
+                      <% } %>
+                      <% if (quote.quote_validity_date) { %>
+                        <p class="text-xs text-gray-500 mt-2">Válido até: <%= new Date(quote.quote_validity_date).toLocaleDateString('pt-BR') %></p>
+                      <% } %>
+                    </div>
+                  </div>
+                <% }); %>
+              </div>
+            </div>
+          <% } %>
+
           <!-- Formulário de Aprovação -->
           <div class="border-t pt-4 mt-4">
             <form method="POST" action="/sindico/orcamentos/<%= budget.id %>/aprovar" class="mb-4">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Valor Aprovado (R$) <span class="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="budgetApprovedAmount"
-                    step="0.01"
-                    min="0"
-                    required
-                    value="<%= budget.estimated_value || '' %>"
-                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Observações (opcional)
-                  </label>
-                  <textarea
-                    name="approvalNotes"
-                    rows="3"
-                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Adicione observações sobre a aprovação..."
-                  ></textarea>
-                </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Selecione o Orçamento para Aprovar <span class="text-red-500">*</span>
+                </label>
+                <% if (budget.quotes && budget.quotes.length > 0) { %>
+                  <div class="space-y-2">
+                    <% budget.quotes.forEach((quote) => { %>
+                      <% if (quote.status === 'PENDING') { %>
+                        <label class="flex items-center p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all">
+                          <input
+                            type="radio"
+                            name="approvedQuoteId"
+                            value="<%= quote.id %>"
+                            required
+                            class="mr-3 text-blue-600 focus:ring-blue-500"
+                            onchange="updateApprovedValue(<%= quote.quote_value %>)"
+                          />
+                          <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                              <span class="font-semibold text-gray-800"><%= quote.supplier_name %></span>
+                              <span class="text-lg font-bold text-blue-600">R$ <%= parseFloat(quote.quote_value).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></span>
+                            </div>
+                            <% if (quote.quote_description) { %>
+                              <p class="text-xs text-gray-600 mt-1"><%= quote.quote_description %></p>
+                            <% } %>
+                            <% if (quote.quote_validity_date) { %>
+                              <p class="text-xs text-gray-500 mt-1">Válido até: <%= new Date(quote.quote_validity_date).toLocaleDateString('pt-BR') %></p>
+                            <% } %>
+                          </div>
+                        </label>
+                      <% } %>
+                    <% }); %>
+                  </div>
+                <% } else { %>
+                  <p class="text-sm text-gray-500">Nenhum orçamento disponível para aprovação</p>
+                <% } %>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Observações (opcional)
+                </label>
+                <textarea
+                  name="approvalNotes"
+                  rows="3"
+                  class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Adicione observações sobre a aprovação..."
+                ></textarea>
               </div>
               <button
                 type="submit"
                 class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
+                <%= (!budget.quotes || budget.quotes.length === 0 || budget.quotes.every(q => q.status !== 'PENDING')) ? 'disabled' : '' %>
               >
-                ✓ Aprovar Orçamento
+                ✓ Aprovar Orçamento Selecionado
               </button>
             </form>
 
@@ -138,5 +194,12 @@
     </div>
   <% } %>
 </div>
+
+<script>
+  function updateApprovedValue(value) {
+    // Esta função pode ser usada para atualizar algum campo se necessário
+    // Por enquanto, o valor será pego do orçamento selecionado no backend
+  }
+</script>
 
 <%- include('../partials/footer') %>
