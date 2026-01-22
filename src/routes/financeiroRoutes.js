@@ -798,30 +798,157 @@ router.post('/relatorios/mensal/gerar', async (req, res) => {
   }
 });
 
-router.get('/relatorios/download/:id', async (req, res) => {
+// Visualizar relatório PDF no navegador
+router.get('/relatorios/visualizar', async (req, res) => {
   try {
     if (!req.user.condominiumId) {
       return res.status(400).send('Usuário não está associado a um condomínio');
     }
-    const { query } = require('../config/database');
-    const reportResult = await query(
-      `SELECT * FROM generated_reports 
-       WHERE id = $1 AND condominium_id = $2`,
-      [req.params.id, req.user.condominiumId]
-    );
     
-    if (reportResult.rows.length === 0) {
+    const fileName = req.query.file;
+    if (!fileName) {
+      return res.status(400).send('Nome do arquivo não fornecido');
+    }
+    
+    const path = require('path');
+    const fs = require('fs');
+    const reportsDir = path.join(__dirname, '../../uploads/reports');
+    
+    // Normalizar o nome do arquivo para evitar problemas com caminhos
+    const normalizedFileName = path.basename(fileName);
+    const filePath = path.join(reportsDir, normalizedFileName);
+    
+    // Verificar se o arquivo existe
+    if (!fs.existsSync(filePath)) {
+      console.error('Arquivo não encontrado:', filePath);
       return res.status(404).send('Relatório não encontrado');
     }
     
-    const report = reportResult.rows[0];
-    const path = require('path');
-    const filePath = path.join(__dirname, '../../', report.file_path);
+    // Verificar se é PDF (segurança)
+    if (!normalizedFileName.endsWith('.pdf')) {
+      return res.status(400).send('Apenas arquivos PDF podem ser visualizados');
+    }
     
-    res.download(filePath, report.file_name);
+    // Verificar tamanho do arquivo
+    const stats = fs.statSync(filePath);
+    if (stats.size === 0) {
+      console.error('Arquivo PDF está vazio:', filePath);
+      return res.status(500).send('O arquivo PDF está vazio ou corrompido');
+    }
+    
+    // Verificar se o arquivo está dentro do diretório de relatórios (segurança)
+    const resolvedPath = path.resolve(filePath);
+    const resolvedDir = path.resolve(reportsDir);
+    if (!resolvedPath.startsWith(resolvedDir)) {
+      return res.status(403).send('Acesso negado');
+    }
+    
+    console.log(`Enviando PDF para visualização: ${normalizedFileName} (${stats.size} bytes)`);
+    
+    // Enviar PDF para visualização no navegador usando caminho absoluto
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(normalizedFileName)}"`);
+    res.setHeader('Content-Length', stats.size);
+    
+    // Usar sendFile com caminho absoluto e callback para tratamento de erros
+    res.sendFile(resolvedPath, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="${encodeURIComponent(normalizedFileName)}"`,
+        'Content-Length': stats.size
+      }
+    }, (err) => {
+      if (err) {
+        console.error('Erro ao enviar arquivo PDF:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Erro ao visualizar relatório: ' + err.message);
+        }
+      } else {
+        console.log('PDF enviado com sucesso para visualização');
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao visualizar relatório:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Erro ao visualizar relatório: ' + error.message);
+    }
+  }
+});
+
+// Baixar relatório
+router.get('/relatorios/download', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    
+    const fileName = req.query.file;
+    if (!fileName) {
+      return res.status(400).send('Nome do arquivo não fornecido');
+    }
+    
+    const path = require('path');
+    const fs = require('fs');
+    const reportsDir = path.join(__dirname, '../../uploads/reports');
+    
+    // Normalizar o nome do arquivo para evitar problemas com caminhos
+    const normalizedFileName = path.basename(fileName);
+    const filePath = path.join(reportsDir, normalizedFileName);
+    
+    // Verificar se o arquivo existe
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('Relatório não encontrado');
+    }
+    
+    // Verificar se o arquivo está dentro do diretório de relatórios (segurança)
+    const resolvedPath = path.resolve(filePath);
+    const resolvedDir = path.resolve(reportsDir);
+    if (!resolvedPath.startsWith(resolvedDir)) {
+      return res.status(403).send('Acesso negado');
+    }
+    
+    // Enviar arquivo para download usando caminho absoluto
+    res.download(resolvedPath, normalizedFileName, (err) => {
+      if (err) {
+        console.error('Erro ao baixar relatório:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Erro ao baixar relatório: ' + err.message);
+        }
+      }
+    });
   } catch (error) {
     console.error('Erro ao baixar relatório:', error);
-    res.status(500).send('Erro ao baixar relatório');
+    if (!res.headersSent) {
+      res.status(500).send('Erro ao baixar relatório: ' + error.message);
+    }
+  }
+});
+
+// Excluir relatório
+router.post('/relatorios/excluir', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    
+    const fileName = req.body.fileName || req.query.fileName;
+    if (!fileName) {
+      return res.status(400).send('Nome do arquivo não fornecido');
+    }
+    
+    const path = require('path');
+    // Normalizar o nome do arquivo para evitar problemas com caminhos
+    const normalizedFileName = path.basename(fileName);
+    
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    
+    await reportService.deleteReport(normalizedFileName, req.user.condominiumId, req.user.id, ipAddress, userAgent);
+    
+    res.redirect('/financeiro/relatorios?success=deleted');
+  } catch (error) {
+    console.error('Erro ao excluir relatório:', error);
+    res.redirect('/financeiro/relatorios?error=' + encodeURIComponent(error.message));
   }
 });
 

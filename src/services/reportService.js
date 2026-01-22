@@ -410,6 +410,15 @@ const reportService = {
           const filePath = path.join(reportsDir, file);
           const stats = fs.statSync(filePath);
           
+          // Extrair mês e ano do nome do arquivo se for relatório mensal
+          let month = null;
+          let year = null;
+          const monthlyMatch = file.match(/relatorio_mensal_(\d{4})_(\d{1,2})_/);
+          if (monthlyMatch) {
+            year = parseInt(monthlyMatch[1]);
+            month = parseInt(monthlyMatch[2]);
+          }
+          
           return {
             name: file,
             path: filePath,
@@ -417,7 +426,9 @@ const reportService = {
             createdAt: stats.birthtime,
             modifiedAt: stats.mtime,
             type: file.endsWith('.pdf') ? 'PDF' : 'Excel',
-            url: `/uploads/reports/${file}`
+            url: `/uploads/reports/${file}`,
+            month: month,
+            year: year
           };
         })
         .sort((a, b) => b.modifiedAt - a.modifiedAt); // Mais recentes primeiro
@@ -429,7 +440,68 @@ const reportService = {
     }
   },
 
-  // Gerar relatório financeiro mensal
+  // Excluir relatório
+  deleteReport: async (fileName, condominiumId, userId, ipAddress, userAgent) => {
+    try {
+      const { logAction } = require('../utils/logger');
+      const reportsDir = path.join(__dirname, '../../uploads/reports');
+      const filePath = path.join(reportsDir, fileName);
+      
+      // Verificar se o arquivo existe
+      if (!fs.existsSync(filePath)) {
+        throw new Error('Relatório não encontrado');
+      }
+      
+      // Verificar se é um arquivo PDF ou Excel (segurança)
+      if (!fileName.endsWith('.pdf') && !fileName.endsWith('.xlsx')) {
+        throw new Error('Tipo de arquivo inválido');
+      }
+      
+      // Verificar se o arquivo está dentro do diretório de relatórios (segurança)
+      const resolvedPath = path.resolve(filePath);
+      const resolvedDir = path.resolve(reportsDir);
+      if (!resolvedPath.startsWith(resolvedDir)) {
+        throw new Error('Caminho inválido');
+      }
+      
+      // Obter informações do arquivo antes de excluir (para log)
+      const stats = fs.statSync(filePath);
+      const fileInfo = {
+        name: fileName,
+        size: stats.size,
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime
+      };
+      
+      // Excluir arquivo
+      fs.unlinkSync(filePath);
+      
+      // Registrar log
+      try {
+        await logAction({
+          userId: userId,
+          condominiumId: condominiumId,
+          action: 'DELETE',
+          module: 'FINANCIAL',
+          entityType: 'monthly_report',
+          entityId: null,
+          beforeData: fileInfo,
+          afterData: null,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+        });
+      } catch (logError) {
+        console.error('Erro ao registrar log de exclusão:', logError);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao excluir relatório:', error);
+      throw error;
+    }
+  },
+
+  // Gerar relatório financeiro mensal COMPLETO E DETALHADO
   generateMonthlyFinancialReport: async (condominiumId, month, year, userId, ipAddress, userAgent) => {
     try {
       const { query } = require('../config/database');
@@ -449,43 +521,199 @@ const reportService = {
       );
       const condominiumName = condominiumResult.rows.length > 0 ? condominiumResult.rows[0].name : 'Condomínio';
       
-      // Buscar entradas do mês
+      // Buscar entradas do mês com todos os detalhes
       const entriesResult = await query(
-        `SELECT * FROM financial_entries 
-         WHERE condominium_id = $1 
-         AND EXTRACT(MONTH FROM entry_date) = $2 
-         AND EXTRACT(YEAR FROM entry_date) = $3
-         ORDER BY entry_date ASC`,
+        `SELECT 
+          fe.*, 
+          cc.name as cost_center_name,
+          u.full_name as created_by_name,
+          u2.full_name as reviewed_by_name
+         FROM financial_entries fe
+         LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id
+         LEFT JOIN users u ON fe.created_by = u.id
+         LEFT JOIN users u2 ON fe.reviewed_by = u2.id
+         WHERE fe.condominium_id = $1 
+         AND EXTRACT(MONTH FROM fe.entry_date) = $2 
+         AND EXTRACT(YEAR FROM fe.entry_date) = $3
+         AND fe.deleted_at IS NULL
+         ORDER BY fe.entry_date ASC, fe.id ASC`,
         [condominiumId, month, year]
       );
       const entries = entriesResult.rows;
       
-      // Buscar saídas do mês
+      // Buscar saídas do mês com todos os detalhes
       const exitsResult = await query(
-        `SELECT * FROM financial_exits 
-         WHERE condominium_id = $1 
-         AND EXTRACT(MONTH FROM exit_date) = $2 
-         AND EXTRACT(YEAR FROM exit_date) = $3
-         ORDER BY exit_date ASC`,
+        `SELECT 
+          fe.*,
+          cc.name as cost_center_name,
+          b.name as bill_name,
+          b.bill_type,
+          u.full_name as created_by_name,
+          u2.full_name as approved_by_name
+         FROM financial_exits fe
+         LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id
+         LEFT JOIN bills b ON fe.bill_id = b.id
+         LEFT JOIN users u ON fe.created_by = u.id
+         LEFT JOIN users u2 ON fe.approved_by = u2.id
+         WHERE fe.condominium_id = $1 
+         AND EXTRACT(MONTH FROM fe.exit_date) = $2 
+         AND EXTRACT(YEAR FROM fe.exit_date) = $3
+         ORDER BY fe.exit_date ASC, fe.id ASC`,
         [condominiumId, month, year]
       );
       const exits = exitsResult.rows;
       
-      // Calcular totais
+      // Buscar consumo mensal do mês
+      const consumptionResult = await query(
+        `SELECT 
+          mc.*,
+          b.name as bill_name,
+          b.bill_type,
+          b.provider
+         FROM monthly_consumption mc
+         INNER JOIN bills b ON mc.bill_id = b.id
+         WHERE mc.condominium_id = $1 
+         AND mc.month = $2 
+         AND mc.year = $3
+         ORDER BY b.bill_type, b.name`,
+        [condominiumId, month, year]
+      );
+      const consumption = consumptionResult.rows;
+      
+      // Calcular totais e estatísticas
       const totalEntries = entries.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
       const totalEntriesReceived = entries
         .filter(e => e.received)
         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+      const totalEntriesPending = entries
+        .filter(e => !e.received && e.review_status === 'APPROVED')
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+      
       const totalExits = exits.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
       const totalExitsPaid = exits
         .filter(e => e.payment_status === 'PAID')
         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+      const totalExitsApproved = exits
+        .filter(e => e.payment_status === 'APPROVED')
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+      const totalExitsPending = exits
+        .filter(e => e.payment_status === 'PENDING')
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+      const totalExitsRejected = exits
+        .filter(e => e.payment_status === 'REJECTED')
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
       
-      // Gerar PDF
+      // Análise por centro de custo - Entradas
+      const entriesByCostCenter = {};
+      entries.forEach(entry => {
+        const ccName = entry.cost_center_name || 'Sem Centro de Custo';
+        if (!entriesByCostCenter[ccName]) {
+          entriesByCostCenter[ccName] = { total: 0, received: 0, count: 0 };
+        }
+        entriesByCostCenter[ccName].total += parseFloat(entry.amount || 0);
+        if (entry.received) {
+          entriesByCostCenter[ccName].received += parseFloat(entry.amount || 0);
+        }
+        entriesByCostCenter[ccName].count++;
+      });
+      
+      // Análise por centro de custo - Saídas
+      const exitsByCostCenter = {};
+      exits.forEach(exit => {
+        const ccName = exit.cost_center_name || 'Sem Centro de Custo';
+        if (!exitsByCostCenter[ccName]) {
+          exitsByCostCenter[ccName] = { total: 0, paid: 0, approved: 0, pending: 0, count: 0 };
+        }
+        exitsByCostCenter[ccName].total += parseFloat(exit.amount || 0);
+        if (exit.payment_status === 'PAID') {
+          exitsByCostCenter[ccName].paid += parseFloat(exit.amount || 0);
+        } else if (exit.payment_status === 'APPROVED') {
+          exitsByCostCenter[ccName].approved += parseFloat(exit.amount || 0);
+        } else if (exit.payment_status === 'PENDING') {
+          exitsByCostCenter[ccName].pending += parseFloat(exit.amount || 0);
+        }
+        exitsByCostCenter[ccName].count++;
+      });
+      
+      // Análise por categoria - Entradas
+      const entriesByCategory = {};
+      entries.forEach(entry => {
+        const cat = entry.category || 'OUTRA';
+        if (!entriesByCategory[cat]) {
+          entriesByCategory[cat] = { total: 0, received: 0, count: 0 };
+        }
+        entriesByCategory[cat].total += parseFloat(entry.amount || 0);
+        if (entry.received) {
+          entriesByCategory[cat].received += parseFloat(entry.amount || 0);
+        }
+        entriesByCategory[cat].count++;
+      });
+      
+      // Análise por categoria - Saídas
+      const exitsByCategory = {};
+      exits.forEach(exit => {
+        const cat = exit.category || 'OUTRA';
+        if (!exitsByCategory[cat]) {
+          exitsByCategory[cat] = { total: 0, paid: 0, count: 0 };
+        }
+        exitsByCategory[cat].total += parseFloat(exit.amount || 0);
+        if (exit.payment_status === 'PAID') {
+          exitsByCategory[cat].paid += parseFloat(exit.amount || 0);
+        }
+        exitsByCategory[cat].count++;
+      });
+      
+      // Comparação com mês anterior
+      const prevMonth = month === 1 ? 12 : month - 1;
+      const prevYear = month === 1 ? year - 1 : year;
+      
+      const prevEntriesResult = await query(
+        `SELECT COALESCE(SUM(amount), 0) as total 
+         FROM financial_entries 
+         WHERE condominium_id = $1 
+         AND EXTRACT(MONTH FROM entry_date) = $2 
+         AND EXTRACT(YEAR FROM entry_date) = $3
+         AND received = TRUE AND deleted_at IS NULL`,
+        [condominiumId, prevMonth, prevYear]
+      );
+      const prevEntries = parseFloat(prevEntriesResult.rows[0].total);
+      
+      const prevExitsResult = await query(
+        `SELECT COALESCE(SUM(amount), 0) as total 
+         FROM financial_exits 
+         WHERE condominium_id = $1 
+         AND EXTRACT(MONTH FROM exit_date) = $2 
+         AND EXTRACT(YEAR FROM exit_date) = $3
+         AND payment_status = 'PAID'`,
+        [condominiumId, prevMonth, prevYear]
+      );
+      const prevExits = parseFloat(prevExitsResult.rows[0].total);
+      
+      const entriesVariation = prevEntries > 0 
+        ? ((totalEntriesReceived - prevEntries) / prevEntries) * 100 
+        : (totalEntriesReceived > 0 ? 100 : 0);
+      const exitsVariation = prevExits > 0 
+        ? ((totalExitsPaid - prevExits) / prevExits) * 100 
+        : (totalExitsPaid > 0 ? 100 : 0);
+      
+      // Saldo do mês
+      const balance = totalEntriesReceived - totalExitsPaid;
+      
+      // Gerar PDF completo
       return new Promise((resolve, reject) => {
         try {
-          const doc = new PDFDocument({ margin: 50, size: 'A4' });
-          const fileName = `relatorio_mensal_${year}_${month}_${Date.now()}.pdf`;
+          const doc = new PDFDocument({ 
+            margin: 50, 
+            size: 'A4',
+            info: {
+              Title: `Relatório Financeiro Mensal - ${month}/${year}`,
+              Author: condominiumName,
+              Subject: 'Relatório Financeiro',
+              Creator: 'Sistema de Gestão Condominial'
+            }
+          });
+          
+          // Garantir nome único para não sobrescrever - usando timestamp mais preciso
           const reportsDir = path.join(__dirname, '../../uploads/reports');
           
           // Criar diretório se não existir
@@ -493,121 +721,1140 @@ const reportService = {
             fs.mkdirSync(reportsDir, { recursive: true });
           }
           
-          const filePath = path.join(reportsDir, fileName);
+          // Gerar nome único com timestamp preciso e ID aleatório
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).substring(2, 9); // ID aleatório de 7 caracteres
+          const baseFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${timestamp}_${randomId}.pdf`;
+          
+          // Verificar se arquivo já existe e gerar novo nome se necessário
+          let filePath = path.join(reportsDir, baseFileName);
+          let finalFileName = baseFileName;
+          let counter = 1;
+          let maxAttempts = 100; // Limite de segurança
+          
+          while (fs.existsSync(filePath) && counter < maxAttempts) {
+            const newFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${timestamp}_${randomId}_${counter}.pdf`;
+            filePath = path.join(reportsDir, newFileName);
+            finalFileName = newFileName;
+            counter++;
+          }
+          
+          if (counter >= maxAttempts) {
+            // Se chegou no limite, usar timestamp adicional
+            const extraTimestamp = Date.now();
+            finalFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${timestamp}_${extraTimestamp}.pdf`;
+            filePath = path.join(reportsDir, finalFileName);
+          }
+          
+          // Verificação final de segurança
+          if (fs.existsSync(filePath)) {
+            // Última tentativa com timestamp único
+            const finalTimestamp = Date.now() + Math.random() * 1000;
+            finalFileName = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}_${finalTimestamp}.pdf`;
+            filePath = path.join(reportsDir, finalFileName);
+          }
+          
+          console.log(`Gerando relatório com nome único: ${finalFileName}`);
+          
           const stream = fs.createWriteStream(filePath);
           doc.pipe(stream);
           
-          // Cabeçalho
-          doc.fontSize(20).font('Helvetica-Bold').text('Relatório Financeiro Mensal', { align: 'center' });
-          doc.fontSize(12).font('Helvetica').text(condominiumName, { align: 'center' });
-          doc.fontSize(10).text(`${month}/${year}`, { align: 'center' });
-          doc.moveDown();
+          // Cores do tema
+          const colors = {
+            primary: '#1e40af',      // Azul escuro
+            secondary: '#3b82f6',    // Azul
+            success: '#10b981',      // Verde
+            danger: '#ef4444',       // Vermelho
+            warning: '#f59e0b',      // Laranja
+            dark: '#1f2937',        // Cinza escuro
+            light: '#f3f4f6',       // Cinza claro
+            border: '#e5e7eb'       // Borda
+          };
           
-          // Data de geração
-          doc.fontSize(10).text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, { align: 'right' });
+          // Função auxiliar para adicionar nova página se necessário
+          const checkPageBreak = (requiredSpace = 50) => {
+            if (doc.y + requiredSpace > 750) {
+              doc.addPage();
+              return true;
+            }
+            return false;
+          };
+          
+          // Função auxiliar para formatar moeda
+          const formatCurrency = (value) => {
+            return `R$ ${parseFloat(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          };
+          
+          // Função auxiliar para formatar data
+          const formatDate = (date) => {
+            if (!date) return '-';
+            return new Date(date).toLocaleDateString('pt-BR');
+          };
+          
+          // Função para desenhar box/caixa
+          const drawBox = (x, y, width, height, fillColor = null, strokeColor = colors.border) => {
+            if (fillColor) {
+              doc.rect(x, y, width, height).fillColor(fillColor).fill();
+            }
+            doc.rect(x, y, width, height).strokeColor(strokeColor).lineWidth(0.5).stroke();
+          };
+          
+          // Função para adicionar linha horizontal
+          const drawLine = (y, color = colors.border, width = 495) => {
+            doc.moveTo(50, y).lineTo(50 + width, y).strokeColor(color).lineWidth(1).stroke();
+          };
+          
+          // ========== CABEÇALHO BONITO ==========
+          const headerY = 50;
+          
+          // Box do cabeçalho
+          drawBox(50, headerY, 495, 80, colors.primary);
+          
+          // Título principal
+          doc.fontSize(24).font('Helvetica-Bold').fillColor('#ffffff')
+            .text('RELATÓRIO FINANCEIRO MENSAL', 50, headerY + 15, { 
+              align: 'center', 
+              width: 495 
+            });
+          
+          // Nome do condomínio
+          doc.fontSize(16).font('Helvetica-Bold').fillColor('#ffffff')
+            .text(condominiumName, 50, headerY + 45, { 
+              align: 'center', 
+              width: 495 
+            });
+          
+          // Período
+          doc.fontSize(12).font('Helvetica').fillColor('#e0e7ff')
+            .text(`Período: ${String(month).padStart(2, '0')}/${year}`, 50, headerY + 65, { 
+              align: 'center', 
+              width: 495 
+            });
+          
+          // Resetar cor
+          doc.fillColor('#000000');
+          
+          // Data de geração (fora do box)
+          doc.fontSize(9).font('Helvetica').fillColor(colors.dark)
+            .text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 50, headerY + 95, { 
+              align: 'right', 
+              width: 495 
+            });
+          
           doc.moveDown(2);
           
-          // Resumo
-          doc.fontSize(14).font('Helvetica-Bold').text('Resumo Financeiro', { underline: true });
-          doc.moveDown();
+          // ========== RESUMO EXECUTIVO ==========
+          const sectionY = doc.y;
           
-          doc.fontSize(12).font('Helvetica');
-          doc.text(`Total de Entradas: R$ ${totalEntries.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-          doc.text(`Entradas Recebidas: R$ ${totalEntriesReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-          doc.moveDown();
-          doc.text(`Total de Saídas: R$ ${totalExits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-          doc.text(`Saídas Pagas: R$ ${totalExitsPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-          doc.moveDown();
-          doc.font('Helvetica-Bold').fontSize(12);
-          const balance = totalEntriesReceived - totalExitsPaid;
-          doc.text(`Saldo do Mês: R$ ${balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, {
-            color: balance >= 0 ? '#008000' : '#FF0000'
-          });
-          doc.moveDown(2);
+          // Título da seção com fundo
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('1. RESUMO EXECUTIVO', 50, sectionY);
+          drawLine(sectionY + 25, colors.primary, 200);
+          doc.moveDown(1.5);
+          
+          // Box de resumo financeiro
+          const boxY = doc.y;
+          const boxHeight = 180;
+          drawBox(50, boxY, 495, boxHeight, colors.light);
+          
+          doc.fontSize(13).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('1.1. Resumo Financeiro Geral', 60, boxY + 10);
+          
+          const lineHeight = 12;
+          let currentY = boxY + 30;
+          
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
           
           // Entradas
-          doc.fontSize(14).font('Helvetica-Bold').text('Entradas do Mês', { underline: true });
-          doc.moveDown();
-          
-          if (entries.length === 0) {
-            doc.fontSize(10).font('Helvetica').text('Nenhuma entrada registrada neste mês.');
-          } else {
-            entries.forEach((entry, index) => {
-              if (doc.y > 700) {
-                doc.addPage();
-              }
-              
-              doc.fontSize(10).font('Helvetica-Bold');
-              doc.text(`${index + 1}. ${entry.description || 'Sem descrição'}`);
-              doc.font('Helvetica');
-              doc.text(`   Data: ${new Date(entry.entry_date).toLocaleDateString('pt-BR')}`);
-              doc.text(`   Valor: R$ ${parseFloat(entry.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-              doc.text(`   Status: ${entry.received ? 'Recebido' : 'Pendente'}`);
-              doc.moveDown(0.5);
-            });
+          doc.font('Helvetica-Bold').text('ENTRADAS:', 60, currentY);
+          currentY += lineHeight;
+          doc.font('Helvetica').text(`  Total Registradas: ${formatCurrency(totalEntries)}`, 60, currentY);
+          currentY += lineHeight;
+          doc.font('Helvetica').fillColor(colors.success)
+            .text(`  Total Recebidas: ${formatCurrency(totalEntriesReceived)}`, 60, currentY);
+          currentY += lineHeight;
+          if (totalEntriesPending > 0) {
+            doc.font('Helvetica').fillColor(colors.warning)
+              .text(`  Pendentes: ${formatCurrency(totalEntriesPending)}`, 60, currentY);
+            currentY += lineHeight;
           }
-          
-          doc.addPage();
+          currentY += 5;
           
           // Saídas
-          doc.fontSize(14).font('Helvetica-Bold').text('Saídas do Mês', { underline: true });
-          doc.moveDown();
+          doc.font('Helvetica-Bold').fillColor(colors.dark).text('SAÍDAS:', 60, currentY);
+          currentY += lineHeight;
+          doc.font('Helvetica').text(`  Total Registradas: ${formatCurrency(totalExits)}`, 60, currentY);
+          currentY += lineHeight;
+          doc.font('Helvetica').fillColor(colors.danger)
+            .text(`  Total Pagas: ${formatCurrency(totalExitsPaid)}`, 60, currentY);
+          currentY += lineHeight;
+          if (totalExitsApproved > 0) {
+            doc.font('Helvetica').fillColor(colors.warning)
+              .text(`  Aprovadas (não pagas): ${formatCurrency(totalExitsApproved)}`, 60, currentY);
+            currentY += lineHeight;
+          }
+          if (totalExitsPending > 0) {
+            doc.font('Helvetica').fillColor(colors.warning)
+              .text(`  Pendentes: ${formatCurrency(totalExitsPending)}`, 60, currentY);
+            currentY += lineHeight;
+          }
+          if (totalExitsRejected > 0) {
+            doc.font('Helvetica').fillColor(colors.danger)
+              .text(`  Rejeitadas: ${formatCurrency(totalExitsRejected)}`, 60, currentY);
+            currentY += lineHeight;
+          }
           
-          if (exits.length === 0) {
-            doc.fontSize(10).font('Helvetica').text('Nenhuma saída registrada neste mês.');
+          // Saldo destacado
+          currentY += 10;
+          drawBox(60, currentY, 475, 30, balance >= 0 ? '#d1fae5' : '#fee2e2');
+          doc.font('Helvetica-Bold').fontSize(14)
+            .fillColor(balance >= 0 ? colors.success : colors.danger)
+            .text(`SALDO DO MÊS: ${formatCurrency(balance)}`, 70, currentY + 8, {
+              width: 465,
+              align: 'center'
+            });
+          
+          doc.y = boxY + boxHeight + 15;
+          doc.fillColor('#000000');
+          
+          // Comparação com mês anterior
+          checkPageBreak(80);
+          const comparisonY = doc.y;
+          const comparisonHeight = 70;
+          drawBox(50, comparisonY, 495, comparisonHeight, '#fef3c7');
+          
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('1.2. Comparação com Mês Anterior', 60, comparisonY + 10);
+          
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+          let compY = comparisonY + 30;
+          doc.text(`Mês Anterior (${String(prevMonth).padStart(2, '0')}/${prevYear}):`, 60, compY);
+          compY += 12;
+          doc.text(`  Entradas: ${formatCurrency(prevEntries)}`, 60, compY);
+          compY += 12;
+          doc.text(`  Saídas: ${formatCurrency(prevExits)}`, 60, compY);
+          compY += 12;
+          
+          const varColor = entriesVariation >= 0 ? colors.success : colors.danger;
+          doc.fillColor(varColor)
+            .text(`Variação Entradas: ${entriesVariation >= 0 ? '+' : ''}${entriesVariation.toFixed(2)}%`, 300, comparisonY + 30);
+          const varColor2 = exitsVariation >= 0 ? colors.danger : colors.success;
+          doc.fillColor(varColor2)
+            .text(`Variação Saídas: ${exitsVariation >= 0 ? '+' : ''}${exitsVariation.toFixed(2)}%`, 300, comparisonY + 42);
+          
+          doc.y = comparisonY + comparisonHeight + 15;
+          doc.fillColor('#000000');
+          
+          // Estatísticas gerais
+          checkPageBreak(60);
+          const statsY = doc.y;
+          const statsHeight = 50;
+          drawBox(50, statsY, 495, statsHeight);
+          
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('1.3. Estatísticas Gerais', 60, statsY + 10);
+          
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+          doc.text(`Quantidade de Entradas: ${entries.length}`, 60, statsY + 30);
+          doc.text(`Quantidade de Saídas: ${exits.length}`, 200, statsY + 30);
+          doc.text(`Contas de Consumo: ${consumption.length}`, 340, statsY + 30);
+          
+          doc.y = statsY + statsHeight + 20;
+          
+          // ========== GRÁFICOS VISUAIS ==========
+          checkPageBreak(200);
+          const chartsY = doc.y;
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('1.4. ANÁLISE VISUAL', 50, chartsY);
+          drawLine(chartsY + 25, colors.primary, 200);
+          doc.y = chartsY + 35;
+          
+          // Gráfico de Barras - Entradas vs Saídas
+          const chartY = doc.y;
+          const chartHeight = 120;
+          const chartWidth = 495;
+          const chartBoxY = chartY;
+          
+          drawBox(50, chartBoxY, chartWidth, chartHeight, '#ffffff');
+          
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('Comparação Entradas vs Saídas', 60, chartBoxY + 10);
+          
+          // Calcular valores para o gráfico
+          const maxValue = Math.max(totalEntriesReceived, totalExitsPaid, 1000);
+          const barWidth = 200;
+          const barStartX = 100;
+          const barStartY = chartBoxY + 40;
+          const maxBarHeight = 60;
+          
+          // Barra de Entradas
+          const entriesBarHeight = (totalEntriesReceived / maxValue) * maxBarHeight;
+          const entriesBarY = barStartY + maxBarHeight - entriesBarHeight;
+          doc.rect(barStartX, entriesBarY, barWidth, entriesBarHeight)
+            .fillColor(colors.success).fill();
+          doc.rect(barStartX, entriesBarY, barWidth, entriesBarHeight)
+            .strokeColor(colors.success).lineWidth(1).stroke();
+          
+          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.success)
+            .text('ENTRADAS', barStartX, entriesBarY - 15, { width: barWidth, align: 'center' });
+          doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+            .text(formatCurrency(totalEntriesReceived), barStartX, entriesBarY + entriesBarHeight + 5, { width: barWidth, align: 'center' });
+          
+          // Barra de Saídas
+          const exitsBarHeight = (totalExitsPaid / maxValue) * maxBarHeight;
+          const exitsBarY = barStartY + maxBarHeight - exitsBarHeight;
+          doc.rect(barStartX + barWidth + 20, exitsBarY, barWidth, exitsBarHeight)
+            .fillColor(colors.danger).fill();
+          doc.rect(barStartX + barWidth + 20, exitsBarY, barWidth, exitsBarHeight)
+            .strokeColor(colors.danger).lineWidth(1).stroke();
+          
+          doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.danger)
+            .text('SAÍDAS', barStartX + barWidth + 20, exitsBarY - 15, { width: barWidth, align: 'center' });
+          doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+            .text(formatCurrency(totalExitsPaid), barStartX + barWidth + 20, exitsBarY + exitsBarHeight + 5, { width: barWidth, align: 'center' });
+          
+          // Saldo
+          if (balance > 0) {
+            const balanceBarHeight = (balance / maxValue) * maxBarHeight;
+            const balanceBarY = barStartY + maxBarHeight - balanceBarHeight;
+            doc.rect(barStartX + (barWidth * 2) + 40, balanceBarY, barWidth, balanceBarHeight)
+              .fillColor(colors.success).fill();
+            doc.rect(barStartX + (barWidth * 2) + 40, balanceBarY, barWidth, balanceBarHeight)
+              .strokeColor(colors.success).lineWidth(1).stroke();
+            
+            doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.success)
+              .text('SALDO', barStartX + (barWidth * 2) + 40, balanceBarY - 15, { width: barWidth, align: 'center' });
+            doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+              .text(formatCurrency(balance), barStartX + (barWidth * 2) + 40, balanceBarY + balanceBarHeight + 5, { width: barWidth, align: 'center' });
+          }
+          
+          doc.y = chartBoxY + chartHeight + 20;
+          
+          // Gráfico de Pizza Simples - Distribuição por Categoria (Saídas)
+          if (Object.keys(exitsByCategory).length > 0) {
+            checkPageBreak(150);
+            const pieChartY = doc.y;
+            const pieChartHeight = 100;
+            drawBox(50, pieChartY, 495, pieChartHeight, '#ffffff');
+            
+            doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+              .text('Distribuição de Saídas por Categoria', 60, pieChartY + 10);
+            
+            // Criar gráfico de barras horizontais para categorias
+            const categoryColors = [colors.danger, colors.warning, colors.secondary, '#8b5cf6', '#ec4899'];
+            let catIndex = 0;
+            let catBarY = pieChartY + 35;
+            const catBarMaxWidth = 400;
+            const catBarHeight = 8;
+            
+            Object.entries(exitsByCategory)
+              .sort((a, b) => b[1].total - a[1].total)
+              .slice(0, 5) // Top 5 categorias
+              .forEach(([cat, data]) => {
+                const catBarWidth = (data.total / totalExits) * catBarMaxWidth;
+                const catColor = categoryColors[catIndex % categoryColors.length];
+                
+                doc.rect(60, catBarY, catBarWidth, catBarHeight)
+                  .fillColor(catColor).fill();
+                
+                doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
+                  .text(`${cat}: ${formatCurrency(data.total)} (${((data.total / totalExits) * 100).toFixed(1)}%)`, 60, catBarY - 2);
+                
+                catBarY += 15;
+                catIndex++;
+              });
+            
+            doc.y = pieChartY + pieChartHeight + 15;
+          }
+          
+          // ========== EXPLICAÇÃO DO CÁLCULO DO SALDO ==========
+          checkPageBreak(120);
+          const calculationY = doc.y;
+          const calculationHeight = 100;
+          drawBox(50, calculationY, 495, calculationHeight, '#e0f2fe');
+          
+          doc.fontSize(14).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('1.5. CÁLCULO DETALHADO DO SALDO FINAL', 60, calculationY + 10);
+          
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+          let calcY = calculationY + 30;
+          
+          doc.text('Como chegamos no saldo final:', 60, calcY);
+          calcY += 15;
+          
+          doc.font('Helvetica-Bold').text('1. Total de Entradas Recebidas:', 70, calcY);
+          doc.font('Helvetica').text(`   ${formatCurrency(totalEntriesReceived)}`, 90, calcY + 12);
+          calcY += 25;
+          
+          doc.font('Helvetica-Bold').text('2. Total de Saídas Pagas:', 70, calcY);
+          doc.font('Helvetica').text(`   ${formatCurrency(totalExitsPaid)}`, 90, calcY + 12);
+          calcY += 25;
+          
+          doc.font('Helvetica-Bold').fontSize(11).fillColor(balance >= 0 ? colors.success : colors.danger)
+            .text(`SALDO FINAL = Entradas - Saídas = ${formatCurrency(balance)}`, 70, calcY);
+          
+          if (totalExitsApproved > 0) {
+            calcY += 15;
+            doc.font('Helvetica').fontSize(9).fillColor(colors.warning)
+              .text(`⚠ Observação: Existem ${formatCurrency(totalExitsApproved)} em saídas aprovadas que ainda não foram pagas.`, 70, calcY);
+          }
+          
+          doc.y = calculationY + calculationHeight + 20;
+          
+          // ========== ANÁLISE POR CENTRO DE CUSTO ==========
+          checkPageBreak(100);
+          const costCenterY = doc.y;
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('2. ANÁLISE POR CENTRO DE CUSTO', 50, costCenterY);
+          drawLine(costCenterY + 25, colors.primary, 250);
+          doc.y = costCenterY + 35;
+          
+          // Entradas por centro de custo
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('2.1. Entradas por Centro de Custo', 60, doc.y);
+          doc.moveDown(0.5);
+          
+          if (Object.keys(entriesByCostCenter).length === 0) {
+            doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
+              .text('Nenhuma entrada registrada com centro de custo.', 60, doc.y);
+            doc.moveDown(1);
           } else {
-            exits.forEach((exit, index) => {
-              if (doc.y > 700) {
-                doc.addPage();
+            Object.entries(entriesByCostCenter)
+              .sort((a, b) => b[1].total - a[1].total)
+              .forEach(([ccName, data]) => {
+                checkPageBreak(35);
+                const ccY = doc.y;
+                drawBox(60, ccY, 475, 25, '#f0f9ff');
+                
+                doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary)
+                  .text(ccName, 70, ccY + 7);
+                doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
+                  .text(`Total: ${formatCurrency(data.total)} | Recebido: ${formatCurrency(data.received)} | Qtd: ${data.count}`, 70, ccY + 18);
+                
+                doc.y = ccY + 30;
+              });
+          }
+          doc.moveDown(1);
+          
+          // Saídas por centro de custo
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('2.2. Saídas por Centro de Custo', 60, doc.y);
+          doc.moveDown(0.5);
+          
+          if (Object.keys(exitsByCostCenter).length === 0) {
+            doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
+              .text('Nenhuma saída registrada com centro de custo.', 60, doc.y);
+            doc.moveDown(1);
+          } else {
+            Object.entries(exitsByCostCenter)
+              .sort((a, b) => b[1].total - a[1].total)
+              .forEach(([ccName, data]) => {
+                checkPageBreak(40);
+                const ccY = doc.y;
+                drawBox(60, ccY, 475, 30, '#fef2f2');
+                
+                doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.danger)
+                  .text(ccName, 70, ccY + 7);
+                doc.font('Helvetica').fontSize(8).fillColor(colors.dark)
+                  .text(`Total: ${formatCurrency(data.total)} | Pago: ${formatCurrency(data.paid)} | Aprovado: ${formatCurrency(data.approved)}`, 70, ccY + 18);
+                doc.text(`Pendente: ${formatCurrency(data.pending)} | Qtd: ${data.count}`, 70, ccY + 28);
+                
+                doc.y = ccY + 35;
+              });
+          }
+          doc.moveDown(2);
+          
+          // ========== ANÁLISE POR CATEGORIA ==========
+          checkPageBreak(100);
+          const categoryY = doc.y;
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('3. ANÁLISE POR CATEGORIA', 50, categoryY);
+          drawLine(categoryY + 25, colors.primary, 220);
+          doc.y = categoryY + 35;
+          
+          // Entradas por categoria
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('3.1. Entradas por Categoria', 60, doc.y);
+          doc.moveDown(0.5);
+          
+          if (Object.keys(entriesByCategory).length === 0) {
+            doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
+              .text('Nenhuma entrada registrada.', 60, doc.y);
+            doc.moveDown(1);
+          } else {
+            Object.entries(entriesByCategory)
+              .sort((a, b) => b[1].total - a[1].total)
+              .forEach(([cat, data]) => {
+                checkPageBreak(35);
+                const catY = doc.y;
+                drawBox(60, catY, 475, 25, '#ecfdf5');
+                
+                doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.success)
+                  .text(cat, 70, catY + 7);
+                doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
+                  .text(`Total: ${formatCurrency(data.total)} | Recebido: ${formatCurrency(data.received)} | Qtd: ${data.count}`, 70, catY + 18);
+                
+                doc.y = catY + 30;
+              });
+          }
+          doc.moveDown(1);
+          
+          // Saídas por categoria
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('3.2. Saídas por Categoria', 60, doc.y);
+          doc.moveDown(0.5);
+          
+          if (Object.keys(exitsByCategory).length === 0) {
+            doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
+              .text('Nenhuma saída registrada.', 60, doc.y);
+            doc.moveDown(1);
+          } else {
+            Object.entries(exitsByCategory)
+              .sort((a, b) => b[1].total - a[1].total)
+              .forEach(([cat, data]) => {
+                checkPageBreak(35);
+                const catY = doc.y;
+                drawBox(60, catY, 475, 25, '#fef2f2');
+                
+                doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.danger)
+                  .text(cat, 70, catY + 7);
+                doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
+                  .text(`Total: ${formatCurrency(data.total)} | Pago: ${formatCurrency(data.paid)} | Qtd: ${data.count}`, 70, catY + 18);
+                
+                doc.y = catY + 30;
+              });
+          }
+          doc.moveDown(2);
+          
+          // ========== CONSUMO MENSAL ==========
+          if (consumption.length > 0) {
+            checkPageBreak(100);
+            const consumptionY = doc.y;
+            doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+              .text('4. CONSUMO MENSAL DE CONTAS', 50, consumptionY);
+            drawLine(consumptionY + 25, colors.primary, 280);
+            doc.y = consumptionY + 35;
+            doc.fontSize(10).font('Helvetica');
+            
+            consumption.forEach((cons, index) => {
+              checkPageBreak(45);
+              const consY = doc.y;
+              const consHeight = 40;
+              const boxColor = cons.paid ? '#d1fae5' : '#fef3c7';
+              drawBox(60, consY, 475, consHeight, boxColor);
+              
+              doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.dark)
+                .text(`${index + 1}. ${cons.bill_name || 'Conta'} (${cons.bill_type || 'N/A'})`, 70, consY + 8);
+              
+              doc.font('Helvetica').fontSize(8).fillColor(colors.dark);
+              let consInfoY = consY + 22;
+              
+              // Coluna esquerda
+              if (cons.provider) {
+                doc.text(`Fornecedor: ${cons.provider}`, 70, consInfoY);
+                consInfoY += 10;
+              }
+              if (cons.consumption_value) {
+                doc.text(`Consumo: ${parseFloat(cons.consumption_value).toLocaleString('pt-BR')} ${cons.consumption_unit || 'unidade'}`, 70, consInfoY);
               }
               
-              doc.fontSize(10).font('Helvetica-Bold');
-              doc.text(`${index + 1}. ${exit.description || 'Sem descrição'}`);
-              doc.font('Helvetica');
-              doc.text(`   Data: ${new Date(exit.exit_date).toLocaleDateString('pt-BR')}`);
-              doc.text(`   Valor: R$ ${parseFloat(exit.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-              doc.text(`   Status: ${exit.payment_status || 'Pendente'}`);
-              doc.moveDown(0.5);
+              // Coluna direita
+              consInfoY = consY + 22;
+              doc.fillColor(colors.danger)
+                .text(`Valor: ${formatCurrency(cons.bill_amount)}`, 300, consInfoY);
+              consInfoY += 10;
+              const statusColor = cons.paid ? colors.success : colors.warning;
+              doc.fillColor(statusColor)
+                .text(`Status: ${cons.paid ? 'Pago' : 'Pendente'}`, 300, consInfoY);
+              consInfoY += 10;
+              if (cons.due_date) {
+                doc.fillColor(colors.dark)
+                  .text(`Vencimento: ${formatDate(cons.due_date)}`, 300, consInfoY);
+              }
+              
+              doc.y = consY + consHeight + 10;
+              doc.fillColor('#000000');
+            });
+            doc.moveDown(2);
+          }
+          
+          // ========== TABELA DETALHADA DE ENTRADAS ==========
+          checkPageBreak(150);
+          const entriesTableY = doc.y;
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('5. TABELA COMPLETA DE ENTRADAS', 50, entriesTableY);
+          drawLine(entriesTableY + 25, colors.primary, 300);
+          doc.y = entriesTableY + 35;
+          
+          if (entries.length === 0) {
+            doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
+              .text('Nenhuma entrada registrada neste mês.', 60, doc.y);
+            doc.moveDown(2);
+          } else {
+            // Cabeçalho da tabela
+            const tableHeaderY = doc.y;
+            const rowHeight = 15;
+            const colWidths = [40, 180, 80, 80, 100, 60]; // ID, Descrição, Data, Valor, Centro, Status
+            
+            drawBox(50, tableHeaderY, 495, rowHeight, colors.primary);
+            
+            doc.fontSize(9).font('Helvetica-Bold').fillColor('#ffffff');
+            doc.text('ID', 55, tableHeaderY + 4);
+            doc.text('Descrição', 100, tableHeaderY + 4, { width: 170 });
+            doc.text('Data', 275, tableHeaderY + 4);
+            doc.text('Valor', 360, tableHeaderY + 4);
+            doc.text('Centro Custo', 445, tableHeaderY + 4, { width: 90 });
+            
+            doc.y = tableHeaderY + rowHeight + 5;
+            
+            // Linhas da tabela
+            entries.forEach((entry, index) => {
+              checkPageBreak(rowHeight + 5);
+              const rowY = doc.y;
+              const rowColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+              
+              drawBox(50, rowY, 495, rowHeight, rowColor);
+              
+              doc.fontSize(8).font('Helvetica').fillColor(colors.dark);
+              
+              // ID
+              doc.text(entry.id.toString(), 55, rowY + 4);
+              
+              // Descrição (truncada se muito longa)
+              const desc = (entry.description || 'Sem descrição').substring(0, 35);
+              doc.text(desc, 100, rowY + 4, { width: 170 });
+              
+              // Data
+              doc.text(formatDate(entry.entry_date), 275, rowY + 4);
+              
+              // Valor
+              doc.fillColor(colors.success)
+                .text(formatCurrency(entry.amount), 360, rowY + 4);
+              
+              // Centro de Custo
+              doc.fillColor(colors.dark)
+                .text((entry.cost_center_name || '-').substring(0, 15), 445, rowY + 4, { width: 90 });
+              
+              // Status (pequeno badge)
+              const statusColor = entry.received ? colors.success : colors.warning;
+              doc.fillColor(statusColor)
+                .text(entry.received ? '✓' : '⏳', 535, rowY + 4);
+              
+              doc.y = rowY + rowHeight + 2;
+              doc.fillColor('#000000');
+            });
+            
+            // Rodapé da tabela
+            const tableFooterY = doc.y;
+            drawBox(50, tableFooterY, 495, rowHeight, colors.light);
+            doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
+              .text(`TOTAL: ${entries.length} entrada(s)`, 55, tableFooterY + 4);
+            doc.fillColor(colors.success)
+              .text(`Total Recebido: ${formatCurrency(totalEntriesReceived)}`, 360, tableFooterY + 4);
+            
+            doc.y = tableFooterY + rowHeight + 20;
+            
+            // Detalhamento completo de cada entrada
+            doc.fontSize(16).font('Helvetica-Bold').fillColor(colors.primary)
+              .text('5.1. DETALHAMENTO COMPLETO DE CADA ENTRADA', 50, doc.y);
+            drawLine(doc.y + 25, colors.primary, 380);
+            doc.y += 35;
+            
+            entries.forEach((entry, index) => {
+              checkPageBreak(90);
+              const entryY = doc.y;
+              const entryHeight = 85;
+              
+              // Box para cada entrada
+              const boxColor = entry.received ? '#d1fae5' : '#fef3c7';
+              drawBox(50, entryY, 495, entryHeight, boxColor);
+              
+              // Título da entrada
+              doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.dark)
+                .text(`ENTRADA #${entry.id} - ${entry.description || 'Sem descrição'}`, 60, entryY + 8, {
+                  width: 475
+                });
+              
+              // Informações detalhadas
+              doc.font('Helvetica').fontSize(8).fillColor(colors.dark);
+              let infoY = entryY + 25;
+              
+              // Primeira linha
+              doc.text(`📅 Data da Entrada: ${formatDate(entry.entry_date)}`, 60, infoY);
+              doc.fillColor(colors.success)
+                .text(`💰 Valor: ${formatCurrency(entry.amount)}`, 300, infoY);
+              infoY += 12;
+              
+              // Segunda linha
+              doc.fillColor(colors.dark)
+                .text(`📁 Categoria: ${entry.category || 'N/A'}`, 60, infoY);
+              if (entry.cost_center_name) {
+                doc.text(`🏢 Centro de Custo: ${entry.cost_center_name}`, 300, infoY);
+              }
+              infoY += 12;
+              
+              // Terceira linha - Status
+              const statusColor = entry.received ? colors.success : colors.warning;
+              const statusText = entry.received 
+                ? `✅ RECEBIDO em ${formatDate(entry.received_at)}` 
+                : '⏳ PENDENTE DE RECEBIMENTO';
+              doc.fillColor(statusColor).font('Helvetica-Bold')
+                .text(`Status: ${statusText}`, 60, infoY);
+              infoY += 12;
+              
+              // Quarta linha - Informações adicionais
+              if (entry.created_by_name) {
+                doc.font('Helvetica').fillColor(colors.dark)
+                  .text(`Criado por: ${entry.created_by_name}`, 60, infoY);
+              }
+              if (entry.reviewed_by_name) {
+                doc.text(`Revisado por: ${entry.reviewed_by_name}`, 300, infoY);
+              }
+              infoY += 12;
+              
+              // Quinta linha - Observações
+              if (entry.review_notes) {
+                doc.fontSize(7).fillColor('#6b7280')
+                  .text(`Observações: ${entry.review_notes}`, 60, infoY, { width: 475 });
+              }
+              
+              doc.y = entryY + entryHeight + 10;
+              doc.fillColor('#000000');
             });
           }
+          doc.moveDown(2);
           
-          // Rodapé
-          const pageCount = doc.bufferedPageRange().count;
-          for (let i = 0; i < pageCount; i++) {
-            doc.switchToPage(i);
-            doc.fontSize(8).text(
-              `Página ${i + 1} de ${pageCount}`,
-              50,
-              doc.page.height - 30,
-              { align: 'center' }
-            );
+          // ========== TABELA DETALHADA DE SAÍDAS ==========
+          checkPageBreak(150);
+          const exitsTableY = doc.y;
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('6. TABELA COMPLETA DE SAÍDAS', 50, exitsTableY);
+          drawLine(exitsTableY + 25, colors.primary, 280);
+          doc.y = exitsTableY + 35;
+          
+          if (exits.length === 0) {
+            doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
+              .text('Nenhuma saída registrada neste mês.', 60, doc.y);
+            doc.moveDown(2);
+          } else {
+            // Cabeçalho da tabela
+            const tableHeaderY = doc.y;
+            const rowHeight = 15;
+            
+            drawBox(50, tableHeaderY, 495, rowHeight, colors.primary);
+            
+            doc.fontSize(9).font('Helvetica-Bold').fillColor('#ffffff');
+            doc.text('ID', 55, tableHeaderY + 4);
+            doc.text('Descrição', 100, tableHeaderY + 4, { width: 170 });
+            doc.text('Data', 275, tableHeaderY + 4);
+            doc.text('Valor', 360, tableHeaderY + 4);
+            doc.text('Status', 445, tableHeaderY + 4, { width: 90 });
+            
+            doc.y = tableHeaderY + rowHeight + 5;
+            
+            // Linhas da tabela
+            exits.forEach((exit, index) => {
+              checkPageBreak(rowHeight + 5);
+              const rowY = doc.y;
+              const rowColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+              
+              drawBox(50, rowY, 495, rowHeight, rowColor);
+              
+              doc.fontSize(8).font('Helvetica').fillColor(colors.dark);
+              
+              // ID
+              doc.text(exit.id.toString(), 55, rowY + 4);
+              
+              // Descrição (truncada se muito longa)
+              const desc = (exit.description || 'Sem descrição').substring(0, 35);
+              doc.text(desc, 100, rowY + 4, { width: 170 });
+              
+              // Data
+              doc.text(formatDate(exit.exit_date), 275, rowY + 4);
+              
+              // Valor
+              doc.fillColor(colors.danger)
+                .text(formatCurrency(exit.amount), 360, rowY + 4);
+              
+              // Status
+              let statusColor = colors.dark;
+              let statusSymbol = '⏳';
+              if (exit.payment_status === 'PAID') {
+                statusColor = colors.success;
+                statusSymbol = '✓';
+              } else if (exit.payment_status === 'APPROVED') {
+                statusColor = colors.secondary;
+                statusSymbol = '✓';
+              } else if (exit.payment_status === 'REJECTED') {
+                statusColor = colors.danger;
+                statusSymbol = '✗';
+              }
+              
+              doc.fillColor(statusColor)
+                .text(`${statusSymbol} ${exit.payment_status || 'Pendente'}`, 445, rowY + 4, { width: 90 });
+              
+              doc.y = rowY + rowHeight + 2;
+              doc.fillColor('#000000');
+            });
+            
+            // Rodapé da tabela
+            const tableFooterY = doc.y;
+            drawBox(50, tableFooterY, 495, rowHeight, colors.light);
+            doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.dark)
+              .text(`TOTAL: ${exits.length} saída(s)`, 55, tableFooterY + 4);
+            doc.fillColor(colors.danger)
+              .text(`Total Pago: ${formatCurrency(totalExitsPaid)}`, 360, tableFooterY + 4);
+            
+            doc.y = tableFooterY + rowHeight + 20;
+            
+            // Detalhamento completo de cada saída
+            doc.fontSize(16).font('Helvetica-Bold').fillColor(colors.primary)
+              .text('6.1. DETALHAMENTO COMPLETO DE CADA SAÍDA', 50, doc.y);
+            drawLine(doc.y + 25, colors.primary, 380);
+            doc.y += 35;
+            
+            exits.forEach((exit, index) => {
+              checkPageBreak(100);
+              const exitY = doc.y;
+              const exitHeight = 95;
+              
+              // Box para cada saída com cor baseada no status
+              let boxColor = '#f3f4f6';
+              if (exit.payment_status === 'PAID') boxColor = '#d1fae5';
+              else if (exit.payment_status === 'APPROVED') boxColor = '#dbeafe';
+              else if (exit.payment_status === 'REJECTED') boxColor = '#fee2e2';
+              else boxColor = '#fef3c7';
+              
+              drawBox(50, exitY, 495, exitHeight, boxColor);
+              
+              // Título da saída
+              doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.dark)
+                .text(`SAÍDA #${exit.id} - ${exit.description || 'Sem descrição'}`, 60, exitY + 8, {
+                  width: 475
+                });
+              
+              // Informações detalhadas
+              doc.font('Helvetica').fontSize(8).fillColor(colors.dark);
+              let infoY = exitY + 25;
+              
+              // Primeira linha
+              doc.text(`📅 Data da Saída: ${formatDate(exit.exit_date)}`, 60, infoY);
+              doc.fillColor(colors.danger)
+                .text(`💰 Valor: ${formatCurrency(exit.amount)}`, 300, infoY);
+              infoY += 12;
+              
+              // Segunda linha
+              doc.fillColor(colors.dark)
+                .text(`📁 Categoria: ${exit.category || 'N/A'}`, 60, infoY);
+              if (exit.cost_center_name) {
+                doc.text(`🏢 Centro de Custo: ${exit.cost_center_name}`, 300, infoY);
+              }
+              infoY += 12;
+              
+              // Terceira linha - Status e Aprovação
+              let statusColor = colors.dark;
+              let statusText = exit.payment_status || 'Pendente';
+              if (exit.payment_status === 'PAID') {
+                statusColor = colors.success;
+                statusText = `✅ PAGO em ${formatDate(exit.paid_at)}`;
+              } else if (exit.payment_status === 'APPROVED') {
+                statusColor = colors.secondary;
+                statusText = `✓ APROVADO por ${exit.approved_by_name || 'N/A'} em ${formatDate(exit.approved_at)}`;
+              } else if (exit.payment_status === 'REJECTED') {
+                statusColor = colors.danger;
+                statusText = '✗ REJEITADO';
+              } else {
+                statusColor = colors.warning;
+                statusText = '⏳ AGUARDANDO APROVAÇÃO';
+              }
+              
+              doc.fillColor(statusColor).font('Helvetica-Bold')
+                .text(`Status: ${statusText}`, 60, infoY);
+              infoY += 12;
+              
+              // Quarta linha - Informações adicionais
+              if (exit.bill_name) {
+                doc.font('Helvetica').fillColor(colors.dark)
+                  .text(`💳 Conta Relacionada: ${exit.bill_name} (${exit.bill_type || 'N/A'})`, 60, infoY);
+                infoY += 12;
+              }
+              
+              if (exit.requires_approval) {
+                doc.text(`🔐 Requer Aprovação: Sim (Limite: ${formatCurrency(exit.approval_limit || 0)})`, 60, infoY);
+                infoY += 12;
+              }
+              
+              // Quinta linha - Criado por
+              if (exit.created_by_name) {
+                doc.text(`Criado por: ${exit.created_by_name} em ${formatDate(exit.created_at)}`, 60, infoY);
+                infoY += 12;
+              }
+              
+              // Sexta linha - Método de pagamento (se pago)
+              if (exit.payment_status === 'PAID' && exit.payment_method) {
+                doc.text(`Método de Pagamento: ${exit.payment_method}`, 60, infoY);
+                if (exit.payment_details) {
+                  doc.text(` | Detalhes: ${exit.payment_details}`, 300, infoY);
+                }
+              }
+              
+              doc.y = exitY + exitHeight + 10;
+              doc.fillColor('#000000');
+            });
+          }
+          doc.moveDown(2);
+          
+          // ========== RESUMO EXECUTIVO DETALHADO ==========
+          checkPageBreak(150);
+          const summaryY = doc.y;
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('7. RESUMO EXECUTIVO DETALHADO', 50, summaryY);
+          drawLine(summaryY + 25, colors.primary, 320);
+          doc.y = summaryY + 35;
+          
+          const summaryBoxY = doc.y;
+          const summaryBoxHeight = 140;
+          drawBox(50, summaryBoxY, 495, summaryBoxHeight, '#f0f9ff');
+          
+          doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('Como cada valor foi calculado:', 60, summaryBoxY + 10);
+          
+          doc.fontSize(9).font('Helvetica').fillColor(colors.dark);
+          let sumY = summaryBoxY + 30;
+          
+          // Entradas
+          doc.font('Helvetica-Bold').text('ENTRADAS:', 70, sumY);
+          sumY += 12;
+          doc.font('Helvetica').text(`  • Total Registrado: ${entries.length} entrada(s) somando ${formatCurrency(totalEntries)}`, 80, sumY);
+          sumY += 10;
+          doc.fillColor(colors.success)
+            .text(`  • Total Recebido: ${entries.filter(e => e.received).length} entrada(s) recebida(s) = ${formatCurrency(totalEntriesReceived)}`, 80, sumY);
+          sumY += 10;
+          if (totalEntriesPending > 0) {
+            doc.fillColor(colors.warning)
+              .text(`  • Pendentes: ${entries.filter(e => !e.received && e.review_status === 'APPROVED').length} entrada(s) = ${formatCurrency(totalEntriesPending)}`, 80, sumY);
+            sumY += 10;
+          }
+          sumY += 5;
+          
+          // Saídas
+          doc.font('Helvetica-Bold').fillColor(colors.dark).text('SAÍDAS:', 70, sumY);
+          sumY += 12;
+          doc.font('Helvetica').text(`  • Total Registrado: ${exits.length} saída(s) somando ${formatCurrency(totalExits)}`, 80, sumY);
+          sumY += 10;
+          doc.fillColor(colors.danger)
+            .text(`  • Total Pago: ${exits.filter(e => e.payment_status === 'PAID').length} saída(s) paga(s) = ${formatCurrency(totalExitsPaid)}`, 80, sumY);
+          sumY += 10;
+          if (totalExitsApproved > 0) {
+            doc.fillColor(colors.secondary)
+              .text(`  • Aprovadas (não pagas): ${exits.filter(e => e.payment_status === 'APPROVED').length} saída(s) = ${formatCurrency(totalExitsApproved)}`, 80, sumY);
+            sumY += 10;
+          }
+          if (totalExitsPending > 0) {
+            doc.fillColor(colors.warning)
+              .text(`  • Pendentes: ${exits.filter(e => e.payment_status === 'PENDING').length} saída(s) = ${formatCurrency(totalExitsPending)}`, 80, sumY);
           }
           
+          doc.y = summaryBoxY + summaryBoxHeight + 20;
+          doc.fillColor('#000000');
+          
+          // ========== ANÁLISE DE TENDÊNCIAS ==========
+          checkPageBreak(100);
+          const trendsY = doc.y;
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('8. ANÁLISE DE TENDÊNCIAS', 50, trendsY);
+          drawLine(trendsY + 25, colors.primary, 250);
+          doc.y = trendsY + 35;
+          
+          const trendsBoxY = doc.y;
+          const trendsBoxHeight = 80;
+          drawBox(50, trendsBoxY, 495, trendsBoxHeight, '#fef3c7');
+          
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+          let trendY = trendsBoxY + 15;
+          
+          // Comparação com mês anterior
+          doc.font('Helvetica-Bold').text('Comparação com Mês Anterior:', 60, trendY);
+          trendY += 12;
+          
+          const entriesTrend = entriesVariation >= 0 ? '📈 AUMENTO' : '📉 REDUÇÃO';
+          const entriesTrendColor = entriesVariation >= 0 ? colors.success : colors.danger;
+          doc.fillColor(entriesTrendColor)
+            .text(`  Entradas: ${entriesTrend} de ${Math.abs(entriesVariation).toFixed(2)}% (${formatCurrency(prevEntries)} → ${formatCurrency(totalEntriesReceived)})`, 70, trendY);
+          trendY += 12;
+          
+          const exitsTrend = exitsVariation >= 0 ? '📈 AUMENTO' : '📉 REDUÇÃO';
+          const exitsTrendColor = exitsVariation >= 0 ? colors.danger : colors.success;
+          doc.fillColor(exitsTrendColor)
+            .text(`  Saídas: ${exitsTrend} de ${Math.abs(exitsVariation).toFixed(2)}% (${formatCurrency(prevExits)} → ${formatCurrency(totalExitsPaid)})`, 70, trendY);
+          trendY += 12;
+          
+          // Análise do saldo
+          const balanceChange = balance - (prevEntries - prevExits);
+          if (balanceChange !== 0) {
+            const balanceTrend = balanceChange >= 0 ? '📈 MELHOROU' : '📉 PIOROU';
+            const balanceTrendColor = balanceChange >= 0 ? colors.success : colors.danger;
+            doc.fillColor(balanceTrendColor)
+              .text(`  Saldo: ${balanceTrend} em ${formatCurrency(Math.abs(balanceChange))}`, 70, trendY);
+          }
+          
+          doc.y = trendsBoxY + trendsBoxHeight + 20;
+          doc.fillColor('#000000');
+          
+          // ========== OBSERVAÇÕES FINAIS ==========
+          checkPageBreak(120);
+          const notesY = doc.y;
+          const notesHeight = 140;
+          drawBox(50, notesY, 495, notesHeight, '#fef3c7');
+          
+          doc.fontSize(16).font('Helvetica-Bold').fillColor(colors.dark)
+            .text('9. OBSERVAÇÕES E RECOMENDAÇÕES', 60, notesY + 10);
+          
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+          let noteY = notesY + 30;
+          
+          doc.text('📋 Informações Gerais:', 60, noteY);
+          noteY += 12;
+          doc.text('  • Este relatório foi gerado automaticamente pelo sistema de gestão condominial.', 70, noteY);
+          noteY += 10;
+          doc.text('  • Todos os valores estão em Reais (R$).', 70, noteY);
+          noteY += 10;
+          doc.text('  • O saldo do mês considera apenas entradas recebidas e saídas pagas.', 70, noteY);
+          noteY += 15;
+          
+          // Alertas importantes
+          if (totalExitsApproved > 0 || totalEntriesPending > 0 || totalExitsPending > 0) {
+            doc.font('Helvetica-Bold').fillColor(colors.warning)
+              .text('⚠️ ATENÇÕES IMPORTANTES:', 60, noteY);
+            noteY += 12;
+            
+            if (totalExitsApproved > 0) {
+              doc.fillColor(colors.warning)
+                .text(`  • Existem ${exits.filter(e => e.payment_status === 'APPROVED').length} saída(s) aprovada(s) no valor de ${formatCurrency(totalExitsApproved)} que ainda não foram pagas.`, 70, noteY);
+              noteY += 10;
+            }
+            if (totalEntriesPending > 0) {
+              doc.fillColor(colors.warning)
+                .text(`  • Existem ${entries.filter(e => !e.received && e.review_status === 'APPROVED').length} entrada(s) pendente(s) no valor de ${formatCurrency(totalEntriesPending)} que ainda não foram recebidas.`, 70, noteY);
+              noteY += 10;
+            }
+            if (totalExitsPending > 0) {
+              doc.fillColor(colors.warning)
+                .text(`  • Existem ${exits.filter(e => e.payment_status === 'PENDING').length} saída(s) pendente(s) no valor de ${formatCurrency(totalExitsPending)} aguardando aprovação.`, 70, noteY);
+              noteY += 10;
+            }
+            noteY += 5;
+          }
+          
+          // Recomendações
+          doc.font('Helvetica-Bold').fillColor(colors.primary)
+            .text('💡 Recomendações:', 60, noteY);
+          noteY += 12;
+          
+          if (balance < 0) {
+            doc.font('Helvetica').fillColor(colors.danger)
+              .text('  • O saldo está negativo. Considere revisar as despesas e aumentar as receitas.', 70, noteY);
+            noteY += 10;
+          }
+          
+          if (totalExitsApproved > balance && balance > 0) {
+            doc.font('Helvetica').fillColor(colors.warning)
+              .text('  • As saídas aprovadas superam o saldo atual. Planeje o fluxo de caixa com cuidado.', 70, noteY);
+            noteY += 10;
+          }
+          
+          if (entriesVariation < -10) {
+            doc.font('Helvetica').fillColor(colors.warning)
+              .text('  • As entradas diminuíram significativamente em relação ao mês anterior. Verifique a cobrança de taxas.', 70, noteY);
+            noteY += 10;
+          }
+          
+          if (exitsVariation > 20) {
+            doc.font('Helvetica').fillColor(colors.warning)
+              .text('  • As saídas aumentaram significativamente. Revise os gastos para identificar possíveis otimizações.', 70, noteY);
+          }
+          
+          doc.y = notesY + notesHeight + 15;
+          doc.fillColor('#000000');
+          
+          // Tratamento de erros do documento
+          doc.on('error', (error) => {
+            console.error('Erro ao gerar PDF:', error);
+            stream.destroy();
+            reject(error);
+          });
+          
+          // Contador de páginas
+          let pageCounter = 1;
+          
+          // Função para adicionar rodapé
+          const addFooter = (pageNum) => {
+            const footerY = doc.page.height - 35;
+            
+            // Linha do rodapé
+            drawLine(footerY, colors.border, 495);
+            
+            // Texto do rodapé (sem total de páginas por enquanto)
+            doc.fontSize(8).font('Helvetica').fillColor(colors.dark);
+            doc.text(
+              `${condominiumName} | Relatório Financeiro Mensal ${String(month).padStart(2, '0')}/${year}`,
+              50,
+              footerY + 5,
+              { align: 'center', width: 495 }
+            );
+          };
+          
+          // Adicionar rodapé na primeira página
+          addFooter(1);
+          
+          // Adicionar rodapé em cada nova página
+          doc.on('pageAdded', () => {
+            pageCounter++;
+            addFooter(pageCounter);
+          });
+          
+          // Finalizar documento
           doc.end();
           
           stream.on('finish', async () => {
-            // Registrar log
+            // Verificar se o arquivo foi criado e tem conteúdo
             try {
-              await logAction({
-                userId: userId,
-                condominiumId: condominiumId,
-                action: 'GENERATE_REPORT',
-                module: 'FINANCIAL',
-                entityType: 'monthly_report',
-                entityId: null,
-                beforeData: null,
-                afterData: { month, year, filePath, fileName },
-                ipAddress: ipAddress,
-                userAgent: userAgent,
-              });
-            } catch (logError) {
-              console.error('Erro ao registrar log:', logError);
+              const stats = fs.statSync(filePath);
+              if (stats.size === 0) {
+                console.error('PDF gerado está vazio!');
+                reject(new Error('PDF gerado está vazio'));
+                return;
+              }
+              
+              console.log(`PDF gerado com sucesso: ${fileName} (${stats.size} bytes)`);
+              
+              // Registrar log
+              try {
+                await logAction({
+                  userId: userId,
+                  condominiumId: condominiumId,
+                  action: 'GENERATE_REPORT',
+                  module: 'FINANCIAL',
+                  entityType: 'monthly_report',
+                  entityId: null,
+                  beforeData: null,
+                  afterData: { month, year, filePath, fileName, size: stats.size },
+                  ipAddress: ipAddress,
+                  userAgent: userAgent,
+                });
+              } catch (logError) {
+                console.error('Erro ao registrar log:', logError);
+              }
+              
+              resolve({ filePath, fileName: finalFileName, url: `/uploads/reports/${finalFileName}` });
+            } catch (fileError) {
+              console.error('Erro ao verificar arquivo gerado:', fileError);
+              reject(new Error('Erro ao verificar arquivo gerado: ' + fileError.message));
             }
-            
-            resolve({ filePath, fileName, url: `/uploads/reports/${fileName}` });
           });
           
           stream.on('error', (error) => {
+            console.error('Erro no stream ao gerar PDF:', error);
             reject(error);
           });
         } catch (error) {
