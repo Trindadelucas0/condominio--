@@ -10,6 +10,11 @@ const PORT = process.env.PORT || 3000;
 // Função para iniciar o servidor
 async function startServer() {
   try {
+    // Inicializa o banco de dados (cria todas as tabelas e estruturas)
+    console.log('📦 Iniciando inicialização do banco de dados...');
+    const { initializeDatabase } = require('./database/init');
+    await initializeDatabase();
+    
     // Verifica e aplica correções no banco de dados se necessário
     const { ensureCorrectionsApplied } = require('./database/applyCorrections');
     await ensureCorrectionsApplied();

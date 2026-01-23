@@ -524,7 +524,14 @@ const reportService = {
       // Buscar informações do fundo de reserva
       const reserveFundService = require('./reserveFundService');
       const reserveFund = await reserveFundService.getReserveFund(condominiumId);
-      const reserveFundAmountThisMonth = parseFloat(closure.reserve_fund_amount || 0);
+      
+      // Busca o valor do fundo de reserva do fechamento (pode ter múltiplas comandas, soma todas)
+      const closureWithReserveResult = await query(
+        `SELECT COALESCE(SUM(reserve_fund_amount), 0) as total FROM monthly_closures 
+         WHERE condominium_id = $1 AND month = $2 AND year = $3 AND status = 'CLOSED'`,
+        [condominiumId, month, year]
+      );
+      const reserveFundAmountThisMonth = parseFloat(closureWithReserveResult.rows[0].total || 0);
       
       // Buscar entradas do mês com todos os detalhes
       const entriesResult = await query(
@@ -851,6 +858,79 @@ const reportService = {
           // Função para adicionar linha horizontal
           const drawLine = (y, color = colors.border, width = 495) => {
             doc.moveTo(50, y).lineTo(50 + width, y).strokeColor(color).lineWidth(1).stroke();
+          };
+          
+          // Função para desenhar gráfico de rosca (doughnut chart) - versão melhorada e suave
+          const drawDoughnutChart = (centerX, centerY, outerRadius, innerRadius, progressPercent, chartColors) => {
+            try {
+              // Desenha o fundo completo (cinza claro)
+              doc.circle(centerX, centerY, outerRadius)
+                .fillColor('#f3f4f6')
+                .fill();
+              
+              // Desenha o furo interno (branco)
+              doc.circle(centerX, centerY, innerRadius)
+                .fillColor('#ffffff')
+                .fill();
+              
+              // Desenha o arco de progresso com mais segmentos para suavidade
+              if (progressPercent > 0 && progressPercent <= 100) {
+                const startAngle = -Math.PI / 2; // Começa no topo
+                const progressAngle = (progressPercent / 100) * 2 * Math.PI;
+                const steps = 120; // Mais segmentos = mais suave
+                
+                // Desenha segmentos do arco de progresso
+                for (let i = 0; i < steps; i++) {
+                  const angle1 = startAngle + (i / steps) * progressAngle;
+                  const angle2 = startAngle + ((i + 1) / steps) * progressAngle;
+                  
+                  // Calcula pontos do segmento
+                  const x1_outer = centerX + outerRadius * Math.cos(angle1);
+                  const y1_outer = centerY + outerRadius * Math.sin(angle1);
+                  const x2_outer = centerX + outerRadius * Math.cos(angle2);
+                  const y2_outer = centerY + outerRadius * Math.sin(angle2);
+                  const x1_inner = centerX + innerRadius * Math.cos(angle1);
+                  const y1_inner = centerY + innerRadius * Math.sin(angle1);
+                  const x2_inner = centerX + innerRadius * Math.cos(angle2);
+                  const y2_inner = centerY + innerRadius * Math.sin(angle2);
+                  
+                  // Desenha o segmento
+                  doc.save();
+                  doc.moveTo(x1_outer, y1_outer);
+                  doc.lineTo(x2_outer, y2_outer);
+                  doc.lineTo(x2_inner, y2_inner);
+                  doc.lineTo(x1_inner, y1_inner);
+                  doc.closePath();
+                  doc.fillColor(chartColors.success).fill();
+                  doc.restore();
+                }
+              }
+              
+              // Bordas suaves e elegantes
+              doc.circle(centerX, centerY, outerRadius)
+                .strokeColor('#e5e7eb')
+                .lineWidth(2)
+                .stroke();
+              
+              doc.circle(centerX, centerY, innerRadius)
+                .strokeColor('#ffffff')
+                .lineWidth(2)
+                .stroke();
+              
+              // Sombra sutil no círculo externo
+              doc.circle(centerX + 1, centerY + 1, outerRadius)
+                .strokeColor('#d1d5db')
+                .lineWidth(0.5)
+                .opacity(0.3)
+                .stroke();
+            } catch (error) {
+              console.error('Erro ao desenhar gráfico de rosca:', error);
+              // Em caso de erro, apenas desenha círculos simples
+              doc.circle(centerX, centerY, outerRadius)
+                .strokeColor('#d1d5db')
+                .lineWidth(1.5)
+                .stroke();
+            }
           };
           
           // ========== CABEÇALHO BONITO ==========
@@ -1808,13 +1888,18 @@ const reportService = {
           
           // ========== FUNDO DE RESERVA ==========
           if (reserveFund || reserveFundAmountThisMonth > 0) {
-            checkPageBreak(140);
+            checkPageBreak(180);
             const reserveFundY = doc.y;
-            const reserveFundHeight = 120;
+            let reserveFundHeight = 80; // Altura base
+            
+            // Ajusta altura baseado no conteúdo
+            if (reserveFundAmountThisMonth > 0) reserveFundHeight += 20;
+            if (reserveFund) reserveFundHeight += 120; // Aumentado para acomodar gráfico
+            
             drawBox(50, reserveFundY, 495, reserveFundHeight, '#e0f2fe');
             
             doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
-              .text('8.1. FUNDO DE RESERVA', 50, reserveFundY + 10);
+              .text('9. FUNDO DE RESERVA', 50, reserveFundY + 10);
             drawLine(reserveFundY + 25, colors.primary, 200);
             doc.y = reserveFundY + 35;
             
@@ -1832,103 +1917,173 @@ const reportService = {
             
             // Informações do fundo de reserva
             if (reserveFund) {
-              doc.font('Helvetica-Bold').fillColor(colors.dark).text('Situação Atual do Fundo de Reserva:', 60, reserveY);
-              reserveY += 12;
-              
-              doc.font('Helvetica').fillColor(colors.dark)
-                .text(`  Saldo Atual: ${formatCurrency(reserveFund.current_balance || 0)}`, 70, reserveY);
-              reserveY += 12;
-              
-              doc.text(`  Meta: ${formatCurrency(reserveFund.target_balance || 0)}`, 70, reserveY);
-              reserveY += 12;
-              
               const progressPercent = reserveFund.target_balance > 0 
-                ? ((reserveFund.current_balance || 0) / reserveFund.target_balance) * 100 
+                ? Math.min(((reserveFund.current_balance || 0) / reserveFund.target_balance) * 100, 100)
                 : 0;
               const progressColor = progressPercent >= 100 ? colors.success : progressPercent >= 50 ? colors.warning : colors.danger;
               
-              doc.fillColor(progressColor)
-                .text(`  Progresso: ${progressPercent.toFixed(1)}% da meta`, 70, reserveY);
+              // Layout em duas colunas lado a lado (melhor uso do espaço)
+              const leftColumnX = 60;
+              const rightColumnX = 320;
+              const chartOuterRadius = 55;
+              const chartInnerRadius = 35;
+              
+              // Salva posição inicial
+              const infoStartY = reserveY;
+              
+              // Coluna esquerda: informações
+              doc.font('Helvetica-Bold').fillColor(colors.dark).text('Situação Atual do Fundo de Reserva:', leftColumnX, reserveY);
+              reserveY += 15;
+              
+              // Box para informações
+              const infoBoxHeight = 80;
+              drawBox(leftColumnX, reserveY, 240, infoBoxHeight, '#ffffff');
+              
+              doc.font('Helvetica').fillColor(colors.dark)
+                .text(`Saldo Atual:`, leftColumnX + 10, reserveY + 10);
+              doc.font('Helvetica-Bold').fillColor(colors.primary)
+                .text(formatCurrency(reserveFund.current_balance || 0), leftColumnX + 10, reserveY + 25);
+              
+              doc.font('Helvetica').fillColor(colors.dark)
+                .text(`Meta:`, leftColumnX + 10, reserveY + 45);
+              doc.font('Helvetica-Bold').fillColor(colors.dark)
+                .text(formatCurrency(reserveFund.target_balance || 0), leftColumnX + 10, reserveY + 60);
+              
+              // Coluna direita: gráfico
+              const chartCenterX = rightColumnX + 75;
+              const chartCenterY = infoStartY + 70;
+              
+              // Título do gráfico
+              doc.font('Helvetica-Bold').fillColor(colors.dark)
+                .text('Progresso em Direção à Meta', rightColumnX, infoStartY, { width: 150, align: 'center' });
+              
+              // Desenha o gráfico de rosca
+              try {
+                drawDoughnutChart(chartCenterX, chartCenterY, chartOuterRadius, chartInnerRadius, progressPercent, {
+                  success: progressColor
+                });
+                
+                // Texto central no gráfico com fundo branco
+                doc.circle(chartCenterX, chartCenterY, 25)
+                  .fillColor('#ffffff')
+                  .fill();
+                
+                doc.fontSize(18).font('Helvetica-Bold').fillColor(progressColor)
+                  .text(`${progressPercent.toFixed(1)}%`, chartCenterX, chartCenterY - 8, { width: 100, align: 'center' });
+                doc.fontSize(9).font('Helvetica').fillColor('#666666')
+                  .text('da meta', chartCenterX, chartCenterY + 10, { width: 100, align: 'center' });
+              } catch (chartError) {
+                console.error('Erro ao desenhar gráfico:', chartError);
+              }
+              
+              // Atualiza reserveY para a maior posição (informações ou gráfico)
+              reserveY = Math.max(reserveY + infoBoxHeight, chartCenterY + chartOuterRadius) + 20;
             } else if (reserveFundAmountThisMonth > 0) {
               doc.font('Helvetica').fillColor(colors.warning)
-                .text('  Nota: Fundo de reserva ainda não foi configurado. O valor foi registrado no fechamento.', 70, reserveY);
+                .text('  Nota: Fundo de reserva ainda não foi configurado. O valor foi registrado no fechamento.', 70, reserveY, { width: 455 });
+              reserveY += 30;
             }
             
-            doc.y = reserveFundY + reserveFundHeight + 15;
+            // Garante que doc.y está atualizado corretamente
+            doc.y = Math.max(reserveY, reserveFundY + reserveFundHeight + 15);
             doc.fillColor('#000000');
           }
           
           // ========== OBSERVAÇÕES FINAIS ==========
-          checkPageBreak(120);
+          checkPageBreak(180);
           const notesY = doc.y;
-          const notesHeight = 140;
-          drawBox(50, notesY, 495, notesHeight, '#fef3c7');
+          let notesHeight = 160; // Altura dinâmica
           
-          doc.fontSize(16).font('Helvetica-Bold').fillColor(colors.dark)
-            .text('9. OBSERVAÇÕES E RECOMENDAÇÕES', 60, notesY + 10);
+          // Calcula altura necessária
+          let estimatedHeight = 50; // Título e espaçamento
+          estimatedHeight += 40; // Informações gerais
+          if (totalExitsApproved > 0 || totalEntriesPending > 0 || totalExitsPending > 0) {
+            estimatedHeight += 30;
+            if (totalExitsApproved > 0) estimatedHeight += 12;
+            if (totalEntriesPending > 0) estimatedHeight += 12;
+            if (totalExitsPending > 0) estimatedHeight += 12;
+          }
+          estimatedHeight += 25; // Título recomendações
+          if (balance < 0) estimatedHeight += 12;
+          if (totalExitsApproved > balance && balance > 0) estimatedHeight += 12;
+          if (entriesVariation < -10) estimatedHeight += 12;
+          if (exitsVariation > 20) estimatedHeight += 12;
           
-          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
-          let noteY = notesY + 30;
+          notesHeight = Math.max(notesHeight, estimatedHeight);
           
-          doc.font('Helvetica-Bold').text('INFORMACOES GERAIS:', 60, noteY);
-          noteY += 12;
-          doc.font('Helvetica').text('  • Este relatorio foi gerado automaticamente pelo sistema de gestao condominial.', 70, noteY);
-          noteY += 10;
-          doc.text('  • Todos os valores estao em Reais (R$).', 70, noteY);
-          noteY += 10;
-          doc.text('  • O saldo do mes considera apenas entradas recebidas e saidas pagas.', 70, noteY);
-          noteY += 15;
+          // Box com fundo mais claro para melhor contraste
+          drawBox(50, notesY, 495, notesHeight, '#fff9e6');
+          
+          doc.fontSize(18).font('Helvetica-Bold').fillColor('#1f2937')
+            .text('10. OBSERVAÇÕES E RECOMENDAÇÕES', 60, notesY + 12);
+          drawLine(notesY + 30, colors.primary, 200);
+          
+          doc.fontSize(11).font('Helvetica').fillColor('#000000'); // Preto puro para máximo contraste
+          let noteY = notesY + 40;
+          
+          // Informações Gerais
+          doc.fontSize(13).font('Helvetica-Bold').fillColor('#000000') // Preto puro
+            .text('INFORMAÇÕES GERAIS:', 60, noteY);
+          noteY += 16;
+          doc.fontSize(11).font('Helvetica').fillColor('#000000') // Preto puro
+            .text('  • Este relatório foi gerado automaticamente pelo sistema de gestão condominial.', 70, noteY);
+          noteY += 13;
+          doc.fillColor('#000000').text('  • Todos os valores estão em Reais (R$).', 70, noteY);
+          noteY += 13;
+          doc.fillColor('#000000').text('  • O saldo do mês considera apenas entradas recebidas e saídas pagas.', 70, noteY);
+          noteY += 18;
           
           // Alertas importantes
           if (totalExitsApproved > 0 || totalEntriesPending > 0 || totalExitsPending > 0) {
-            doc.font('Helvetica-Bold').fillColor(colors.warning)
-              .text('ATENCOES IMPORTANTES:', 60, noteY);
-            noteY += 12;
+            doc.fontSize(13).font('Helvetica-Bold').fillColor('#000000') // Preto puro
+              .text('ATENÇÕES IMPORTANTES:', 60, noteY);
+            noteY += 16;
             
             if (totalExitsApproved > 0) {
-              doc.font('Helvetica').fillColor(colors.warning)
-                .text(`  • Existem ${exits.filter(e => e.payment_status === 'APPROVED').length} saida(s) aprovada(s) no valor de ${formatCurrency(totalExitsApproved)} que ainda nao foram pagas.`, 70, noteY);
-              noteY += 10;
+              doc.fontSize(11).font('Helvetica').fillColor('#000000') // Preto puro
+                .text(`  • Existem ${exits.filter(e => e.payment_status === 'APPROVED').length} saída(s) aprovada(s) no valor de ${formatCurrency(totalExitsApproved)} que ainda não foram pagas.`, 70, noteY, { width: 455 });
+              noteY += 13;
             }
             if (totalEntriesPending > 0) {
-              doc.fillColor(colors.warning)
-                .text(`  • Existem ${entries.filter(e => !e.received && e.review_status === 'APPROVED').length} entrada(s) pendente(s) no valor de ${formatCurrency(totalEntriesPending)} que ainda nao foram recebidas.`, 70, noteY);
-              noteY += 10;
+              doc.fillColor('#000000')
+                .text(`  • Existem ${entries.filter(e => !e.received && e.review_status === 'APPROVED').length} entrada(s) pendente(s) no valor de ${formatCurrency(totalEntriesPending)} que ainda não foram recebidas.`, 70, noteY, { width: 455 });
+              noteY += 13;
             }
             if (totalExitsPending > 0) {
-              doc.fillColor(colors.warning)
-                .text(`  • Existem ${exits.filter(e => e.payment_status === 'PENDING').length} saida(s) pendente(s) no valor de ${formatCurrency(totalExitsPending)} aguardando aprovacao.`, 70, noteY);
-              noteY += 10;
+              doc.fillColor('#000000')
+                .text(`  • Existem ${exits.filter(e => e.payment_status === 'PENDING').length} saída(s) pendente(s) no valor de ${formatCurrency(totalExitsPending)} aguardando aprovação.`, 70, noteY, { width: 455 });
+              noteY += 13;
             }
-            noteY += 5;
+            noteY += 8;
           }
           
           // Recomendações
-          doc.font('Helvetica-Bold').fillColor(colors.primary)
-            .text('RECOMENDACOES:', 60, noteY);
-          noteY += 12;
+          doc.fontSize(13).font('Helvetica-Bold').fillColor('#000000') // Preto puro
+            .text('RECOMENDAÇÕES:', 60, noteY);
+          noteY += 16;
           
           if (balance < 0) {
-            doc.font('Helvetica').fillColor(colors.danger)
-              .text('  • O saldo esta negativo. Considere revisar as despesas e aumentar as receitas.', 70, noteY);
-            noteY += 10;
+            doc.fontSize(11).font('Helvetica').fillColor('#000000')
+              .text('  • O saldo está negativo. Considere revisar as despesas e aumentar as receitas.', 70, noteY, { width: 455 });
+            noteY += 13;
           }
           
           if (totalExitsApproved > balance && balance > 0) {
-            doc.font('Helvetica').fillColor(colors.warning)
-              .text('  • As saidas aprovadas superam o saldo atual. Planeje o fluxo de caixa com cuidado.', 70, noteY);
-            noteY += 10;
+            doc.fillColor('#000000')
+              .text('  • As saídas aprovadas superam o saldo atual. Planeje o fluxo de caixa com cuidado.', 70, noteY, { width: 455 });
+            noteY += 13;
           }
           
           if (entriesVariation < -10) {
-            doc.font('Helvetica').fillColor(colors.warning)
-              .text('  • As entradas diminuíram significativamente em relacao ao mes anterior. Verifique a cobranca de taxas.', 70, noteY);
-            noteY += 10;
+            doc.fillColor('#000000')
+              .text('  • As entradas diminuíram significativamente em relação ao mês anterior. Verifique a cobrança de taxas.', 70, noteY, { width: 455 });
+            noteY += 13;
           }
           
           if (exitsVariation > 20) {
-            doc.font('Helvetica').fillColor(colors.warning)
-              .text('  • As saidas aumentaram significativamente. Revise os gastos para identificar possiveis otimizacoes.', 70, noteY);
+            doc.fillColor('#000000')
+              .text('  • As saídas aumentaram significativamente. Revise os gastos para identificar possíveis otimizações.', 70, noteY, { width: 455 });
+            noteY += 13;
           }
           
           doc.y = notesY + notesHeight + 15;
@@ -1960,6 +2115,186 @@ const reportService = {
               { align: 'center', width: 495 }
             );
           };
+          
+          // Adicionar rodapé na primeira página (será adicionado após logo e assinaturas)
+          
+          // ========== KPIs E INDICADORES FINANCEIROS ==========
+          checkPageBreak(250);
+          const kpisY = doc.y;
+          const kpisHeight = 240; // Aumentado para mais KPIs
+          drawBox(50, kpisY, 495, kpisHeight, '#f8fafc');
+          
+          doc.fontSize(20).font('Helvetica-Bold').fillColor(colors.primary)
+            .text('11. INDICADORES FINANCEIROS (KPIs)', 50, kpisY + 10);
+          drawLine(kpisY + 28, colors.primary, 380);
+          
+          doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+          let kpiY = kpisY + 45;
+          
+          // Calcula KPIs adicionais
+          const totalEntriesCount = entries.length;
+          const totalExitsCount = exits.length;
+          const avgEntryValue = totalEntriesCount > 0 ? totalEntries / totalEntriesCount : 0;
+          const avgExitValue = totalExitsCount > 0 ? totalExits / totalExitsCount : 0;
+          const entryExitRatio = totalExits > 0 ? (totalEntries / totalExits) * 100 : 0;
+          const reserveFundProgress = reserveFund && reserveFund.target_balance > 0 
+            ? ((reserveFund.current_balance || 0) / reserveFund.target_balance) * 100 
+            : 0;
+          const monthlyBalance = totalEntriesReceived - totalExitsPaid;
+          const pendingEntriesValue = totalEntriesPending;
+          const pendingExitsValue = totalExitsPending;
+          const efficiencyRatio = totalEntries > 0 ? ((totalEntriesReceived / totalEntries) * 100) : 0;
+          const paymentEfficiency = totalExits > 0 ? ((totalExitsPaid / totalExits) * 100) : 0;
+          
+          // Layout em 3x3 grid de KPIs (9 KPIs)
+          const kpiBoxWidth = 150;
+          const kpiBoxHeight = 55;
+          const kpiSpacingX = 15;
+          const kpiSpacingY = 12;
+          const kpiStartX = 55;
+          
+          // Linha 1: KPIs principais financeiros
+          let kpiX = kpiStartX;
+          
+          // KPI 1: Saldo do Mês
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, monthlyBalance >= 0 ? '#d1fae5' : '#fee2e2');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Saldo do Mês', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(monthlyBalance >= 0 ? colors.success : colors.danger)
+            .text(formatCurrency(monthlyBalance), kpiX + 8, kpiY + 22);
+          
+          kpiX += kpiBoxWidth + kpiSpacingX;
+          
+          // KPI 2: Taxa de Entrada vs Saída
+          const ratioColor = entryExitRatio >= 100 ? colors.success : entryExitRatio >= 80 ? colors.warning : colors.danger;
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#fef3c7');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Taxa Entrada/Saída', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(ratioColor)
+            .text(`${entryExitRatio.toFixed(1)}%`, kpiX + 8, kpiY + 22);
+          
+          kpiX += kpiBoxWidth + kpiSpacingX;
+          
+          // KPI 3: Total de Transações
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#e0e7ff');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Total Transações', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(colors.primary)
+            .text(`${totalEntriesCount + totalExitsCount}`, kpiX + 8, kpiY + 22);
+          
+          kpiY += kpiBoxHeight + kpiSpacingY;
+          kpiX = kpiStartX;
+          
+          // Linha 2: KPIs de valores médios e eficiência
+          // KPI 4: Valor Médio de Entradas
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#dbeafe');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Média Entradas', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(colors.primary)
+            .text(formatCurrency(avgEntryValue), kpiX + 8, kpiY + 22);
+          
+          kpiX += kpiBoxWidth + kpiSpacingX;
+          
+          // KPI 5: Valor Médio de Saídas
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#fce7f3');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Média Saídas', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(colors.danger)
+            .text(formatCurrency(avgExitValue), kpiX + 8, kpiY + 22);
+          
+          kpiX += kpiBoxWidth + kpiSpacingX;
+          
+          // KPI 6: Eficiência de Recebimento
+          const efficiencyColor = efficiencyRatio >= 90 ? colors.success : efficiencyRatio >= 70 ? colors.warning : colors.danger;
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#ecfdf5');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Efic. Recebimento', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(efficiencyColor)
+            .text(`${efficiencyRatio.toFixed(1)}%`, kpiX + 8, kpiY + 22);
+          
+          kpiY += kpiBoxHeight + kpiSpacingY;
+          kpiX = kpiStartX;
+          
+          // Linha 3: KPIs de pendências e fundo de reserva
+          // KPI 7: Pendências de Entrada
+          const pendingEntriesColor = pendingEntriesValue > 0 ? colors.warning : colors.success;
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#fef3c7');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Entradas Pendentes', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(pendingEntriesColor)
+            .text(formatCurrency(pendingEntriesValue), kpiX + 8, kpiY + 22);
+          
+          kpiX += kpiBoxWidth + kpiSpacingX;
+          
+          // KPI 8: Pendências de Saída
+          const pendingExitsColor = pendingExitsValue > 0 ? colors.warning : colors.success;
+          drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#fee2e2');
+          doc.fontSize(8).font('Helvetica').fillColor('#666666')
+            .text('Saídas Pendentes', kpiX + 8, kpiY + 5);
+          doc.fontSize(15).font('Helvetica-Bold').fillColor(pendingExitsColor)
+            .text(formatCurrency(pendingExitsValue), kpiX + 8, kpiY + 22);
+          
+          kpiX += kpiBoxWidth + kpiSpacingX;
+          
+          // KPI 9: Progresso Fundo de Reserva
+          if (reserveFund && reserveFund.target_balance > 0) {
+            const fundColor = reserveFundProgress >= 100 ? colors.success : reserveFundProgress >= 50 ? colors.warning : colors.danger;
+            drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#e0f2fe');
+            doc.fontSize(8).font('Helvetica').fillColor('#666666')
+              .text('Fundo Reserva', kpiX + 8, kpiY + 5);
+            doc.fontSize(15).font('Helvetica-Bold').fillColor(fundColor)
+              .text(`${reserveFundProgress.toFixed(1)}%`, kpiX + 8, kpiY + 22);
+          } else {
+            drawBox(kpiX, kpiY, kpiBoxWidth, kpiBoxHeight, '#f3f4f6');
+            doc.fontSize(8).font('Helvetica').fillColor('#666666')
+              .text('Fundo Reserva', kpiX + 8, kpiY + 5);
+            doc.fontSize(15).font('Helvetica-Bold').fillColor('#999999')
+              .text('N/A', kpiX + 8, kpiY + 22);
+          }
+          
+          doc.y = kpisY + kpisHeight + 15;
+          doc.fillColor('#000000');
+          
+          // ========== ASSINATURAS ==========
+          checkPageBreak(100);
+          const signatureY = doc.y;
+          const signatureHeight = 70;
+          
+          // Linha separadora
+          drawLine(signatureY - 10, colors.border, 495);
+          
+          // Espaço para assinaturas
+          const signatureBoxY = signatureY + 15;
+          const signatureBoxWidth = 150;
+          const signatureBoxHeight = 50;
+          const signatureSpacing = 20;
+          
+          // Assinatura 1: Síndico
+          const sig1X = 60;
+          drawBox(sig1X, signatureBoxY, signatureBoxWidth, signatureBoxHeight, '#ffffff');
+          doc.fontSize(9).font('Helvetica').fillColor('#000000')
+            .text('_________________________________', sig1X + 10, signatureBoxY + 10, { width: signatureBoxWidth - 20, align: 'center' });
+          doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000')
+            .text('SÍNDICO', sig1X + 10, signatureBoxY + 30, { width: signatureBoxWidth - 20, align: 'center' });
+          
+          // Assinatura 2: Administrador
+          const sig2X = 60 + signatureBoxWidth + signatureSpacing;
+          drawBox(sig2X, signatureBoxY, signatureBoxWidth, signatureBoxHeight, '#ffffff');
+          doc.fontSize(9).font('Helvetica').fillColor('#000000')
+            .text('_________________________________', sig2X + 10, signatureBoxY + 10, { width: signatureBoxWidth - 20, align: 'center' });
+          doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000')
+            .text('ADMINISTRADOR', sig2X + 10, signatureBoxY + 30, { width: signatureBoxWidth - 20, align: 'center' });
+          
+          // Assinatura 3: Financeiro
+          const sig3X = 60 + (signatureBoxWidth + signatureSpacing) * 2;
+          drawBox(sig3X, signatureBoxY, signatureBoxWidth, signatureBoxHeight, '#ffffff');
+          doc.fontSize(9).font('Helvetica').fillColor('#000000')
+            .text('_________________________________', sig3X + 10, signatureBoxY + 10, { width: signatureBoxWidth - 20, align: 'center' });
+          doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000')
+            .text('RESPONSÁVEL FINANCEIRO', sig3X + 10, signatureBoxY + 30, { width: signatureBoxWidth - 20, align: 'center' });
+          
+          doc.y = signatureY + signatureHeight + 15;
+          doc.fillColor('#000000');
           
           // Adicionar rodapé na primeira página
           addFooter(1);

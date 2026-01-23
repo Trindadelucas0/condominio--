@@ -769,6 +769,69 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar coluna da FASE 31:', error);
     }
 
+    // Multi-Aprovação: Tabelas para múltiplas aprovações necessárias
+    console.log('🔍 Verificando tabelas de multi-aprovação...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'multi_approvals'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabelas de multi-aprovação não encontradas. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesMultiApproval.sql'));
+        console.log('✅ Tabelas de multi-aprovação criadas com sucesso');
+      } else {
+        console.log('✅ Tabelas de multi-aprovação já existem');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabelas de multi-aprovação:', error);
+    }
+
+    // Dashboard Config: Configuração personalizada do dashboard por usuário
+    console.log('🔍 Verificando tabela de configuração do dashboard...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'dashboard_config'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabela de dashboard config não encontrada. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesDashboardConfig.sql'));
+        console.log('✅ Tabela de dashboard config criada com sucesso');
+      } else {
+        console.log('✅ Tabela de dashboard config já existe');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabela de dashboard config:', error);
+    }
+
+    // Correção: Coluna related_occurrence_id em tasks
+    console.log('🔍 Verificando coluna related_occurrence_id em tasks...');
+    try {
+      const columnExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'tasks' AND column_name = 'related_occurrence_id'
+        )
+      `);
+      
+      if (!columnExists.rows[0].exists) {
+        console.log('⚠️  Coluna related_occurrence_id não encontrada em tasks. Criando...');
+        await executeSQLFile(path.join(__dirname, 'fixTasksRelatedOccurrence.sql'));
+        console.log('✅ Coluna related_occurrence_id criada com sucesso');
+      } else {
+        console.log('✅ Coluna related_occurrence_id já existe em tasks');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar coluna related_occurrence_id em tasks:', error);
+    }
+
     console.log('✅ Inicialização do banco de dados concluída!');
   } catch (error) {
     console.error('❌ Erro crítico na inicialização do banco de dados:', error);

@@ -1,16 +1,809 @@
 <%- include('../partials/header', { title: title }) %>
 <%- include('../partials/navbar', { user: user }) %>
 
-<div class="container mx-auto px-4 py-8">
-  <div class="mb-6">
-    <h1 class="page-title">Dashboard Conselho</h1>
-    <p class="page-subtitle">Visão de fiscalização (somente leitura)</p>
-  </div>
+<style>
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  
+  .card-elevate {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-elevate:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .stat-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%);
+    backdrop-filter: blur(10px);
+  }
+  
+  .pulse-animation {
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  .shimmer-effect {
+    background: linear-gradient(90deg, #f0f0f0 0%, #e0e0e0 50%, #f0f0f0 100%);
+    background-size: 2000px 100%;
+    animation: shimmer 2s infinite;
+  }
 
-  <div class="card">
-    <p class="text-gray-600">Dashboard em construção. Módulos serão adicionados nas próximas fases.</p>
+  .live-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+    margin-right: 8px;
+  }
+
+  .refresh-btn {
+    transition: transform 0.3s ease;
+  }
+
+  .refresh-btn:hover {
+    transform: rotate(180deg);
+  }
+</style>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Cabeçalho Moderno -->
+    <div class="mb-8 animate-fade-in-up">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
+          <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl p-4 shadow-lg">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-gray-900 bg-clip-text text-transparent">
+              Dashboard Conselho - Prestação de Contas
+            </h1>
+            <p class="text-gray-600 mt-1 flex items-center">
+              <span class="live-indicator"></span>
+              <span><%= condominiumName %> - Dados em tempo real</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <div class="bg-white rounded-xl shadow-lg p-2">
+            <label class="text-sm font-semibold text-gray-700 mr-2">Filtrar por:</label>
+            <input 
+              type="month" 
+              id="dateFilter" 
+              value="<%= filterDate %>" 
+              onchange="filterByDate()"
+              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
+            />
+          </div>
+          <button onclick="refreshDashboard()" class="refresh-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span>Atualizar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards de Estatísticas Principais -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <!-- Saldo do Período -->
+      <div class="stat-card card-elevate bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up border-l-4 <%= typeof periodStats !== 'undefined' && periodStats.balance >= 0 ? 'border-green-500' : 'border-red-500' %>">
+        <div class="flex items-center justify-between mb-4">
+          <div class="bg-gradient-to-br <%= typeof periodStats !== 'undefined' && periodStats.balance >= 0 ? 'from-green-500 to-emerald-600' : 'from-red-500 to-rose-600' %> rounded-lg p-3">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Saldo do Período</span>
+        </div>
+        <h3 class="text-2xl font-bold <%= typeof periodStats !== 'undefined' && periodStats.balance >= 0 ? 'text-green-700' : 'text-red-700' %> mb-2">
+          R$ <%= typeof periodStats !== 'undefined' ? periodStats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
+        </h3>
+        <p class="text-xs text-gray-600">
+          <%= typeof periodStats !== 'undefined' && periodStats.balance >= 0 ? '✅ Período com saldo positivo' : '⚠️ Período com saldo negativo' %>
+        </p>
+      </div>
+
+      <!-- Entradas -->
+      <div class="stat-card card-elevate bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up border-l-4 border-green-500" style="animation-delay: 0.1s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+          </div>
+          <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Total Recebido</span>
+        </div>
+        <h3 class="text-2xl font-bold text-green-700 mb-2">
+          R$ <%= stats.totalEntries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+        </h3>
+        <p class="text-xs text-gray-600">
+          Entradas financeiras recebidas
+        </p>
+      </div>
+
+      <!-- Saídas do Período -->
+      <div class="stat-card card-elevate bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up border-l-4 border-red-500" style="animation-delay: 0.2s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-lg p-3">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+            </svg>
+          </div>
+          <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Saídas do Período</span>
+        </div>
+        <h3 class="text-2xl font-bold text-red-700 mb-2">
+          R$ <%= typeof periodStats !== 'undefined' ? periodStats.exits.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
+        </h3>
+        <p class="text-xs text-gray-600">
+          Despesas pagas no período
+        </p>
+      </div>
+
+      <!-- Inadimplência -->
+      <div class="stat-card card-elevate bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up border-l-4 <%= delinquency.rate > 10 ? 'border-red-500' : delinquency.rate > 5 ? 'border-yellow-500' : 'border-green-500' %>" style="animation-delay: 0.3s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="bg-gradient-to-br <%= delinquency.rate > 10 ? 'from-red-500 to-rose-600' : delinquency.rate > 5 ? 'from-yellow-500 to-amber-600' : 'from-green-500 to-emerald-600' %> rounded-lg p-3">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Taxa</span>
+        </div>
+        <h3 class="text-2xl font-bold <%= delinquency.rate > 10 ? 'text-red-700' : delinquency.rate > 5 ? 'text-yellow-700' : 'text-green-700' %> mb-2">
+          <%= delinquency.rate %>% 
+        </h3>
+        <p class="text-xs text-gray-600">
+          <%= delinquency.total_inadimplentes %> de <%= delinquency.totalApartments %> apartamentos
+        </p>
+      </div>
+    </div>
+
+    <!-- Resumo Financeiro Detalhado -->
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 animate-fade-in-up" style="animation-delay: 0.4s">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-2">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900">Resumo Financeiro Completo</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-l-4 border-green-500">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Total de Entradas</p>
+          <p class="text-2xl font-bold text-green-700">R$ <%= stats.totalEntries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+          <% if (typeof analytics !== 'undefined' && analytics.comparison && analytics.comparison.variations.entries !== 0) { %>
+            <p class="text-xs mt-2 <%= analytics.comparison.variations.entries >= 0 ? 'text-green-600' : 'text-red-600' %>">
+              <%= analytics.comparison.variations.entries >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.entries).toFixed(1) %>% vs mês anterior
+            </p>
+          <% } %>
+        </div>
+        <div class="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 border-l-4 border-red-500">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Total de Saídas</p>
+          <p class="text-2xl font-bold text-red-700">R$ <%= (stats.totalExitsPaid + stats.totalExitsApproved || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+          <% if (typeof analytics !== 'undefined' && analytics.comparison && analytics.comparison.variations.exits !== 0) { %>
+            <p class="text-xs mt-2 <%= analytics.comparison.variations.exits >= 0 ? 'text-red-600' : 'text-green-600' %>">
+              <%= analytics.comparison.variations.exits >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.exits).toFixed(1) %>% vs mês anterior
+            </p>
+          <% } %>
+        </div>
+        <div class="bg-gradient-to-r <%= stats.balance >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= stats.balance >= 0 ? 'border-green-500' : 'border-red-500' %>">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo Disponível</p>
+          <p class="text-2xl font-bold <%= stats.balance >= 0 ? 'text-green-700' : 'text-red-700' %>">
+            R$ <%= stats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          </p>
+          <% if (typeof analytics !== 'undefined' && analytics.trend) { %>
+            <p class="text-xs mt-2 <%= analytics.trend.trend === 'GROWING' ? 'text-green-600' : analytics.trend.trend === 'DECLINING' ? 'text-red-600' : 'text-gray-600' %>">
+              <% if (analytics.trend.trend === 'GROWING') { %>📈 Crescendo<% } else if (analytics.trend.trend === 'DECLINING') { %>📉 Declinando<% } else { %>➡️ Estável<% } %>
+              (<%= analytics.trend.rate.toFixed(1) %>%)
+            </p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráficos -->
+    <% if (typeof analytics !== 'undefined' && analytics.historical && analytics.historical.length > 0) { %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Gráfico de Evolução Histórica -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.5s">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-gray-900">Evolução Financeira (12 meses)</h2>
+          <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">Histórico</span>
+        </div>
+        <div class="chart-container" style="position: relative; height: 300px;">
+          <canvas id="historicalChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Gráfico de Categorias -->
+      <% if (typeof analytics.categoryData !== 'undefined' && analytics.categoryData.exits && analytics.categoryData.exits.length > 0) { %>
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.6s">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-gray-900">Gastos por Categoria</h2>
+          <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">Últimos 6 meses</span>
+        </div>
+        <div class="chart-container" style="position: relative; height: 300px;">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+
+    <!-- Estatísticas por Módulo -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Patrimônio -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.7s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg p-2">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900">Patrimônio</h2>
+        </div>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Total de Ativos</span>
+            <span class="text-lg font-bold text-gray-900"><%= patrimonioStats.totalAssets || 0 %></span>
+          </div>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Valor de Aquisição</span>
+            <span class="text-lg font-bold text-purple-700">R$ <%= (patrimonioStats.totalAcquisitionValue || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></span>
+          </div>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Valor Atual</span>
+            <span class="text-lg font-bold text-indigo-700">R$ <%= (patrimonioStats.totalCurrentValue || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></span>
+          </div>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Em Manutenção</span>
+            <span class="text-lg font-bold text-yellow-700"><%= patrimonioStats.assetsInMaintenance || 0 %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inadimplência Detalhada -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.8s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-lg p-2">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900">Inadimplência</h2>
+        </div>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Taxa de Inadimplência</span>
+            <span class="text-lg font-bold <%= delinquency.rate > 10 ? 'text-red-700' : delinquency.rate > 5 ? 'text-yellow-700' : 'text-green-700' %>"><%= delinquency.rate %>%</span>
+          </div>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Apartamentos Inadimplentes</span>
+            <span class="text-lg font-bold text-red-700"><%= delinquency.total_inadimplentes %> / <%= delinquency.totalApartments %></span>
+          </div>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Taxas Vencidas</span>
+            <span class="text-lg font-bold text-orange-700"><%= delinquency.total_taxas_vencidas %></span>
+          </div>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <span class="text-sm text-gray-600">Valor Total Vencido</span>
+            <span class="text-lg font-bold text-red-700">R$ <%= parseFloat(delinquency.valor_total_vencido || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estatísticas Operacionais -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <!-- Manutenções -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.9s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900">Manutenções</h3>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Pendentes</span>
+            <span class="font-bold text-yellow-700"><%= maintenanceStats.pendentes || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Em Andamento</span>
+            <span class="font-bold text-blue-700"><%= maintenanceStats.em_andamento || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Concluídas</span>
+            <span class="font-bold text-green-700"><%= maintenanceStats.concluidas || 0 %></span>
+          </div>
+          <div class="pt-2 border-t border-gray-200">
+            <div class="flex justify-between">
+              <span class="text-sm font-semibold text-gray-700">Total</span>
+              <span class="text-sm font-bold text-gray-900"><%= maintenanceStats.total || 0 %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ocorrências -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 1s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-lg p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900">Ocorrências</h3>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Abertas</span>
+            <span class="font-bold text-red-700"><%= occurrencesStats.abertas || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Em Andamento</span>
+            <span class="font-bold text-yellow-700"><%= occurrencesStats.em_andamento || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Resolvidas</span>
+            <span class="font-bold text-green-700"><%= occurrencesStats.resolvidas || 0 %></span>
+          </div>
+          <div class="pt-2 border-t border-gray-200">
+            <div class="flex justify-between">
+              <span class="text-sm font-semibold text-gray-700">Total</span>
+              <span class="text-sm font-bold text-gray-900"><%= occurrencesStats.total || 0 %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assembleias -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 1.1s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900">Assembleias</h3>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Agendadas</span>
+            <span class="font-bold text-blue-700"><%= assembliesStats.agendadas || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Em Andamento</span>
+            <span class="font-bold text-yellow-700"><%= assembliesStats.em_andamento || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Concluídas</span>
+            <span class="font-bold text-green-700"><%= assembliesStats.concluidas || 0 %></span>
+          </div>
+          <div class="pt-2 border-t border-gray-200">
+            <div class="flex justify-between">
+              <span class="text-sm font-semibold text-gray-700">Total</span>
+              <span class="text-sm font-bold text-gray-900"><%= assembliesStats.total || 0 %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orçamentos -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 1.2s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-green-500 to-teal-600 rounded-lg p-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900">Orçamentos</h3>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Pendentes</span>
+            <span class="font-bold text-yellow-700"><%= budgetsStats.pendentes || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Aprovados</span>
+            <span class="font-bold text-green-700"><%= budgetsStats.aprovados || 0 %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Rejeitados</span>
+            <span class="font-bold text-red-700"><%= budgetsStats.rejeitados || 0 %></span>
+          </div>
+          <div class="pt-2 border-t border-gray-200">
+            <div class="flex justify-between">
+              <span class="text-sm font-semibold text-gray-700">Total</span>
+              <span class="text-sm font-bold text-gray-900"><%= budgetsStats.total || 0 %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Últimas Transações -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Últimas Entradas -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 1.3s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-2">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900">Últimas Entradas</h2>
+        </div>
+        <div class="space-y-3 max-h-96 overflow-y-auto">
+          <% if (recentEntries && recentEntries.length > 0) { %>
+            <% recentEntries.forEach(entry => { %>
+            <div class="p-4 bg-gray-50 rounded-lg border-l-4 border-green-500">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900 text-sm"><%= entry.description %></p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    <%= new Date(entry.entry_date).toLocaleDateString('pt-BR') %> • 
+                    <%= entry.category || 'TAXA' %>
+                  </p>
+                </div>
+                <span class="text-lg font-bold text-green-700 ml-4">
+                  R$ <%= parseFloat(entry.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                </span>
+              </div>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs px-2 py-1 rounded-full <%= entry.received ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
+                  <%= entry.received ? '✓ Recebido' : '⏳ Pendente' %>
+                </span>
+                <% if (entry.receipt_pdf_path) { %>
+                <a 
+                  href="<%= entry.receipt_pdf_path %>" 
+                  target="_blank"
+                  class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors inline-flex items-center space-x-1"
+                  title="Visualizar comprovante PDF"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                  <span>Ver PDF</span>
+                </a>
+                <% } %>
+              </div>
+            </div>
+            <% }); %>
+          <% } else { %>
+            <p class="text-center text-gray-500 py-8">Nenhuma entrada registrada</p>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Últimas Saídas -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 1.4s">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-lg p-2">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900">Últimas Saídas</h2>
+        </div>
+        <div class="space-y-3 max-h-96 overflow-y-auto">
+          <% if (recentExits && recentExits.length > 0) { %>
+            <% recentExits.forEach(exit => { %>
+            <div class="p-4 bg-gray-50 rounded-lg border-l-4 border-red-500">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900 text-sm"><%= exit.description %></p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    <%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %> • 
+                    <%= exit.category || 'OUTRA' %>
+                  </p>
+                </div>
+                <span class="text-lg font-bold text-red-700 ml-4">
+                  R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                </span>
+              </div>
+              <div class="flex items-center mt-2">
+                <% 
+                  const statusColors = {
+                    'PAID': 'bg-green-100 text-green-700',
+                    'APPROVED': 'bg-blue-100 text-blue-700',
+                    'PENDING': 'bg-yellow-100 text-yellow-700',
+                    'REJECTED': 'bg-red-100 text-red-700'
+                  };
+                  const statusLabels = {
+                    'PAID': '✓ Pago',
+                    'APPROVED': '✓ Aprovado',
+                    'PENDING': '⏳ Pendente',
+                    'REJECTED': '✗ Rejeitado'
+                  };
+                %>
+                <span class="text-xs px-2 py-1 rounded-full <%= statusColors[exit.payment_status] || 'bg-gray-100 text-gray-700' %>">
+                  <%= statusLabels[exit.payment_status] || exit.payment_status %>
+                </span>
+              </div>
+            </div>
+            <% }); %>
+          <% } else { %>
+            <p class="text-center text-gray-500 py-8">Nenhuma saída registrada</p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gastos por Categoria -->
+    <% if (expensesByCategory && expensesByCategory.length > 0) { %>
+    <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 1.5s">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg p-2">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+          <h2 class="text-xl font-bold text-gray-900">Gastos por Categoria</h2>
+          <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">Período selecionado</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <% expensesByCategory.forEach((cat, index) => { %>
+        <div class="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border-l-4 border-indigo-500">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold text-gray-900"><%= cat.category || 'Outras' %></span>
+            <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded-full"><%= cat.quantidade %> transações</span>
+          </div>
+          <p class="text-2xl font-bold text-indigo-700">
+            R$ <%= parseFloat(cat.total).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          </p>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Previsões -->
+    <% if (typeof analytics !== 'undefined' && analytics.projections && analytics.projections.length > 0) { %>
+    <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 1.6s">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg p-2">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900">Previsões Financeiras</h2>
+        <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">Próximos 3 meses</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <% analytics.projections.forEach((proj, index) => { %>
+        <div class="border-l-4 <%= proj.projectedBalance >= 0 ? 'border-green-500' : 'border-red-500' %> bg-<%= proj.projectedBalance >= 0 ? 'green' : 'red' %>-50 p-4 rounded-r-lg">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-gray-900"><%= proj.label %></h3>
+            <span class="text-sm font-bold <%= proj.projectedBalance >= 0 ? 'text-green-700' : 'text-red-700' %>">
+              R$ <%= proj.projectedBalance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs mt-3">
+            <div>
+              <span class="text-gray-600">Entradas:</span>
+              <span class="font-semibold text-green-700 ml-1 block">R$ <%= proj.projectedEntries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></span>
+            </div>
+            <div>
+              <span class="text-gray-600">Saídas:</span>
+              <span class="font-semibold text-red-700 ml-1 block">R$ <%= proj.projectedExits.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></span>
+            </div>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
   </div>
 </div>
-</main>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+  // Função para atualizar dashboard
+  function refreshDashboard() {
+    window.location.reload();
+  }
+
+  // Auto-refresh a cada 5 minutos
+  setInterval(() => {
+    refreshDashboard();
+  }, 300000); // 5 minutos
+
+  <% if (typeof analytics !== 'undefined' && analytics.historical && analytics.historical.length > 0) { %>
+  // Gráfico de Evolução Histórica
+  const historicalCtx = document.getElementById('historicalChart');
+  if (historicalCtx) {
+    const historicalData = <%- JSON.stringify(analytics.historical) %>;
+    
+    new Chart(historicalCtx, {
+      type: 'line',
+      data: {
+        labels: historicalData.map(d => d.label),
+        datasets: [
+          {
+            label: 'Entradas',
+            data: historicalData.map(d => parseFloat(d.entries || 0)),
+            borderColor: 'rgb(34, 197, 94)',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            borderWidth: 3,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          },
+          {
+            label: 'Saídas',
+            data: historicalData.map(d => parseFloat(d.exits || 0)),
+            borderColor: 'rgb(239, 68, 68)',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderWidth: 3,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          },
+          {
+            label: 'Saldo',
+            data: historicalData.map(d => parseFloat(d.balance || 0)),
+            borderColor: 'rgb(59, 130, 246)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderWidth: 3,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: { size: 12, weight: 'bold' }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 15,
+            cornerRadius: 12,
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': R$ ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            ticks: {
+              callback: function(value) {
+                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+              }
+            }
+          }
+        },
+        animation: {
+          duration: 2000,
+          easing: 'easeInOutQuart'
+        }
+      }
+    });
+  }
+  <% } %>
+
+  <% if (typeof analytics !== 'undefined' && analytics.categoryData && analytics.categoryData.exits && analytics.categoryData.exits.length > 0) { %>
+  // Gráfico de Categorias
+  const categoryCtx = document.getElementById('categoryChart');
+  if (categoryCtx) {
+    const categoryData = <%- JSON.stringify(analytics.categoryData.exits) %>;
+    
+    const colors = [
+      'rgba(239, 68, 68, 0.8)',
+      'rgba(59, 130, 246, 0.8)',
+      'rgba(139, 92, 246, 0.8)',
+      'rgba(251, 191, 36, 0.8)',
+      'rgba(34, 197, 94, 0.8)',
+      'rgba(236, 72, 153, 0.8)',
+      'rgba(20, 184, 166, 0.8)',
+      'rgba(245, 158, 11, 0.8)'
+    ];
+
+    new Chart(categoryCtx, {
+      type: 'doughnut',
+      data: {
+        labels: categoryData.map(d => d.category || 'Outras'),
+        datasets: [{
+          label: 'Gastos por Categoria',
+          data: categoryData.map(d => parseFloat(d.total || 0)),
+          backgroundColor: categoryData.map((d, i) => colors[i % colors.length]),
+          borderWidth: 3,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              padding: 15,
+              font: { size: 11, weight: 'bold' }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 15,
+            cornerRadius: 12,
+            callbacks: {
+              label: function(context) {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percent = ((context.parsed / total) * 100).toFixed(1);
+                return context.label + ': R$ ' + context.parsed.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ' (' + percent + '%)';
+              }
+            }
+          }
+        },
+        animation: {
+          duration: 2000,
+          easing: 'easeInOutQuart'
+        }
+      }
+    });
+  }
+  <% } %>
+</script>
 
 <%- include('../partials/footer') %>
