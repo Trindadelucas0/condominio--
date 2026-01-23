@@ -6,36 +6,57 @@ const { Pool } = require('pg'); // Pool de conexões do PostgreSQL
 require('dotenv').config(); // Carrega variáveis de ambiente do arquivo .env
 
 // Monta string de conexão a partir de variáveis de ambiente separadas
-// Se DATABASE_URL estiver definido, usa ele (prioridade)
+// Se DATABASE_URL estiver definido, usa ele (prioridade - necessário no Render)
 // Caso contrário, constrói a partir de DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE
 let connectionString;
+let poolConfig = {};
+
+// Em produção (Render), DATABASE_URL é obrigatória
+if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+  console.error('❌ ERRO: DATABASE_URL não configurada em produção. Configure a variável DATABASE_URL no Render.');
+  throw new Error('DATABASE_URL é obrigatória em produção. Configure no painel do Render.');
+}
+
 if (process.env.DATABASE_URL) {
-  connectionString = process.env.DATABASE_URL; // Usa DATABASE_URL se fornecido
+  // No Render, sempre use DATABASE_URL
+  connectionString = process.env.DATABASE_URL;
+  console.log('✅ Usando DATABASE_URL para conexão com banco de dados');
+  // Em produção, força SSL mesmo se não estiver na URL
+  if (process.env.NODE_ENV === 'production') {
+    poolConfig.ssl = { rejectUnauthorized: false };
+    console.log('🔒 SSL habilitado para produção');
+  }
 } else {
-  // Constrói connectionString a partir de variáveis separadas
+  // Constrói connectionString a partir de variáveis separadas (desenvolvimento local)
+  console.log('⚠️  DATABASE_URL não encontrada, usando variáveis separadas');
   const dbHost = process.env.DB_HOST || 'localhost'; // Host do banco (padrão: localhost)
   const dbPort = process.env.DB_PORT || '5432'; // Porta do banco (padrão: 5432)
   const dbUser = process.env.DB_USER; // Usuário do banco (obrigatório)
   const dbPassword = process.env.DB_PASSWORD; // Senha do banco (obrigatório)
   const dbDatabase = process.env.DB_DATABASE; // Nome do banco (obrigatório)
   
+  console.log(`🔍 Tentando conectar em: ${dbUser}@${dbHost}:${dbPort}/${dbDatabase}`);
+  
   // Valida se variáveis obrigatórias foram fornecidas
   if (!dbUser || !dbPassword || !dbDatabase) {
-    throw new Error('Variáveis de ambiente do banco não configuradas. Configure DB_USER, DB_PASSWORD e DB_DATABASE no .env');
+    throw new Error('Variáveis de ambiente do banco não configuradas. Configure DB_USER, DB_PASSWORD e DB_DATABASE no .env ou use DATABASE_URL');
   }
   
   // Formato: postgresql://usuario:senha@host:porta/nome_banco
   connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabase}`;
+  
+  // Em produção com variáveis separadas, também aplica SSL
+  if (process.env.NODE_ENV === 'production') {
+    poolConfig.ssl = { rejectUnauthorized: false };
+    console.log('🔒 SSL habilitado para produção');
+  }
 }
-
-// Configuração SSL para produção (necessário para Render)
-const sslConfig = process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false;
 
 // Cria pool de conexões com PostgreSQL
 // Pool permite reutilização de conexões, melhorando performance
 const pool = new Pool({
   connectionString: connectionString, // String de conexão montada
-  ssl: sslConfig, // Configuração SSL para produção
+  ...poolConfig, // Configuração SSL para produção (se aplicável)
   // Configurações opcionais do pool
   max: 20, // Máximo de 20 conexões simultâneas
   idleTimeoutMillis: 30000, // Fecha conexões inativas após 30 segundos
