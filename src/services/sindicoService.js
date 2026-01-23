@@ -21,29 +21,59 @@ const getDashboardStats = async (condominiumId) => {
     
     // Se não estiver no cache, calcular
     console.log('🔄 Calculando dashboard stats...');
-    // Conta aprovações pendentes
-    const pendingApprovalsResult = await query(
-      `SELECT COUNT(*) as total FROM approvals 
-       WHERE condominium_id = $1 AND status = 'PENDING'`,
-      [condominiumId]
-    );
-    const pendingApprovals = parseInt(pendingApprovalsResult.rows[0].total);
+    // Conta aprovações pendentes (se a tabela existir)
+    let pendingApprovals = 0;
+    try {
+      const pendingApprovalsResult = await query(
+        `SELECT COUNT(*) as total FROM approvals 
+         WHERE condominium_id = $1 AND status = 'PENDING'`,
+        [condominiumId]
+      );
+      pendingApprovals = parseInt(pendingApprovalsResult.rows[0].total);
+    } catch (error) {
+      // Tabela approvals não existe, usar valor padrão
+      console.log('⚠️ Tabela approvals não encontrada, usando valor padrão');
+      pendingApprovals = 0;
+    }
 
-    // Conta alertas críticos não resolvidos
-    const criticalAlertsResult = await query(
-      `SELECT COUNT(*) as total FROM alerts 
-       WHERE condominium_id = $1 AND severity = 'CRITICAL' AND resolved = FALSE`,
-      [condominiumId]
-    );
-    const criticalAlerts = parseInt(criticalAlertsResult.rows[0].total);
+    // Conta alertas críticos não resolvidos (se a tabela existir)
+    let criticalAlerts = 0;
+    let warningAlerts = 0;
+    try {
+      // Verificar se a tabela existe antes de consultar
+      const tableExists = await query(
+        `SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'alerts'
+        )`
+      );
+      
+      if (tableExists.rows[0].exists) {
+        const criticalAlertsResult = await query(
+          `SELECT COUNT(*) as total FROM alerts 
+           WHERE condominium_id = $1 AND severity = 'CRITICAL' AND resolved = FALSE`,
+          [condominiumId]
+        );
+        criticalAlerts = parseInt(criticalAlertsResult.rows[0].total);
 
-    // Conta alertas de warning não resolvidos
-    const warningAlertsResult = await query(
-      `SELECT COUNT(*) as total FROM alerts 
-       WHERE condominium_id = $1 AND severity = 'WARNING' AND resolved = FALSE`,
-      [condominiumId]
-    );
-    const warningAlerts = parseInt(warningAlertsResult.rows[0].total);
+        // Conta alertas de warning não resolvidos
+        const warningAlertsResult = await query(
+          `SELECT COUNT(*) as total FROM alerts 
+           WHERE condominium_id = $1 AND severity = 'WARNING' AND resolved = FALSE`,
+          [condominiumId]
+        );
+        warningAlerts = parseInt(warningAlertsResult.rows[0].total);
+      } else {
+        // Tabela não existe, usar valores padrão silenciosamente
+        criticalAlerts = 0;
+        warningAlerts = 0;
+      }
+    } catch (error) {
+      // Se houver qualquer erro, usar valores padrão silenciosamente
+      // Não logar erro para evitar poluição do console
+      criticalAlerts = 0;
+      warningAlerts = 0;
+    }
 
     // Conta despesas pendentes de aprovação
     const pendingExpensesResult = await query(

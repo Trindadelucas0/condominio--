@@ -252,7 +252,6 @@ const showDashboard = async (req, res) => {
         fx.exit_date,
         fx.payment_status,
         fx.category,
-        fx.payment_receipt_pdf_path,
         u.full_name as created_by_name
       FROM financial_exits fx
       LEFT JOIN users u ON fx.created_by = u.id
@@ -384,6 +383,8 @@ const showDashboard = async (req, res) => {
       user: req.user,
       condominiumName: condominiumName,
       filterDate: req.query.date || `${filterYear}-${String(filterMonth).padStart(2, '0')}`,
+      error: req.query.error || null,
+      success: req.query.success || null,
       stats: stats,
       analytics: analytics,
       patrimonioStats: patrimonioStats,

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @page {
+      margin: 0;
+      size: A4 landscape;
+    }
+    
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #ffffff;
+      color: #1f2937;
+    }
+    
+    .header-gradient {
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #6366f1 100%);
+    }
+    
+    .card-shadow {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .stat-card {
+      border-left: 4px solid;
+      transition: all 0.3s ease;
+    }
+    
+    .kpi-card {
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      border: 1px solid #e5e7eb;
+    }
+    
+    .table-row {
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .table-row:hover {
+      background-color: #f9fafb;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .badge-success {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    
+    .badge-warning {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    
+    .badge-danger {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .badge-info {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .text-gradient {
+      background: linear-gradient(135deg, #1e40af 0%, #6366f1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .section-divider {
+      border-top: 2px solid #e5e7eb;
+      margin: 2rem 0;
+    }
+    
+    .page-break {
+      page-break-after: always;
+    }
+    
+    .no-break {
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body class="bg-white">
+  <!-- Cabeçalho -->
+  <div class="header-gradient text-white p-6 rounded-lg mb-6 no-break">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold mb-2">Relatório de Prestação de Contas</h1>
+        <h2 class="text-xl font-semibold mb-1"><%= condominiumName %></h2>
+        <p class="text-sm opacity-90">
+          Período: <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %>
+        </p>
+        <p class="text-xs opacity-75 mt-1">
+          Gerado em: <%= new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+        </p>
+      </div>
+      <div class="text-right">
+        <div class="bg-white bg-opacity-20 rounded-lg p-4 inline-block">
+          <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estatísticas Principais -->
+  <div class="mb-6 no-break">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4 text-gradient">Estatísticas Financeiras do Período</h2>
+    <div class="grid grid-cols-4 gap-4">
+      <!-- Saldo do Período -->
+      <div class="stat-card bg-white rounded-lg p-5 card-shadow <%= typeof periodStats !== 'undefined' && periodStats.balance >= 0 ? 'border-green-500' : 'border-red-500' %>">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-600">Saldo do Período</span>
+          <svg class="w-6 h-6 <%= typeof periodStats !== 'undefined' && periodStats.balance >= 0 ? 'text-green-500' : 'text-red-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold <%= typeof periodStats !== 'undefined' && periodStats.balance >= 0 ? 'text-green-700' : 'text-red-700' %>">
+          R$ <%= typeof periodStats !== 'undefined' ? periodStats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
+        </p>
+      </div>
+
+      <!-- Entradas do Período -->
+      <div class="stat-card bg-white rounded-lg p-5 card-shadow border-green-500">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-600">Entradas</span>
+          <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold text-green-700">
+          R$ <%= typeof periodStats !== 'undefined' ? periodStats.entries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
+        </p>
+      </div>
+
+      <!-- Saídas do Período -->
+      <div class="stat-card bg-white rounded-lg p-5 card-shadow border-red-500">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-600">Saídas</span>
+          <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold text-red-700">
+          R$ <%= typeof periodStats !== 'undefined' ? periodStats.exits.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
+        </p>
+      </div>
+
+      <!-- Taxa de Inadimplência -->
+      <div class="stat-card bg-white rounded-lg p-5 card-shadow border-yellow-500">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-600">Inadimplência</span>
+          <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+        </div>
+        <p class="text-2xl font-bold text-yellow-700">
+          <%= typeof delinquency !== 'undefined' ? delinquency.rate.toFixed(1) : '0' %>%
+        </p>
+        <p class="text-xs text-gray-500 mt-1">
+          <%= typeof delinquency !== 'undefined' ? delinquency.total_inadimplentes : 0 %> de <%= typeof delinquency !== 'undefined' ? delinquency.totalApartments : 0 %> apartamentos
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs Principais -->
+  <div class="mb-6 no-break">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4 text-gradient">Indicadores de Performance (KPIs)</h2>
+    <div class="grid grid-cols-5 gap-3">
+      <!-- KPI 1: Taxa de Aprovação de Orçamentos -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Aprovação Orçamentos</div>
+        <div class="text-xl font-bold text-blue-700"><%= typeof kpis !== 'undefined' ? kpis.budgetApprovalRate.toFixed(1) : '0' %>%</div>
+        <div class="text-xs text-gray-500 mt-1">
+          <%= typeof budgetsStats !== 'undefined' ? budgetsStats.aprovados : 0 %>/<%= typeof budgetsStats !== 'undefined' ? budgetsStats.total : 0 %>
+        </div>
+      </div>
+
+      <!-- KPI 2: Taxa de Conclusão de Manutenções -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Conclusão Manutenções</div>
+        <div class="text-xl font-bold text-green-700"><%= typeof kpis !== 'undefined' ? kpis.maintenanceCompletionRate.toFixed(1) : '0' %>%</div>
+        <div class="text-xs text-gray-500 mt-1">
+          <%= typeof maintenanceStats !== 'undefined' ? maintenanceStats.concluidas : 0 %>/<%= typeof maintenanceStats !== 'undefined' ? maintenanceStats.total : 0 %>
+        </div>
+      </div>
+
+      <!-- KPI 3: Taxa de Resolução de Ocorrências -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Resolução Ocorrências</div>
+        <div class="text-xl font-bold text-indigo-700"><%= typeof kpis !== 'undefined' ? kpis.occurrencesResolutionRate.toFixed(1) : '0' %>%</div>
+        <div class="text-xs text-gray-500 mt-1">
+          <%= typeof occurrencesStats !== 'undefined' ? (occurrencesStats.resolvidas + occurrencesStats.fechadas) : 0 %>/<%= typeof occurrencesStats !== 'undefined' ? occurrencesStats.total : 0 %>
+        </div>
+      </div>
+
+      <!-- KPI 4: Taxa de Conclusão de Tarefas -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Conclusão Tarefas</div>
+        <div class="text-xl font-bold text-purple-700"><%= typeof kpis !== 'undefined' ? kpis.tasksCompletionRate.toFixed(1) : '0' %>%</div>
+        <div class="text-xs text-gray-500 mt-1">
+          <%= typeof kpis !== 'undefined' && kpis.tasksStats ? kpis.tasksStats.concluidas : 0 %>/<%= typeof kpis !== 'undefined' && kpis.tasksStats ? kpis.tasksStats.total : 0 %>
+        </div>
+      </div>
+
+      <!-- KPI 5: Tempo Médio de Resolução -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Tempo Médio Resolução</div>
+        <div class="text-xl font-bold text-orange-700"><%= typeof kpis !== 'undefined' ? kpis.avgResolutionTime.toFixed(1) : '0' %> dias</div>
+        <div class="text-xs text-gray-500 mt-1">Últimos 6 meses</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs Secundários -->
+  <div class="mb-6 no-break">
+    <div class="grid grid-cols-5 gap-3">
+      <!-- KPI 6: Eficiência Financeira -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Eficiência Financeira</div>
+        <div class="text-xl font-bold text-emerald-700"><%= typeof kpis !== 'undefined' ? kpis.financialEfficiency.toFixed(1) : '0' %>%</div>
+      </div>
+
+      <!-- KPI 7: Taxa de Adimplência -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Taxa de Adimplência</div>
+        <div class="text-xl font-bold text-teal-700"><%= typeof kpis !== 'undefined' ? kpis.complianceRate.toFixed(1) : '0' %>%</div>
+      </div>
+
+      <!-- KPI 8: Crescimento de Receitas -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Crescimento Receitas</div>
+        <div class="text-xl font-bold <%= typeof kpis !== 'undefined' && kpis.revenueGrowth >= 0 ? 'text-green-700' : 'text-red-700' %>">
+          <%= typeof kpis !== 'undefined' && kpis.revenueGrowth >= 0 ? '+' : '' %><%= typeof kpis !== 'undefined' ? kpis.revenueGrowth.toFixed(1) : '0' %>%
+        </div>
+        <div class="text-xs text-gray-500 mt-1">vs mês anterior</div>
+      </div>
+
+      <!-- KPI 9: Redução de Custos -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Redução de Custos</div>
+        <div class="text-xl font-bold <%= typeof kpis !== 'undefined' && kpis.costReduction >= 0 ? 'text-green-700' : 'text-red-700' %>">
+          <%= typeof kpis !== 'undefined' && kpis.costReduction >= 0 ? '+' : '' %><%= typeof kpis !== 'undefined' ? kpis.costReduction.toFixed(1) : '0' %>%
+        </div>
+        <div class="text-xs text-gray-500 mt-1">vs mês anterior</div>
+      </div>
+
+      <!-- KPI 10: Índice de Saúde Financeira -->
+      <div class="kpi-card rounded-lg p-4 no-break">
+        <div class="text-xs font-medium text-gray-600 mb-1">Saúde Financeira</div>
+        <div class="text-xl font-bold <%= typeof kpis !== 'undefined' && kpis.healthScore >= 70 ? 'text-green-700' : typeof kpis !== 'undefined' && kpis.healthScore >= 50 ? 'text-yellow-700' : 'text-red-700' %>">
+          <%= typeof kpis !== 'undefined' ? kpis.healthScore : 0 %>/100
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estatísticas por Módulo -->
+  <div class="mb-6 no-break">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4 text-gradient">Estatísticas por Módulo</h2>
+    <div class="grid grid-cols-4 gap-4">
+      <!-- Manutenções -->
+      <div class="bg-white rounded-lg p-4 card-shadow">
+        <h3 class="font-bold text-gray-900 mb-3 flex items-center">
+          <svg class="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          Manutenções
+        </h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Pendentes:</span>
+            <span class="font-semibold text-yellow-700"><%= typeof maintenanceStats !== 'undefined' ? maintenanceStats.pendentes : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Em Andamento:</span>
+            <span class="font-semibold text-blue-700"><%= typeof maintenanceStats !== 'undefined' ? maintenanceStats.em_andamento : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Concluídas:</span>
+            <span class="font-semibold text-green-700"><%= typeof maintenanceStats !== 'undefined' ? maintenanceStats.concluidas : 0 %></span>
+          </div>
+          <div class="flex justify-between border-t pt-2">
+            <span class="text-gray-700 font-medium">Total:</span>
+            <span class="font-bold text-gray-900"><%= typeof maintenanceStats !== 'undefined' ? maintenanceStats.total : 0 %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ocorrências -->
+      <div class="bg-white rounded-lg p-4 card-shadow">
+        <h3 class="font-bold text-gray-900 mb-3 flex items-center">
+          <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          Ocorrências
+        </h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Abertas:</span>
+            <span class="font-semibold text-red-700"><%= typeof occurrencesStats !== 'undefined' ? occurrencesStats.abertas : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Em Atendimento:</span>
+            <span class="font-semibold text-blue-700"><%= typeof occurrencesStats !== 'undefined' ? occurrencesStats.em_andamento : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Resolvidas:</span>
+            <span class="font-semibold text-green-700"><%= typeof occurrencesStats !== 'undefined' ? (occurrencesStats.resolvidas + occurrencesStats.fechadas) : 0 %></span>
+          </div>
+          <div class="flex justify-between border-t pt-2">
+            <span class="text-gray-700 font-medium">Total:</span>
+            <span class="font-bold text-gray-900"><%= typeof occurrencesStats !== 'undefined' ? occurrencesStats.total : 0 %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assembleias -->
+      <div class="bg-white rounded-lg p-4 card-shadow">
+        <h3 class="font-bold text-gray-900 mb-3 flex items-center">
+          <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+          Assembleias
+        </h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Agendadas:</span>
+            <span class="font-semibold text-blue-700"><%= typeof assembliesStats !== 'undefined' ? assembliesStats.agendadas : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Em Andamento:</span>
+            <span class="font-semibold text-yellow-700"><%= typeof assembliesStats !== 'undefined' ? assembliesStats.em_andamento : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Concluídas:</span>
+            <span class="font-semibold text-green-700"><%= typeof assembliesStats !== 'undefined' ? assembliesStats.concluidas : 0 %></span>
+          </div>
+          <div class="flex justify-between border-t pt-2">
+            <span class="text-gray-700 font-medium">Total:</span>
+            <span class="font-bold text-gray-900"><%= typeof assembliesStats !== 'undefined' ? assembliesStats.total : 0 %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orçamentos -->
+      <div class="bg-white rounded-lg p-4 card-shadow">
+        <h3 class="font-bold text-gray-900 mb-3 flex items-center">
+          <svg class="w-5 h-5 text-purple-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Orçamentos
+        </h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Pendentes:</span>
+            <span class="font-semibold text-yellow-700"><%= typeof budgetsStats !== 'undefined' ? budgetsStats.pendentes : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Aprovados:</span>
+            <span class="font-semibold text-green-700"><%= typeof budgetsStats !== 'undefined' ? budgetsStats.aprovados : 0 %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Rejeitados:</span>
+            <span class="font-semibold text-red-700"><%= typeof budgetsStats !== 'undefined' ? budgetsStats.rejeitados : 0 %></span>
+          </div>
+          <div class="flex justify-between border-t pt-2">
+            <span class="text-gray-700 font-medium">Total:</span>
+            <span class="font-bold text-gray-900"><%= typeof budgetsStats !== 'undefined' ? budgetsStats.total : 0 %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Últimas Entradas Financeiras -->
+  <% if (recentEntries && recentEntries.length > 0) { %>
+  <div class="mb-6 no-break">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4 text-gradient">Últimas Entradas Financeiras</h2>
+    <div class="bg-white rounded-lg card-shadow overflow-hidden">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Data</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Descrição</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Categoria</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Valor</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% recentEntries.slice(0, 10).forEach((entry) => { %>
+          <tr class="table-row">
+            <td class="px-4 py-3 text-sm text-gray-900"><%= new Date(entry.entry_date).toLocaleDateString('pt-BR') %></td>
+            <td class="px-4 py-3 text-sm text-gray-700"><%= entry.description %></td>
+            <td class="px-4 py-3 text-sm text-gray-600"><%= entry.category || 'N/A' %></td>
+            <td class="px-4 py-3 text-sm font-semibold text-green-700 text-right">R$ <%= parseFloat(entry.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></td>
+            <td class="px-4 py-3">
+              <span class="badge <%= entry.received ? 'badge-success' : 'badge-warning' %>">
+                <%= entry.received ? 'Recebido' : 'Pendente' %>
+              </span>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Últimas Saídas Financeiras -->
+  <% if (recentExits && recentExits.length > 0) { %>
+  <div class="mb-6 no-break">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4 text-gradient">Últimas Saídas Financeiras</h2>
+    <div class="bg-white rounded-lg card-shadow overflow-hidden">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Data</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Descrição</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Categoria</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Valor</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% recentExits.slice(0, 10).forEach((exit) => { %>
+          <tr class="table-row">
+            <td class="px-4 py-3 text-sm text-gray-900"><%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %></td>
+            <td class="px-4 py-3 text-sm text-gray-700"><%= exit.description %></td>
+            <td class="px-4 py-3 text-sm text-gray-600"><%= exit.category || 'N/A' %></td>
+            <td class="px-4 py-3 text-sm font-semibold text-red-700 text-right">R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></td>
+            <td class="px-4 py-3">
+              <span class="badge <%= exit.payment_status === 'PAID' ? 'badge-success' : exit.payment_status === 'PENDING' ? 'badge-warning' : 'badge-danger' %>">
+                <%= exit.payment_status === 'PAID' ? 'Pago' : exit.payment_status === 'PENDING' ? 'Pendente' : 'Cancelado' %>
+              </span>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Gastos por Categoria -->
+  <% if (expensesByCategory && expensesByCategory.length > 0) { %>
+  <div class="mb-6 no-break">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4 text-gradient">Gastos por Categoria</h2>
+    <div class="grid grid-cols-3 gap-4">
+      <% expensesByCategory.slice(0, 9).forEach((cat) => { %>
+      <div class="bg-white rounded-lg p-4 card-shadow border-l-4 border-indigo-500">
+        <div class="flex justify-between items-center mb-2">
+          <span class="font-semibold text-gray-900"><%= cat.category || 'Outras' %></span>
+          <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full"><%= cat.quantidade %> transações</span>
+        </div>
+        <p class="text-xl font-bold text-indigo-700">R$ <%= parseFloat(cat.total).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+      </div>
+      <% }); %>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Rodapé -->
+  <div class="mt-8 pt-6 border-t border-gray-300 text-center text-sm text-gray-600 no-break">
+    <p><strong><%= condominiumName %></strong> - Relatório de Prestação de Contas</p>
+    <p class="mt-1">
+      Período: <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %> | 
+      Gerado em: <%= new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+    </p>
+    <p class="text-xs mt-2 text-gray-500">Este relatório foi gerado automaticamente pelo sistema de gestão condominial.</p>
+  </div>
+</body>
+</html>

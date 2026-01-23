@@ -78,10 +78,174 @@
   .refresh-btn:hover {
     transform: rotate(180deg);
   }
+
+  /* Estilos para impressão */
+  @media print {
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    body {
+      background: white !important;
+      color: black !important;
+    }
+    
+    .min-h-screen {
+      min-height: auto !important;
+      background: white !important;
+    }
+    
+    .bg-gradient-to-br, .bg-gradient-to-r {
+      background: #f9fafb !important;
+      border: 1px solid #e5e7eb !important;
+    }
+    
+    button, .refresh-btn, #dateFilter, nav, .navbar, header {
+      display: none !important;
+    }
+    
+    .card-elevate:hover {
+      transform: none !important;
+    }
+    
+    .animate-fade-in-up {
+      animation: none !important;
+    }
+    
+    .shadow-xl, .shadow-lg {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+      border: 1px solid #e5e7eb !important;
+    }
+    
+    .rounded-2xl, .rounded-xl, .rounded-lg {
+      border-radius: 4px !important;
+    }
+    
+    .max-h-96 {
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    
+    .grid {
+      page-break-inside: avoid;
+    }
+    
+    .stat-card, .card, .bg-white {
+      page-break-inside: avoid;
+      margin-bottom: 15px;
+      padding: 15px !important;
+      border: 1px solid #e5e7eb !important;
+    }
+    
+    canvas {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+    
+    @page {
+      margin: 1.5cm;
+      size: A4 landscape;
+    }
+    
+    h1, h2, h3 {
+      page-break-after: avoid;
+      color: #000 !important;
+    }
+    
+    .text-gray-600, .text-gray-500, .text-gray-700 {
+      color: #4b5563 !important;
+    }
+    
+    .text-green-700, .text-green-600 {
+      color: #15803d !important;
+    }
+    
+    .text-red-700, .text-red-600 {
+      color: #dc2626 !important;
+    }
+    
+    .text-blue-700, .text-blue-600 {
+      color: #1d4ed8 !important;
+    }
+    
+    .print-header {
+      display: block !important;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #000;
+      page-break-after: avoid;
+    }
+    
+    .print-footer {
+      display: block !important;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #ccc;
+      font-size: 10px;
+      color: #666;
+      text-align: center;
+      page-break-before: always;
+    }
+    
+    /* Garantir que gráficos sejam visíveis */
+    .chart-container {
+      height: 250px !important;
+      page-break-inside: avoid;
+    }
+    
+    /* Listas de transações */
+    .space-y-3 > * {
+      page-break-inside: avoid;
+      margin-bottom: 10px;
+    }
+  }
+  
+  @media screen {
+    .print-header, .print-footer {
+      display: none;
+    }
+  }
 </style>
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30">
+  <!-- Cabeçalho para impressão -->
+  <div class="print-header">
+    <div class="text-center mb-4">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Relatório de Prestação de Contas</h1>
+      <h2 class="text-xl font-semibold text-gray-700"><%= condominiumName %></h2>
+      <p class="text-sm text-gray-600 mt-2">
+        Período: <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %>
+      </p>
+      <p class="text-xs text-gray-500 mt-1">
+        Gerado em: <%= new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+      </p>
+    </div>
+  </div>
+
   <div class="container mx-auto px-4 py-8">
+    <!-- Mensagens de Erro/Sucesso -->
+    <% if (typeof error !== 'undefined' && error) { %>
+    <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg animate-fade-in-up">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        <p class="font-semibold"><%= decodeURIComponent(error) %></p>
+      </div>
+    </div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success) { %>
+    <div class="mb-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg animate-fade-in-up">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+        </svg>
+        <p class="font-semibold"><%= decodeURIComponent(success) %></p>
+      </div>
+    </div>
+    <% } %>
+    
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-fade-in-up">
       <div class="flex items-center justify-between mb-4">
@@ -831,6 +995,14 @@
       </div>
     </div>
     <% } %>
+  </div>
+  
+  <!-- Rodapé para impressão -->
+  <div class="print-footer">
+    <p><strong><%= condominiumName %></strong> - Relatório de Prestação de Contas</p>
+    <p>Período: <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %> | 
+       Gerado em: <%= new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></p>
+    <p class="text-xs mt-2">Este relatório foi gerado automaticamente pelo sistema de gestão condominial.</p>
   </div>
 </div>
 
