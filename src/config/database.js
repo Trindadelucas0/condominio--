@@ -25,16 +25,29 @@ const isDBHostAUrl = dbHost.startsWith('postgresql://') || dbHost.startsWith('po
 
 if (process.env.DATABASE_URL) {
   // No Render, sempre use DATABASE_URL
-  connectionString = process.env.DATABASE_URL;
+  let dbUrl = process.env.DATABASE_URL;
+  
+  // Normaliza a URL: adiciona porta padrão (5432) se não estiver presente
+  // Formato esperado: postgresql://user:pass@host:port/database
+  // Verifica se tem @host mas não tem :port após o host
+  const urlMatch = dbUrl.match(/^([^:]+:\/\/[^@]+@[^:\/]+)(:\d+)?(\/.*)?$/);
+  if (urlMatch && !urlMatch[2]) {
+    // Não tem porta, adiciona porta padrão 5432
+    const port = ':5432';
+    dbUrl = urlMatch[1] + port + (urlMatch[3] || '');
+  }
+  
+  connectionString = dbUrl;
   
   // Extrai informações da URL para log (sem expor senha)
   try {
     const url = new URL(connectionString);
     const username = url.username;
     const host = url.hostname;
+    const port = url.port || '5432';
     const database = url.pathname.replace('/', '');
     console.log('✅ Usando DATABASE_URL para conexão com banco de dados');
-    console.log(`   Usuário: ${username} | Host: ${host} | Database: ${database}`);
+    console.log(`   Usuário: ${username} | Host: ${host}:${port} | Database: ${database}`);
   } catch (e) {
     console.log('✅ Usando DATABASE_URL para conexão com banco de dados');
   }
@@ -109,6 +122,23 @@ const query = async (text, params) => {
     return res; // Retorna resultado (rows, rowCount, etc)
   } catch (error) {
     console.error('Erro ao executar query:', { text, error: error.message });
+    
+    // Mensagem mais clara para erro de autenticação
+    if (error.code === '28P01' || error.message.includes('password authentication failed')) {
+      console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('❌ ERRO DE AUTENTICAÇÃO NO BANCO DE DADOS');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('A senha na DATABASE_URL está incorreta ou desatualizada.');
+      console.error('\n📋 Como corrigir:');
+      console.error('1. Acesse o painel do Render');
+      console.error('2. Vá no seu banco PostgreSQL → aba "Connections"');
+      console.error('3. Copie a senha atual (ou redefina se necessário)');
+      console.error('4. No seu serviço web → "Environment"');
+      console.error('5. Atualize a variável DATABASE_URL com a senha correta');
+      console.error('\nFormato: postgresql://usuario:SENHA@host:porta/database');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    }
+    
     throw error; // Propaga erro para quem chamou
   }
 };
