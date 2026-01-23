@@ -26,7 +26,19 @@ const isDBHostAUrl = dbHost.startsWith('postgresql://') || dbHost.startsWith('po
 if (process.env.DATABASE_URL) {
   // No Render, sempre use DATABASE_URL
   connectionString = process.env.DATABASE_URL;
-  console.log('✅ Usando DATABASE_URL para conexão com banco de dados');
+  
+  // Extrai informações da URL para log (sem expor senha)
+  try {
+    const url = new URL(connectionString);
+    const username = url.username;
+    const host = url.hostname;
+    const database = url.pathname.replace('/', '');
+    console.log('✅ Usando DATABASE_URL para conexão com banco de dados');
+    console.log(`   Usuário: ${username} | Host: ${host} | Database: ${database}`);
+  } catch (e) {
+    console.log('✅ Usando DATABASE_URL para conexão com banco de dados');
+  }
+  
   if (isProduction) {
     console.log('🔒 SSL habilitado para produção');
   }
