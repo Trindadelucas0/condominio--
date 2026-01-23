@@ -19,6 +19,10 @@ if (isProduction) {
   poolConfig.ssl = { rejectUnauthorized: false };
 }
 
+// Detecta se DB_HOST contém uma URL completa (alguns usuários configuram assim por engano)
+const dbHost = process.env.DB_HOST || '';
+const isDBHostAUrl = dbHost.startsWith('postgresql://') || dbHost.startsWith('postgres://');
+
 if (process.env.DATABASE_URL) {
   // No Render, sempre use DATABASE_URL
   connectionString = process.env.DATABASE_URL;
@@ -26,16 +30,23 @@ if (process.env.DATABASE_URL) {
   if (isProduction) {
     console.log('🔒 SSL habilitado para produção');
   }
+} else if (isDBHostAUrl) {
+  // DB_HOST foi configurado como URL completa - use diretamente
+  connectionString = dbHost;
+  console.log('✅ DB_HOST contém URL completa, usando diretamente');
+  if (isProduction) {
+    console.log('🔒 SSL habilitado para produção');
+  }
 } else {
   // Constrói connectionString a partir de variáveis separadas
   console.log('⚠️  DATABASE_URL não encontrada, usando variáveis separadas');
-  const dbHost = process.env.DB_HOST || 'localhost'; // Host do banco (padrão: localhost)
   const dbPort = process.env.DB_PORT || '5432'; // Porta do banco (padrão: 5432)
   const dbUser = process.env.DB_USER; // Usuário do banco (obrigatório)
   const dbPassword = process.env.DB_PASSWORD; // Senha do banco (obrigatório)
   const dbDatabase = process.env.DB_DATABASE; // Nome do banco (obrigatório)
+  const dbHostname = dbHost || 'localhost'; // Host do banco (padrão: localhost)
   
-  console.log(`🔍 Tentando conectar em: ${dbUser}@${dbHost}:${dbPort}/${dbDatabase}`);
+  console.log(`🔍 Tentando conectar em: ${dbUser}@${dbHostname}:${dbPort}/${dbDatabase}`);
   
   // Valida se variáveis obrigatórias foram fornecidas
   if (!dbUser || !dbPassword || !dbDatabase) {
@@ -46,7 +57,7 @@ if (process.env.DATABASE_URL) {
   }
   
   // Formato: postgresql://usuario:senha@host:porta/nome_banco
-  connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabase}`;
+  connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHostname}:${dbPort}/${dbDatabase}`;
   
   if (isProduction) {
     console.log('🔒 SSL habilitado para produção');
