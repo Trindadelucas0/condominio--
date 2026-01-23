@@ -5,6 +5,7 @@
 const { query } = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcrypt');
 
 // Função para executar arquivo SQL
 const executeSQLFile = async (filePath) => {
@@ -14,6 +15,86 @@ const executeSQLFile = async (filePath) => {
   } catch (error) {
     console.error(`Erro ao executar arquivo SQL ${filePath}:`, error);
     throw error;
+  }
+};
+
+// Função para criar o usuário master inicial
+const createInitialMasterUser = async () => {
+  try {
+    // Verifica se já existe um SUPER_MASTER
+    const existingMaster = await query(`
+      SELECT u.id, u.username
+      FROM users u
+      INNER JOIN user_roles ur ON u.id = ur.user_id
+      INNER JOIN roles r ON ur.role_id = r.id
+      WHERE r.name = 'SUPER_MASTER'
+      LIMIT 1
+    `);
+
+    if (existingMaster.rows.length > 0) {
+      console.log(`✅ Usuário SUPER_MASTER já existe: ${existingMaster.rows[0].username}`);
+      return;
+    }
+
+    // Busca o ID do role SUPER_MASTER
+    const roleResult = await query(`
+      SELECT id FROM roles WHERE name = 'SUPER_MASTER'
+    `);
+
+    if (roleResult.rows.length === 0) {
+      console.log('⚠️  Role SUPER_MASTER não encontrado. Pulando criação do usuário master.');
+      return;
+    }
+
+    const masterRoleId = roleResult.rows[0].id;
+
+    // Configurações do usuário master
+    const username = 'admin';
+    const email = 'admin@condominio.com';
+    const password = 'admin123'; // ALTERE ISSO APÓS O PRIMEIRO LOGIN!
+    const fullName = 'Administrador Master';
+
+    // Verifica se o username já existe (mesmo sem ser SUPER_MASTER)
+    const existingUsername = await query(`
+      SELECT id FROM users WHERE LOWER(username) = LOWER($1)
+    `, [username]);
+
+    if (existingUsername.rows.length > 0) {
+      console.log(`⚠️  Username '${username}' já existe. Pulando criação do usuário master.`);
+      return;
+    }
+
+    // Gera hash da senha
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Cria o usuário
+    const userResult = await query(`
+      INSERT INTO users (username, email, password_hash, full_name, condominium_id, active)
+      VALUES ($1, $2, $3, $4, NULL, TRUE)
+      RETURNING id, username, email
+    `, [username, email, passwordHash, fullName]);
+
+    const newUser = userResult.rows[0];
+
+    // Atribui o role SUPER_MASTER
+    await query(`
+      INSERT INTO user_roles (user_id, role_id)
+      VALUES ($1, $2)
+    `, [newUser.id, masterRoleId]);
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ Usuário SUPER_MASTER criado com sucesso!');
+    console.log('📋 Credenciais de acesso:');
+    console.log(`   Username: ${username}`);
+    console.log(`   Senha: ${password}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('⚠️  IMPORTANTE: Altere a senha após o primeiro login!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  } catch (error) {
+    console.error('❌ Erro ao criar usuário master:', error.message);
+    // Não lança erro para não interromper a inicialização
   }
 };
 
@@ -830,6 +911,15 @@ const initializeDatabase = async () => {
       }
     } catch (error) {
       console.error('Erro ao verificar/criar coluna related_occurrence_id em tasks:', error);
+    }
+
+    // Criação do usuário master inicial (se não existir)
+    console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
+    try {
+      await createInitialMasterUser();
+    } catch (error) {
+      console.error('Erro ao verificar/criar usuário master inicial:', error);
+      // Não interrompe a inicialização se falhar
     }
 
     console.log('✅ Inicialização do banco de dados concluída!');
