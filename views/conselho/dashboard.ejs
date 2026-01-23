@@ -497,12 +497,25 @@
                 <span class="text-xs px-2 py-1 rounded-full <%= entry.received ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
                   <%= entry.received ? '✓ Recebido' : '⏳ Pendente' %>
                 </span>
-                <% if (entry.receipt_pdf_path) { %>
+                <% if (entry.receipt_pdf_path) { 
+                  // Garantir que o caminho começa com /uploads
+                  let pdfPath = entry.receipt_pdf_path.trim();
+                  // Se não começa com /, adiciona
+                  if (!pdfPath.startsWith('/')) {
+                    pdfPath = '/' + pdfPath;
+                  }
+                  // Se não começa com /uploads, adiciona
+                  if (!pdfPath.startsWith('/uploads')) {
+                    // Remove / inicial se existir e adiciona /uploads
+                    pdfPath = '/uploads' + (pdfPath.startsWith('/') ? pdfPath : '/' + pdfPath);
+                  }
+                %>
                 <a 
-                  href="<%= entry.receipt_pdf_path %>" 
+                  href="<%= pdfPath %>" 
                   target="_blank"
                   class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors inline-flex items-center space-x-1"
                   title="Visualizar comprovante PDF"
+                  onclick="event.stopPropagation();"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -515,7 +528,7 @@
             </div>
             <% }); %>
           <% } else { %>
-            <p class="text-center text-gray-500 py-8">Nenhuma entrada registrada</p>
+            <p class="text-center text-gray-500 py-8">Nenhuma entrada registrada para o período selecionado</p>
           <% } %>
         </div>
       </div>
@@ -532,6 +545,20 @@
         </div>
         <div class="space-y-3 max-h-96 overflow-y-auto">
           <% if (recentExits && recentExits.length > 0) { %>
+            <% 
+              const statusColors = {
+                'PAID': 'bg-green-100 text-green-700',
+                'APPROVED': 'bg-blue-100 text-blue-700',
+                'PENDING': 'bg-yellow-100 text-yellow-700',
+                'REJECTED': 'bg-red-100 text-red-700'
+              };
+              const statusLabels = {
+                'PAID': '✓ Pago',
+                'APPROVED': '✓ Aprovado',
+                'PENDING': '⏳ Pendente',
+                'REJECTED': '✗ Rejeitado'
+              };
+            %>
             <% recentExits.forEach(exit => { %>
             <div class="p-4 bg-gray-50 rounded-lg border-l-4 border-red-500">
               <div class="flex justify-between items-start mb-2">
@@ -546,29 +573,42 @@
                   R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
                 </span>
               </div>
-              <div class="flex items-center mt-2">
-                <% 
-                  const statusColors = {
-                    'PAID': 'bg-green-100 text-green-700',
-                    'APPROVED': 'bg-blue-100 text-blue-700',
-                    'PENDING': 'bg-yellow-100 text-yellow-700',
-                    'REJECTED': 'bg-red-100 text-red-700'
-                  };
-                  const statusLabels = {
-                    'PAID': '✓ Pago',
-                    'APPROVED': '✓ Aprovado',
-                    'PENDING': '⏳ Pendente',
-                    'REJECTED': '✗ Rejeitado'
-                  };
-                %>
+              <div class="flex items-center justify-between mt-2">
                 <span class="text-xs px-2 py-1 rounded-full <%= statusColors[exit.payment_status] || 'bg-gray-100 text-gray-700' %>">
                   <%= statusLabels[exit.payment_status] || exit.payment_status %>
                 </span>
+                <% if (exit.payment_receipt_pdf_path) { 
+                  // Garantir que o caminho começa com /uploads
+                  let pdfPath = exit.payment_receipt_pdf_path.trim();
+                  // Se não começa com /, adiciona
+                  if (!pdfPath.startsWith('/')) {
+                    pdfPath = '/' + pdfPath;
+                  }
+                  // Se não começa com /uploads, adiciona
+                  if (!pdfPath.startsWith('/uploads')) {
+                    // Remove / inicial se existir e adiciona /uploads
+                    pdfPath = '/uploads' + (pdfPath.startsWith('/') ? pdfPath : '/' + pdfPath);
+                  }
+                %>
+                <a 
+                  href="<%= pdfPath %>" 
+                  target="_blank"
+                  class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors inline-flex items-center space-x-1"
+                  title="Visualizar comprovante PDF"
+                  onclick="event.stopPropagation();"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                  <span>Ver PDF</span>
+                </a>
+                <% } %>
               </div>
             </div>
             <% }); %>
           <% } else { %>
-            <p class="text-center text-gray-500 py-8">Nenhuma saída registrada</p>
+            <p class="text-center text-gray-500 py-8">Nenhuma saída registrada para o período selecionado</p>
           <% } %>
         </div>
       </div>
@@ -645,9 +685,27 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
+  // Função para filtrar por data
+  function filterByDate() {
+    const dateInput = document.getElementById('dateFilter');
+    const selectedDate = dateInput.value;
+    console.log('Filtrando por data:', selectedDate);
+    if (selectedDate) {
+      // Mostrar loading
+      document.body.style.cursor = 'wait';
+      window.location.href = `/conselho/dashboard?date=${selectedDate}`;
+    }
+  }
+
   // Função para atualizar dashboard
   function refreshDashboard() {
-    window.location.reload();
+    const dateInput = document.getElementById('dateFilter');
+    const selectedDate = dateInput ? dateInput.value : null;
+    if (selectedDate) {
+      window.location.href = `/conselho/dashboard?date=${selectedDate}`;
+    } else {
+      window.location.reload();
+    }
   }
 
   // Auto-refresh a cada 5 minutos

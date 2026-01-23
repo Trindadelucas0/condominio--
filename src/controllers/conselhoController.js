@@ -20,17 +20,38 @@ const showDashboard = async (req, res) => {
 
     // Filtro de data (padrão: mês atual)
     let filterDate = req.query.date || null;
+    let filterYear, filterMonth;
+    
     if (filterDate) {
-      filterDate = new Date(filterDate);
+      // Formato esperado: YYYY-MM
+      const dateParts = filterDate.split('-');
+      if (dateParts.length === 2) {
+        filterYear = parseInt(dateParts[0]);
+        filterMonth = parseInt(dateParts[1]);
+        // Validação
+        if (isNaN(filterYear) || isNaN(filterMonth) || filterMonth < 1 || filterMonth > 12) {
+          const now = new Date();
+          filterYear = now.getFullYear();
+          filterMonth = now.getMonth() + 1;
+        }
+      } else {
+        // Fallback para data atual
+        const now = new Date();
+        filterYear = now.getFullYear();
+        filterMonth = now.getMonth() + 1;
+      }
     } else {
-      filterDate = new Date();
+      const now = new Date();
+      filterYear = now.getFullYear();
+      filterMonth = now.getMonth() + 1;
     }
-    const filterYear = filterDate.getFullYear();
-    const filterMonth = filterDate.getMonth() + 1;
+    
     const filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
     const nextMonth = filterMonth === 12 ? 1 : filterMonth + 1;
     const nextYear = filterMonth === 12 ? filterYear + 1 : filterYear;
     const filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    
+    console.log(`📅 Filtro de data: ${filterDateStr} até ${filterDateEndStr}`);
 
     // Buscar nome do condomínio
     const condominiumResult = await query(
@@ -227,6 +248,7 @@ const showDashboard = async (req, res) => {
         fx.exit_date,
         fx.payment_status,
         fx.category,
+        fx.payment_receipt_pdf_path,
         u.full_name as created_by_name
       FROM financial_exits fx
       LEFT JOIN users u ON fx.created_by = u.id
