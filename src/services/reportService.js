@@ -521,6 +521,11 @@ const reportService = {
       );
       const condominiumName = condominiumResult.rows.length > 0 ? condominiumResult.rows[0].name : 'Condomínio';
       
+      // Buscar informações do fundo de reserva
+      const reserveFundService = require('./reserveFundService');
+      const reserveFund = await reserveFundService.getReserveFund(condominiumId);
+      const reserveFundAmountThisMonth = parseFloat(closure.reserve_fund_amount || 0);
+      
       // Buscar entradas do mês com todos os detalhes
       const entriesResult = await query(
         `SELECT 
@@ -986,11 +991,11 @@ const reportService = {
           doc.fillColor(varColor2)
             .text(`Variação Saídas: ${exitsVariation >= 0 ? '+' : ''}${exitsVariation.toFixed(2)}%`, 300, comparisonY + 42);
           
-          doc.y = comparisonY + comparisonHeight + 15;
+          doc.y = comparisonY + comparisonHeight + SECTION_GAP;
           doc.fillColor('#000000');
           
           // Estatísticas gerais
-          checkPageBreak(60);
+          checkPageBreak(70);
           const statsY = doc.y;
           const statsHeight = 50;
           drawBox(50, statsY, 495, statsHeight);
@@ -1238,87 +1243,90 @@ const reportService = {
           if (Object.keys(exitsByCostCenter).length === 0) {
             doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
               .text('Nenhuma saída registrada com centro de custo.', 60, doc.y);
-            doc.moveDown(1);
+            doc.y += 20;
           } else {
             Object.entries(exitsByCostCenter)
               .sort((a, b) => b[1].total - a[1].total)
               .forEach(([ccName, data]) => {
-                checkPageBreak(40);
+                checkPageBreak(45);
                 const ccY = doc.y;
-                drawBox(60, ccY, 475, 30, '#fef2f2');
+                drawBox(60, ccY, 475, 34, '#fef2f2');
                 
                 doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.danger)
-                  .text(ccName, 70, ccY + 7);
+                  .text(ccName, 70, ccY + 8);
                 doc.font('Helvetica').fontSize(8).fillColor(colors.dark)
-                  .text(`Total: ${formatCurrency(data.total)} | Pago: ${formatCurrency(data.paid)} | Aprovado: ${formatCurrency(data.approved)}`, 70, ccY + 18);
-                doc.text(`Pendente: ${formatCurrency(data.pending)} | Qtd: ${data.count}`, 70, ccY + 28);
+                  .text(`Total: ${formatCurrency(data.total)} | Pago: ${formatCurrency(data.paid)} | Aprovado: ${formatCurrency(data.approved)}`, 70, ccY + 20);
+                doc.text(`Pendente: ${formatCurrency(data.pending)} | Qtd: ${data.count}`, 70, ccY + 30);
                 
-                doc.y = ccY + 35;
+                doc.y = ccY + 38;
               });
           }
-          doc.moveDown(2);
+          doc.y += SECTION_GAP;
           
           // ========== ANÁLISE POR CATEGORIA ==========
-          checkPageBreak(100);
+          checkPageBreak(120);
           const categoryY = doc.y;
           doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
             .text('3. ANÁLISE POR CATEGORIA', 50, categoryY);
           drawLine(categoryY + 25, colors.primary, 220);
           doc.y = categoryY + 35;
+          doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+            .text('Valores agrupados por tipo (ex.: taxa, receita, manutenção, conta). Facilita ver onde entram e onde saem os recursos.', 50, doc.y, { width: 495 });
+          doc.y += 22;
           
           // Entradas por categoria
           doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
             .text('3.1. Entradas por Categoria', 60, doc.y);
-          doc.moveDown(0.5);
+          doc.y += 18;
           
           if (Object.keys(entriesByCategory).length === 0) {
             doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
               .text('Nenhuma entrada registrada.', 60, doc.y);
-            doc.moveDown(1);
+            doc.y += 20;
           } else {
             Object.entries(entriesByCategory)
               .sort((a, b) => b[1].total - a[1].total)
               .forEach(([cat, data]) => {
                 checkPageBreak(35);
                 const catY = doc.y;
-                drawBox(60, catY, 475, 25, '#ecfdf5');
+                drawBox(60, catY, 475, 28, '#ecfdf5');
                 
                 doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.success)
-                  .text(cat, 70, catY + 7);
+                  .text(cat, 70, catY + 8);
                 doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
-                  .text(`Total: ${formatCurrency(data.total)} | Recebido: ${formatCurrency(data.received)} | Qtd: ${data.count}`, 70, catY + 18);
+                  .text(`Total: ${formatCurrency(data.total)} | Recebido: ${formatCurrency(data.received)} | Qtd: ${data.count}`, 70, catY + 20);
                 
-                doc.y = catY + 30;
+                doc.y = catY + 32;
               });
           }
-          doc.moveDown(1);
+          doc.y += 18;
           
           // Saídas por categoria
           doc.fontSize(12).font('Helvetica-Bold').fillColor(colors.dark)
             .text('3.2. Saídas por Categoria', 60, doc.y);
-          doc.moveDown(0.5);
+          doc.y += 18;
           
           if (Object.keys(exitsByCategory).length === 0) {
             doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
               .text('Nenhuma saída registrada.', 60, doc.y);
-            doc.moveDown(1);
+            doc.y += 20;
           } else {
             Object.entries(exitsByCategory)
               .sort((a, b) => b[1].total - a[1].total)
               .forEach(([cat, data]) => {
                 checkPageBreak(35);
                 const catY = doc.y;
-                drawBox(60, catY, 475, 25, '#fef2f2');
+                drawBox(60, catY, 475, 28, '#fef2f2');
                 
                 doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.danger)
-                  .text(cat, 70, catY + 7);
+                  .text(cat, 70, catY + 8);
                 doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
-                  .text(`Total: ${formatCurrency(data.total)} | Pago: ${formatCurrency(data.paid)} | Qtd: ${data.count}`, 70, catY + 18);
+                  .text(`Total: ${formatCurrency(data.total)} | Pago: ${formatCurrency(data.paid)} | Qtd: ${data.count}`, 70, catY + 20);
                 
-                doc.y = catY + 30;
+                doc.y = catY + 32;
               });
           }
-          doc.moveDown(2);
+          doc.y += SECTION_GAP;
           
           // ========== CONSUMO MENSAL ==========
           if (consumption.length > 0) {
@@ -1373,12 +1381,15 @@ const reportService = {
           }
           
           // ========== TABELA DETALHADA DE ENTRADAS ==========
-          checkPageBreak(150);
+          checkPageBreak(160);
           const entriesTableY = doc.y;
           doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
             .text('5. TABELA COMPLETA DE ENTRADAS', 50, entriesTableY);
           drawLine(entriesTableY + 25, colors.primary, 300);
           doc.y = entriesTableY + 35;
+          doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+            .text('Listagem de todas as entradas do mês (ID, descrição, data, valor, centro de custo, status). Abaixo, o detalhamento de cada entrada.', 50, doc.y, { width: 495 });
+          doc.y += 22;
           
           if (entries.length === 0) {
             doc.fontSize(10).font('Helvetica').fillColor(colors.dark)
@@ -1432,7 +1443,7 @@ const reportService = {
               // Status (pequeno badge)
               const statusColor = entry.received ? colors.success : colors.warning;
               doc.fillColor(statusColor)
-                .text(entry.received ? '✓' : '⏳', 535, rowY + 4);
+                .text(entry.received ? 'OK' : 'PEND', 535, rowY + 4);
               
               doc.y = rowY + rowHeight + 2;
               doc.fillColor('#000000');
@@ -1794,6 +1805,58 @@ const reportService = {
           
           doc.y = trendsBoxY + trendsBoxHeight + 20;
           doc.fillColor('#000000');
+          
+          // ========== FUNDO DE RESERVA ==========
+          if (reserveFund || reserveFundAmountThisMonth > 0) {
+            checkPageBreak(140);
+            const reserveFundY = doc.y;
+            const reserveFundHeight = 120;
+            drawBox(50, reserveFundY, 495, reserveFundHeight, '#e0f2fe');
+            
+            doc.fontSize(18).font('Helvetica-Bold').fillColor(colors.primary)
+              .text('8.1. FUNDO DE RESERVA', 50, reserveFundY + 10);
+            drawLine(reserveFundY + 25, colors.primary, 200);
+            doc.y = reserveFundY + 35;
+            
+            doc.fontSize(10).font('Helvetica').fillColor(colors.dark);
+            let reserveY = reserveFundY + 35;
+            
+            // Valor adicionado no mês
+            if (reserveFundAmountThisMonth > 0) {
+              doc.font('Helvetica-Bold').text('Valor Adicionado ao Fundo de Reserva neste Mês:', 60, reserveY);
+              reserveY += 12;
+              doc.font('Helvetica').fillColor(colors.success)
+                .text(`  R$ ${formatCurrency(reserveFundAmountThisMonth)}`, 70, reserveY);
+              reserveY += 20;
+            }
+            
+            // Informações do fundo de reserva
+            if (reserveFund) {
+              doc.font('Helvetica-Bold').fillColor(colors.dark).text('Situação Atual do Fundo de Reserva:', 60, reserveY);
+              reserveY += 12;
+              
+              doc.font('Helvetica').fillColor(colors.dark)
+                .text(`  Saldo Atual: ${formatCurrency(reserveFund.current_balance || 0)}`, 70, reserveY);
+              reserveY += 12;
+              
+              doc.text(`  Meta: ${formatCurrency(reserveFund.target_balance || 0)}`, 70, reserveY);
+              reserveY += 12;
+              
+              const progressPercent = reserveFund.target_balance > 0 
+                ? ((reserveFund.current_balance || 0) / reserveFund.target_balance) * 100 
+                : 0;
+              const progressColor = progressPercent >= 100 ? colors.success : progressPercent >= 50 ? colors.warning : colors.danger;
+              
+              doc.fillColor(progressColor)
+                .text(`  Progresso: ${progressPercent.toFixed(1)}% da meta`, 70, reserveY);
+            } else if (reserveFundAmountThisMonth > 0) {
+              doc.font('Helvetica').fillColor(colors.warning)
+                .text('  Nota: Fundo de reserva ainda não foi configurado. O valor foi registrado no fechamento.', 70, reserveY);
+            }
+            
+            doc.y = reserveFundY + reserveFundHeight + 15;
+            doc.fillColor('#000000');
+          }
           
           // ========== OBSERVAÇÕES FINAIS ==========
           checkPageBreak(120);

@@ -6,6 +6,7 @@ const router = express.Router();
 const path = require('path');
 const financeiroController = require('../controllers/financeiroController');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { uploadPayment, uploadReceipt } = require('../middlewares/upload');
 
 // Todas as rotas exigem autenticação
 router.use(authenticate);
@@ -428,6 +429,70 @@ router.get('/orcamentos-aprovados', async (req, res) => {
   }
 });
 
+// Orçamentos rejeitados
+router.get('/orcamentos-rejeitados', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const orcamentoService = require('../services/orcamentoService');
+    
+    // Permite filtrar por status (mas por padrão mostra apenas REJECTED)
+    const filters = {
+      status: req.query.status || 'REJECTED',
+    };
+    
+    const budgets = await orcamentoService.listBudgetRequests(req.user.condominiumId, filters);
+    
+    // Busca orçamentos (quotes) para cada solicitação
+    for (const budget of budgets) {
+      budget.quotes = await orcamentoService.getBudgetQuotes(budget.id);
+    }
+    
+    res.render('administrativo/orcamentos/list', {
+      title: 'Orçamentos Rejeitados',
+      user: req.user,
+      requests: budgets,
+      filters: filters,
+      req: req,
+      module: 'financeiro', // Indica que é módulo financeiro para gerar links corretos
+      allowCreate: false, // Financeiro não pode criar orçamentos
+    });
+  } catch (error) {
+    console.error('Erro ao listar orçamentos rejeitados:', error);
+    res.status(500).send('Erro ao carregar orçamentos');
+  }
+});
+
+// Detalhes de orçamento rejeitado (ou qualquer orçamento para o financeiro)
+router.get('/orcamentos-rejeitados/:id', async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+    const orcamentoService = require('../services/orcamentoService');
+    const budgetRequestId = parseInt(req.params.id);
+    
+    // Busca solicitação completa com orçamentos e anexos
+    const request = await orcamentoService.getBudgetRequestById(budgetRequestId, req.user.condominiumId);
+    
+    if (!request) {
+      return res.status(404).send('Solicitação de orçamento não encontrada');
+    }
+    
+    res.render('administrativo/orcamentos/detail', {
+      title: `Detalhes: ${request.title}`,
+      user: req.user,
+      request: request,
+      module: 'financeiro', // Indica que é módulo financeiro
+      allowCreate: false, // Financeiro não pode criar orçamentos
+    });
+  } catch (error) {
+    console.error('Erro ao carregar detalhes do orçamento:', error);
+    res.status(500).send('Erro ao carregar detalhes');
+  }
+});
+
 // Saídas que precisam verificação (criadas automaticamente de orçamentos)
 router.get('/saidas-verificacao', async (req, res) => {
   try {
@@ -642,7 +707,7 @@ router.post('/fechamento-mensal/fechar', async (req, res) => {
     if (!req.user.condominiumId) {
       return res.status(400).send('Usuário não está associado a um condomínio');
     }
-    const { month, year, notes, createNewClosure, action } = req.body;
+    const { month, year, notes, createNewClosure, action, reserveFundAmount } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
     
@@ -657,7 +722,8 @@ router.post('/fechamento-mensal/fechar', async (req, res) => {
       notes,
       ipAddress,
       userAgent,
-      isNewClosure
+      isNewClosure,
+      reserveFundAmount || 0
     );
     
     res.redirect('/financeiro/fechamento-mensal?success=closed');
@@ -751,7 +817,7 @@ router.get('/taxas/:id/pagar', async (req, res) => {
 });
 router.get('/taxas', inadimplenciaController.listMonthlyFees);
 router.post('/taxas', inadimplenciaController.createMonthlyFee);
-router.post('/taxas/:id/pagar', inadimplenciaController.markFeeAsPaid);
+router.post('/taxas/:id/pagar', uploadPayment, inadimplenciaController.markFeeAsPaid);
 
 // Relatórios
 const reportService = require('../services/reportService');

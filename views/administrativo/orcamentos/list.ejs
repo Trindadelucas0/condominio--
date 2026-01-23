@@ -7,9 +7,11 @@
       <h1 class="text-3xl font-bold text-gray-800">Solicitações de Orçamento</h1>
       <p class="text-gray-600 mt-2">Gerencie solicitações de orçamento</p>
     </div>
+    <% if (typeof allowCreate === 'undefined' || allowCreate !== false) { %>
     <a href="/administrativo/orcamentos/novo" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
       Nova Solicitação
     </a>
+    <% } %>
   </div>
 
   <% if (typeof req !== 'undefined' && req.query.success === 'created') { %>
@@ -20,7 +22,7 @@
 
   <!-- Filtros -->
   <div class="bg-white rounded-lg shadow p-4 mb-6">
-    <form method="GET" action="/administrativo/orcamentos" class="flex gap-4">
+    <form method="GET" action="<%= typeof module !== 'undefined' && module === 'financeiro' ? '/financeiro/orcamentos-rejeitados' : '/administrativo/orcamentos' %>" class="flex gap-4">
       <select name="status" class="border rounded px-3 py-2">
         <option value="">Todos os status</option>
         <option value="PENDING_FINANCEIRO" <%= filters.status === 'PENDING_FINANCEIRO' ? 'selected' : '' %>>Aguardando Financeiro</option>
@@ -95,7 +97,7 @@
           <% } %>
 
           <div class="border-t pt-4 mt-4">
-            <a href="/administrativo/orcamentos/<%= request.id %>" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">
+            <a href="<%= typeof module !== 'undefined' && module === 'financeiro' ? '/financeiro/orcamentos-rejeitados/' + request.id : '/administrativo/orcamentos/' + request.id %>" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">
               Ver Detalhes →
             </a>
           </div>

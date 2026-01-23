@@ -33,7 +33,7 @@
       <div class="mb-8 animate-slide-in">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center space-x-3">
-            <a href="/administrativo/orcamentos" class="text-indigo-600 hover:text-indigo-800">
+            <a href="<%= typeof module !== 'undefined' && module === 'financeiro' ? '/financeiro/orcamentos-rejeitados' : '/administrativo/orcamentos' %>" class="text-indigo-600 hover:text-indigo-800">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
               </svg>
@@ -227,7 +227,7 @@
 
       <!-- Botão Voltar -->
       <div class="flex justify-end">
-        <a href="/administrativo/orcamentos" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold">
+        <a href="<%= typeof module !== 'undefined' && module === 'financeiro' ? '/financeiro/orcamentos-rejeitados' : '/administrativo/orcamentos' %>" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold">
           Voltar para Lista
         </a>
       </div>

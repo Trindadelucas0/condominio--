@@ -9,7 +9,7 @@ const { validateUserBelongsToCondominium } = require('../utils/queryHelper');
 // Função para criar ou atualizar fundo de reserva
 const setupReserveFund = async (condominiumId, userId, data, ipAddress, userAgent) => {
   try {
-    const { targetBalance, monthlyContributionPercent, monthlyContributionAmount, contributionMethod } = data;
+    const { targetBalance, monthlyContributionPercent, monthlyContributionAmount, contributionMethod, updateOnlyTarget } = data;
 
     const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
     if (!userBelongs) {
@@ -25,27 +25,45 @@ const setupReserveFund = async (condominiumId, userId, data, ipAddress, userAgen
     let reserveFund;
 
     if (existingResult.rows.length > 0) {
-      // Atualiza
-      const updateResult = await query(
-        `UPDATE reserve_fund 
-         SET target_balance = $1,
-             monthly_contribution_percent = $2,
-             monthly_contribution_amount = $3,
-             contribution_method = $4,
-             last_updated = CURRENT_TIMESTAMP,
-             updated_by = $5
-         WHERE condominium_id = $6
-         RETURNING *`,
-        [
-          targetBalance ? parseFloat(targetBalance) : null,
-          monthlyContributionPercent ? parseFloat(monthlyContributionPercent) : null,
-          monthlyContributionAmount ? parseFloat(monthlyContributionAmount) : null,
-          contributionMethod || 'PERCENT',
-          userId,
-          condominiumId
-        ]
-      );
-      reserveFund = updateResult.rows[0];
+      // Se updateOnlyTarget = true, atualiza apenas a meta
+      if (updateOnlyTarget === 'true' || updateOnlyTarget === true) {
+        const updateResult = await query(
+          `UPDATE reserve_fund 
+           SET target_balance = $1,
+               last_updated = CURRENT_TIMESTAMP,
+               updated_by = $2
+           WHERE condominium_id = $3
+           RETURNING *`,
+          [
+            targetBalance ? parseFloat(targetBalance) : null,
+            userId,
+            condominiumId
+          ]
+        );
+        reserveFund = updateResult.rows[0];
+      } else {
+        // Atualiza tudo
+        const updateResult = await query(
+          `UPDATE reserve_fund 
+           SET target_balance = $1,
+               monthly_contribution_percent = $2,
+               monthly_contribution_amount = $3,
+               contribution_method = $4,
+               last_updated = CURRENT_TIMESTAMP,
+               updated_by = $5
+           WHERE condominium_id = $6
+           RETURNING *`,
+          [
+            targetBalance ? parseFloat(targetBalance) : null,
+            monthlyContributionPercent ? parseFloat(monthlyContributionPercent) : null,
+            monthlyContributionAmount ? parseFloat(monthlyContributionAmount) : null,
+            contributionMethod || 'PERCENT',
+            userId,
+            condominiumId
+          ]
+        );
+        reserveFund = updateResult.rows[0];
+      }
     } else {
       // Cria
       const insertResult = await query(

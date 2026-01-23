@@ -199,10 +199,17 @@ const getDashboardStats = async (condominiumId) => {
     );
     const pendingEntries = parseInt(pendingEntriesResult.rows[0].total);
 
-    // Conta orçamentos aguardando aprovação
+    // Conta orçamentos aguardando aprovação (apenas os que têm quotes pendentes)
+    // Mesma lógica da página de orçamentos pendentes
+    // Query otimizada: conta apenas budget_requests com status PENDING_SINDICO
+    // que têm pelo menos um quote que não está APPROVED nem REJECTED
     const pendingBudgetsResult = await query(
-      `SELECT COUNT(*) as total FROM budget_requests 
-       WHERE condominium_id = $1 AND status = 'PENDING_SINDICO'`,
+      `SELECT COUNT(DISTINCT br.id) as total 
+       FROM budget_requests br
+       INNER JOIN budget_quotes bq ON br.id = bq.budget_request_id
+       WHERE br.condominium_id = $1 
+       AND br.status = 'PENDING_SINDICO'
+       AND UPPER(TRIM(COALESCE(bq.status, ''))) NOT IN ('APPROVED', 'REJECTED')`,
       [condominiumId]
     );
     const pendingBudgets = parseInt(pendingBudgetsResult.rows[0].total);

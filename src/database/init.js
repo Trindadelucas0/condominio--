@@ -748,6 +748,27 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar campos da FASE 30:', error);
     }
 
+    // FASE 31: Fundo de Reserva no Fechamento Mensal
+    console.log('🔍 Verificando coluna reserve_fund_amount na FASE 31...');
+    try {
+      const columnExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'monthly_closures' AND column_name = 'reserve_fund_amount'
+        )
+      `);
+      
+      if (!columnExists.rows[0].exists) {
+        console.log('⚠️  Coluna reserve_fund_amount não encontrada. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase31.sql'));
+        console.log('✅ Coluna reserve_fund_amount criada com sucesso');
+      } else {
+        console.log('✅ Coluna reserve_fund_amount já existe');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar coluna da FASE 31:', error);
+    }
+
     console.log('✅ Inicialização do banco de dados concluída!');
   } catch (error) {
     console.error('❌ Erro crítico na inicialização do banco de dados:', error);

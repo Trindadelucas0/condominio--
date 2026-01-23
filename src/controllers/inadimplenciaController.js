@@ -140,42 +140,29 @@ const markFeeAsPaid = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const { uploadPayment } = require('../middlewares/upload');
-    
-    uploadPayment(req, res, async (err) => {
-      try {
-        if (err) {
-          return res.redirect('/financeiro/taxas?error=' + encodeURIComponent(err.message));
-        }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const path = require('path');
 
-        const ipAddress = req.ip || req.connection.remoteAddress;
-        const userAgent = req.get('user-agent');
-        const path = require('path');
+    const paymentReceiptPath = req.file 
+      ? path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/')
+      : null;
 
-        const paymentReceiptPath = req.file 
-          ? path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/')
-          : null;
+    await inadimplenciaService.markFeeAsPaid(
+      parseInt(req.params.id),
+      req.user.condominiumId,
+      req.user.id,
+      {
+        paymentMethod: req.body.paymentMethod,
+        paymentReceiptPath: paymentReceiptPath
+      },
+      ipAddress,
+      userAgent
+    );
 
-        await inadimplenciaService.markFeeAsPaid(
-          parseInt(req.params.id),
-          req.user.condominiumId,
-          req.user.id,
-          {
-            paymentMethod: req.body.paymentMethod,
-            paymentReceiptPath: paymentReceiptPath
-          },
-          ipAddress,
-          userAgent
-        );
-
-        res.redirect('/financeiro/taxas?success=paid');
-      } catch (error) {
-        console.error('Erro ao marcar taxa como paga:', error);
-        res.redirect('/financeiro/taxas?error=' + encodeURIComponent(error.message));
-      }
-    });
+    res.redirect('/financeiro/taxas?success=paid');
   } catch (error) {
-    console.error('Erro ao processar pagamento:', error);
+    console.error('Erro ao marcar taxa como paga:', error);
     res.redirect('/financeiro/taxas?error=' + encodeURIComponent(error.message));
   }
 };

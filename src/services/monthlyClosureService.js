@@ -138,9 +138,9 @@ const calculateMonthTotals = async (condominiumId, month, year) => {
 };
 
 // Função para fechar o mês
-// Recebe: condominiumId, month, year, userId, notes, createNewClosure (se true, cria nova comanda mesmo se já existe)
+// Recebe: condominiumId, month, year, userId, notes, ipAddress, userAgent, createNewClosure, reserveFundAmount
 // Retorna: fechamento criado
-const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, userAgent, createNewClosure = false) => {
+const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, userAgent, createNewClosure = false, reserveFundAmount = 0) => {
   try {
     // Valida que usuário pertence ao condomínio
     const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
@@ -157,6 +157,21 @@ const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, 
     // Calcula totais
     const totals = await calculateMonthTotals(condominiumId, month, year);
 
+    // Processa valor do fundo de reserva (se fornecido)
+    const reserveFundValue = reserveFundAmount ? parseFloat(reserveFundAmount) : 0;
+    
+    // Se houver valor para o fundo de reserva, adiciona ao fundo
+    if (reserveFundValue > 0) {
+      const reserveFundService = require('./reserveFundService');
+      try {
+        await reserveFundService.addContribution(condominiumId, userId, reserveFundValue, ipAddress, userAgent);
+        console.log(`✅ Valor de R$ ${reserveFundValue.toFixed(2)} adicionado ao fundo de reserva no fechamento do mês ${month}/${year}`);
+      } catch (fundError) {
+        console.warn('⚠️ Aviso: Não foi possível adicionar valor ao fundo de reserva:', fundError.message);
+        // Não bloqueia o fechamento se houver erro no fundo de reserva
+      }
+    }
+
     let closure;
 
     if (createNewClosure) {
@@ -164,11 +179,11 @@ const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, 
       const insertResult = await query(
         `INSERT INTO monthly_closures (
           condominium_id, month, year, status, closed_by, closed_at, 
-          notes, total_entries, total_exits, balance
+          notes, total_entries, total_exits, balance, reserve_fund_amount
         )
-        VALUES ($1, $2, $3, 'CLOSED', $4, CURRENT_TIMESTAMP, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, 'CLOSED', $4, CURRENT_TIMESTAMP, $5, $6, $7, $8, $9)
         RETURNING *`,
-        [condominiumId, month, year, userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance]
+        [condominiumId, month, year, userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance, reserveFundValue]
       );
       closure = insertResult.rows[0];
     } else {
@@ -191,10 +206,11 @@ const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, 
                total_entries = $3,
                total_exits = $4,
                balance = $5,
+               reserve_fund_amount = $6,
                updated_at = CURRENT_TIMESTAMP
-           WHERE id = $6
+           WHERE id = $7
            RETURNING *`,
-          [userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance, existingResult.rows[0].id]
+          [userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance, reserveFundValue, existingResult.rows[0].id]
         );
         closure = updateResult.rows[0];
       } else {
@@ -202,11 +218,11 @@ const closeMonth = async (condominiumId, month, year, userId, notes, ipAddress, 
         const insertResult = await query(
           `INSERT INTO monthly_closures (
             condominium_id, month, year, status, closed_by, closed_at, 
-            notes, total_entries, total_exits, balance
+            notes, total_entries, total_exits, balance, reserve_fund_amount
           )
-          VALUES ($1, $2, $3, 'CLOSED', $4, CURRENT_TIMESTAMP, $5, $6, $7, $8)
+          VALUES ($1, $2, $3, 'CLOSED', $4, CURRENT_TIMESTAMP, $5, $6, $7, $8, $9)
           RETURNING *`,
-          [condominiumId, month, year, userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance]
+          [condominiumId, month, year, userId, notes || null, totals.totalEntries, totals.totalExits, totals.balance, reserveFundValue]
         );
         closure = insertResult.rows[0];
       }
