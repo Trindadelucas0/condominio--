@@ -5,29 +5,29 @@
 const { Pool } = require('pg'); // Pool de conexões do PostgreSQL
 require('dotenv').config(); // Carrega variáveis de ambiente do arquivo .env
 
+// Detecta se está em produção (Render ou outros ambientes de produção)
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+
 // Monta string de conexão a partir de variáveis de ambiente separadas
 // Se DATABASE_URL estiver definido, usa ele (prioridade - necessário no Render)
 // Caso contrário, constrói a partir de DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE
 let connectionString;
 let poolConfig = {};
 
-// Em produção (Render), DATABASE_URL é obrigatória
-if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
-  console.error('❌ ERRO: DATABASE_URL não configurada em produção. Configure a variável DATABASE_URL no Render.');
-  throw new Error('DATABASE_URL é obrigatória em produção. Configure no painel do Render.');
+// Configuração SSL para produção (necessário para Render)
+if (isProduction) {
+  poolConfig.ssl = { rejectUnauthorized: false };
 }
 
 if (process.env.DATABASE_URL) {
   // No Render, sempre use DATABASE_URL
   connectionString = process.env.DATABASE_URL;
   console.log('✅ Usando DATABASE_URL para conexão com banco de dados');
-  // Em produção, força SSL mesmo se não estiver na URL
-  if (process.env.NODE_ENV === 'production') {
-    poolConfig.ssl = { rejectUnauthorized: false };
+  if (isProduction) {
     console.log('🔒 SSL habilitado para produção');
   }
 } else {
-  // Constrói connectionString a partir de variáveis separadas (desenvolvimento local)
+  // Constrói connectionString a partir de variáveis separadas
   console.log('⚠️  DATABASE_URL não encontrada, usando variáveis separadas');
   const dbHost = process.env.DB_HOST || 'localhost'; // Host do banco (padrão: localhost)
   const dbPort = process.env.DB_PORT || '5432'; // Porta do banco (padrão: 5432)
@@ -39,15 +39,16 @@ if (process.env.DATABASE_URL) {
   
   // Valida se variáveis obrigatórias foram fornecidas
   if (!dbUser || !dbPassword || !dbDatabase) {
-    throw new Error('Variáveis de ambiente do banco não configuradas. Configure DB_USER, DB_PASSWORD e DB_DATABASE no .env ou use DATABASE_URL');
+    const errorMsg = isProduction 
+      ? '❌ ERRO: Em produção, configure DATABASE_URL no Render ou todas as variáveis DB_* com os valores corretos do painel de conexões.'
+      : 'Variáveis de ambiente do banco não configuradas. Configure DB_USER, DB_PASSWORD e DB_DATABASE no .env ou use DATABASE_URL';
+    throw new Error(errorMsg);
   }
   
   // Formato: postgresql://usuario:senha@host:porta/nome_banco
   connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabase}`;
   
-  // Em produção com variáveis separadas, também aplica SSL
-  if (process.env.NODE_ENV === 'production') {
-    poolConfig.ssl = { rejectUnauthorized: false };
+  if (isProduction) {
     console.log('🔒 SSL habilitado para produção');
   }
 }
