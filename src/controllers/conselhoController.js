@@ -87,6 +87,10 @@ const showDashboard = async (req, res) => {
 
     const periodBalance = periodEntries - periodExits;
 
+    // Calcular mês anterior para comparações
+    const lastMonth = filterMonth === 1 ? 12 : filterMonth - 1;
+    const lastMonthYear = filterMonth === 1 ? filterYear - 1 : filterYear;
+
     // Buscar analytics avançados (com cache)
     const analyticsCacheKey = `dashboard:analytics:conselho:${condominiumId}`;
     let analytics = cacheService.get(analyticsCacheKey);
@@ -102,12 +106,12 @@ const showDashboard = async (req, res) => {
       // Comparação com mês anterior
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
-      const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+      const currentLastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const currentLastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
 
       analytics.comparison = await dashboardAnalyticsService.comparePeriods(
         condominiumId,
-        { month: lastMonth, year: lastMonthYear },
+        { month: currentLastMonth, year: currentLastMonthYear },
         { month: currentMonth, year: currentYear }
       );
       
@@ -275,6 +279,106 @@ const showDashboard = async (req, res) => {
       LIMIT 10
     `, [condominiumId, filterDateStr, filterDateEndStr]);
 
+    // ========== KPIs ADICIONAIS ==========
+    
+    // KPI 1: Taxa de Aprovação de Orçamentos
+    const budgetApprovalRate = budgetsStats.total > 0 
+      ? ((budgetsStats.aprovados / budgetsStats.total) * 100).toFixed(1)
+      : 0;
+
+    // KPI 2: Taxa de Conclusão de Manutenções
+    const maintenanceCompletionRate = maintenanceStats.total > 0
+      ? ((maintenanceStats.concluidas / maintenanceStats.total) * 100).toFixed(1)
+      : 0;
+
+    // KPI 3: Taxa de Resolução de Ocorrências
+    const occurrencesResolutionRate = occurrencesStats.total > 0
+      ? (((occurrencesStats.resolvidas + occurrencesStats.fechadas) / occurrencesStats.total) * 100).toFixed(1)
+      : 0;
+
+    // KPI 4: Taxa de Conclusão de Tarefas
+    const tasksResult = await query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE status = 'COMPLETED') as concluidas,
+        COUNT(*) as total
+      FROM tasks
+      WHERE condominium_id = $1
+    `, [condominiumId]);
+    const tasksStats = tasksResult.rows[0] || { concluidas: 0, total: 0 };
+    const tasksCompletionRate = tasksStats.total > 0
+      ? ((parseInt(tasksStats.concluidas) / parseInt(tasksStats.total)) * 100).toFixed(1)
+      : 0;
+
+    // KPI 5: Tempo Médio de Resolução de Ocorrências (em dias)
+    const avgResolutionTimeResult = await query(`
+      SELECT 
+        AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 86400) as avg_days
+      FROM occurrences
+      WHERE condominium_id = $1
+        AND resolved_at IS NOT NULL
+        AND resolved_at >= CURRENT_DATE - INTERVAL '6 months'
+    `, [condominiumId]);
+    const avgResolutionTime = parseFloat(avgResolutionTimeResult.rows[0]?.avg_days || 0);
+
+    // KPI 6: Eficiência Financeira (Entradas / Saídas)
+    const financialEfficiency = periodExits > 0
+      ? ((periodEntries / periodExits) * 100).toFixed(1)
+      : periodEntries > 0 ? 100 : 0;
+
+    // KPI 7: Taxa de Adimplência
+    const complianceRate = totalApartments > 0
+      ? (((totalApartments - parseInt(delinquency.total_inadimplentes)) / totalApartments) * 100).toFixed(1)
+      : 0;
+
+    // KPI 8: Crescimento de Receitas (comparação com mês anterior)
+    const lastMonthEntriesResult = await query(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM financial_entries
+      WHERE condominium_id = $1 
+        AND deleted_at IS NULL
+        AND entry_date >= $2::date
+        AND entry_date < $3::date
+        AND received = TRUE
+    `, [
+      condominiumId, 
+      `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`,
+      filterDateStr
+    ]);
+    const lastMonthEntries = parseFloat(lastMonthEntriesResult.rows[0]?.total || 0);
+    const revenueGrowth = lastMonthEntries > 0
+      ? (((periodEntries - lastMonthEntries) / lastMonthEntries) * 100).toFixed(1)
+      : periodEntries > 0 ? 100 : 0;
+
+    // KPI 9: Redução de Custos (comparação com mês anterior)
+    const lastMonthExitsResult = await query(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM financial_exits
+      WHERE condominium_id = $1
+        AND exit_date >= $2::date
+        AND exit_date < $3::date
+        AND payment_status = 'PAID'
+    `, [
+      condominiumId,
+      `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`,
+      filterDateStr
+    ]);
+    const lastMonthExits = parseFloat(lastMonthExitsResult.rows[0]?.total || 0);
+    const costReduction = lastMonthExits > 0
+      ? (((lastMonthExits - periodExits) / lastMonthExits) * 100).toFixed(1)
+      : periodExits < lastMonthExits ? 100 : 0;
+
+    // KPI 10: Índice de Saúde Financeira (0-100)
+    // Baseado em: saldo positivo, baixa inadimplência, eficiência financeira
+    let healthScore = 0;
+    if (periodBalance > 0) healthScore += 30;
+    if (parseFloat(complianceRate) >= 95) healthScore += 30;
+    else if (parseFloat(complianceRate) >= 90) healthScore += 20;
+    else if (parseFloat(complianceRate) >= 80) healthScore += 10;
+    if (parseFloat(financialEfficiency) >= 100) healthScore += 40;
+    else if (parseFloat(financialEfficiency) >= 80) healthScore += 30;
+    else if (parseFloat(financialEfficiency) >= 60) healthScore += 20;
+    else if (parseFloat(financialEfficiency) >= 40) healthScore += 10;
+
     res.render('conselho/dashboard', {
       title: 'Dashboard Conselho - Prestação de Contas',
       user: req.user,
@@ -299,6 +403,22 @@ const showDashboard = async (req, res) => {
         entries: periodEntries,
         exits: periodExits,
         balance: periodBalance
+      },
+      kpis: {
+        budgetApprovalRate: parseFloat(budgetApprovalRate),
+        maintenanceCompletionRate: parseFloat(maintenanceCompletionRate),
+        occurrencesResolutionRate: parseFloat(occurrencesResolutionRate),
+        tasksCompletionRate: parseFloat(tasksCompletionRate),
+        avgResolutionTime: avgResolutionTime,
+        financialEfficiency: parseFloat(financialEfficiency),
+        complianceRate: parseFloat(complianceRate),
+        revenueGrowth: parseFloat(revenueGrowth),
+        costReduction: parseFloat(costReduction),
+        healthScore: healthScore,
+        tasksStats: {
+          concluidas: parseInt(tasksStats.concluidas),
+          total: parseInt(tasksStats.total)
+        }
       }
     });
   } catch (error) {
