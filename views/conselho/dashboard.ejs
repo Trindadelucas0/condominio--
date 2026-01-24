@@ -265,23 +265,49 @@
             </p>
           </div>
         </div>
-        <div class="flex items-center space-x-3">
-          <div class="bg-white rounded-xl shadow-lg p-2">
-            <label class="text-sm font-semibold text-gray-700 mr-2">Filtrar por:</label>
-            <input 
-              type="month" 
-              id="dateFilter" 
-              value="<%= filterDate %>" 
-              onchange="filterByDate()"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
-            />
+        <div class="flex items-center space-x-3 flex-wrap gap-3">
+          <!-- Filtro de Período -->
+          <div class="bg-white rounded-xl shadow-lg p-3 border border-gray-200">
+            <div class="flex items-center space-x-3">
+              <label class="text-sm font-semibold text-gray-700 whitespace-nowrap">Período:</label>
+              <select 
+                id="periodFilter" 
+                onchange="handlePeriodChange()"
+                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white min-w-[180px]"
+              >
+                <option value="custom" <%= typeof period !== 'undefined' && period === 'custom' ? 'selected' : (typeof period === 'undefined' ? 'selected' : '') %>>Personalizado</option>
+                <option value="current" <%= typeof period !== 'undefined' && period === 'current' ? 'selected' : '' %>>Mês Atual</option>
+                <option value="last" <%= typeof period !== 'undefined' && period === 'last' ? 'selected' : '' %>>Mês Anterior</option>
+                <option value="quarter" <%= typeof period !== 'undefined' && period === 'quarter' ? 'selected' : '' %>>Trimestre Atual</option>
+                <option value="semester" <%= typeof period !== 'undefined' && period === 'semester' ? 'selected' : '' %>>Semestre Atual</option>
+                <option value="year" <%= typeof period !== 'undefined' && period === 'year' ? 'selected' : '' %>>Ano Atual</option>
+                <option value="last-year" <%= typeof period !== 'undefined' && period === 'last-year' ? 'selected' : '' %>>Ano Anterior</option>
+              </select>
+              <input 
+                type="month" 
+                id="dateFilter" 
+                value="<%= filterDate %>" 
+                onchange="filterByDate()"
+                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium <%= typeof period !== 'undefined' && period !== 'custom' ? 'hidden' : '' %>"
+              />
+            </div>
           </div>
+          
+          <!-- Botão de Atualizar -->
           <button onclick="refreshDashboard()" class="refresh-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center space-x-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
             <span>Atualizar</span>
           </button>
+          
+          <!-- Indicador de Período Selecionado -->
+          <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+            <span class="text-xs font-semibold text-blue-700">Período:</span>
+            <span class="text-sm text-blue-900 font-medium ml-2" id="selectedPeriodLabel">
+              <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %>
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -1010,28 +1036,110 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-  // Função para filtrar por data
+  // Função para lidar com mudança de período
+  function handlePeriodChange() {
+    const periodSelect = document.getElementById('periodFilter');
+    const dateInput = document.getElementById('dateFilter');
+    const selectedPeriod = periodSelect.value;
+    
+    // Mostrar/esconder input de data baseado na seleção
+    if (selectedPeriod === 'custom') {
+      dateInput.classList.remove('hidden');
+      dateInput.focus();
+    } else {
+      dateInput.classList.add('hidden');
+      // Aplicar filtro imediatamente
+      applyPeriodFilter(selectedPeriod);
+    }
+  }
+
+  // Função para aplicar filtro de período
+  function applyPeriodFilter(period) {
+    document.body.style.cursor = 'wait';
+    window.location.href = `/conselho/dashboard?period=${period}`;
+  }
+
+  // Função para filtrar por data (quando período é customizado)
   function filterByDate() {
     const dateInput = document.getElementById('dateFilter');
     const selectedDate = dateInput.value;
-    console.log('Filtrando por data:', selectedDate);
-    if (selectedDate) {
-      // Mostrar loading
+    const periodSelect = document.getElementById('periodFilter');
+    
+    if (selectedDate && periodSelect.value === 'custom') {
       document.body.style.cursor = 'wait';
-      window.location.href = `/conselho/dashboard?date=${selectedDate}`;
+      window.location.href = `/conselho/dashboard?date=${selectedDate}&period=custom`;
     }
   }
 
   // Função para atualizar dashboard
   function refreshDashboard() {
+    const periodSelect = document.getElementById('periodFilter');
     const dateInput = document.getElementById('dateFilter');
-    const selectedDate = dateInput ? dateInput.value : null;
-    if (selectedDate) {
-      window.location.href = `/conselho/dashboard?date=${selectedDate}`;
+    const selectedPeriod = periodSelect.value;
+    
+    if (selectedPeriod === 'custom' && dateInput.value) {
+      window.location.href = `/conselho/dashboard?date=${dateInput.value}&period=custom`;
+    } else if (selectedPeriod !== 'custom') {
+      window.location.href = `/conselho/dashboard?period=${selectedPeriod}`;
     } else {
       window.location.reload();
     }
   }
+
+  // Atualizar label do período selecionado
+  function updatePeriodLabel() {
+    const periodSelect = document.getElementById('periodFilter');
+    const dateInput = document.getElementById('dateFilter');
+    const labelElement = document.getElementById('selectedPeriodLabel');
+    
+    if (!labelElement) return;
+    
+    const selectedPeriod = periodSelect.value;
+    let label = '';
+    
+    if (selectedPeriod === 'custom' && dateInput.value) {
+      const date = new Date(dateInput.value + '-01');
+      label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    } else {
+      const now = new Date();
+      switch(selectedPeriod) {
+        case 'current':
+          label = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          break;
+        case 'last':
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          label = lastMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          break;
+        case 'quarter':
+          const quarter = Math.floor(now.getMonth() / 3) + 1;
+          label = `${quarter}º Trimestre de ${now.getFullYear()}`;
+          break;
+        case 'semester':
+          const semester = now.getMonth() < 6 ? 1 : 2;
+          label = `${semester}º Semestre de ${now.getFullYear()}`;
+          break;
+        case 'year':
+          label = `Ano de ${now.getFullYear()}`;
+          break;
+        case 'last-year':
+          label = `Ano de ${now.getFullYear() - 1}`;
+          break;
+        default:
+          label = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      }
+    }
+    
+    labelElement.textContent = label;
+  }
+
+  // Atualizar label quando a página carregar
+  document.addEventListener('DOMContentLoaded', function() {
+    updatePeriodLabel();
+    
+    // Atualizar label quando o período ou data mudar
+    document.getElementById('periodFilter')?.addEventListener('change', updatePeriodLabel);
+    document.getElementById('dateFilter')?.addEventListener('change', updatePeriodLabel);
+  });
 
   // Auto-refresh a cada 5 minutos
   setInterval(() => {

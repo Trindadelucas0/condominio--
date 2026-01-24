@@ -18,40 +18,96 @@ const showDashboard = async (req, res) => {
 
     const condominiumId = req.user.condominiumId;
 
-    // Filtro de data (padrão: mês atual)
-    let filterDate = req.query.date || null;
-    let filterYear, filterMonth;
+    // Filtro de período (padrão: mês atual)
+    const period = req.query.period || (req.query.date ? 'custom' : 'current');
+    const customDate = req.query.date || null;
+    const now = new Date();
+    let filterDateStr, filterDateEndStr, filterYear, filterMonth;
     
-    if (filterDate) {
-      // Formato esperado: YYYY-MM
-      const dateParts = filterDate.split('-');
+    // Calcular datas baseado no período selecionado
+    if (period === 'custom' && customDate) {
+      // Período personalizado (mês específico)
+      const dateParts = customDate.split('-');
       if (dateParts.length === 2) {
         filterYear = parseInt(dateParts[0]);
         filterMonth = parseInt(dateParts[1]);
-        // Validação
         if (isNaN(filterYear) || isNaN(filterMonth) || filterMonth < 1 || filterMonth > 12) {
-          const now = new Date();
           filterYear = now.getFullYear();
           filterMonth = now.getMonth() + 1;
         }
       } else {
-        // Fallback para data atual
-        const now = new Date();
         filterYear = now.getFullYear();
         filterMonth = now.getMonth() + 1;
       }
-    } else {
-      const now = new Date();
+      filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
+      const nextMonth = filterMonth === 12 ? 1 : filterMonth + 1;
+      const nextYear = filterMonth === 12 ? filterYear + 1 : filterYear;
+      filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    } else if (period === 'current') {
+      // Mês atual
       filterYear = now.getFullYear();
       filterMonth = now.getMonth() + 1;
+      filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
+      const nextMonth = filterMonth === 12 ? 1 : filterMonth + 1;
+      const nextYear = filterMonth === 12 ? filterYear + 1 : filterYear;
+      filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    } else if (period === 'last') {
+      // Mês anterior
+      const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      filterYear = lastMonthDate.getFullYear();
+      filterMonth = lastMonthDate.getMonth() + 1;
+      filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
+      const nextMonth = filterMonth === 12 ? 1 : filterMonth + 1;
+      const nextYear = filterMonth === 12 ? filterYear + 1 : filterYear;
+      filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    } else if (period === 'quarter') {
+      // Trimestre atual (3 meses)
+      filterYear = now.getFullYear();
+      filterMonth = Math.floor(now.getMonth() / 3) * 3 + 1; // Primeiro mês do trimestre
+      filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
+      const endMonth = filterMonth + 2; // Último mês do trimestre
+      const endYear = endMonth > 12 ? filterYear + 1 : filterYear;
+      const finalMonth = endMonth > 12 ? endMonth - 12 : endMonth;
+      const nextMonth = finalMonth === 12 ? 1 : finalMonth + 1;
+      const nextYear = finalMonth === 12 ? endYear + 1 : endYear;
+      filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    } else if (period === 'semester') {
+      // Semestre atual (6 meses)
+      filterYear = now.getFullYear();
+      filterMonth = now.getMonth() < 6 ? 1 : 7; // Janeiro ou Julho
+      filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
+      const endMonth = filterMonth + 5; // Último mês do semestre
+      const endYear = endMonth > 12 ? filterYear + 1 : filterYear;
+      const finalMonth = endMonth > 12 ? endMonth - 12 : endMonth;
+      const nextMonth = finalMonth === 12 ? 1 : finalMonth + 1;
+      const nextYear = finalMonth === 12 ? endYear + 1 : endYear;
+      filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    } else if (period === 'year') {
+      // Ano atual
+      filterYear = now.getFullYear();
+      filterDateStr = `${filterYear}-01-01`;
+      filterDateEndStr = `${filterYear + 1}-01-01`;
+    } else if (period === 'last-year') {
+      // Ano anterior
+      filterYear = now.getFullYear() - 1;
+      filterDateStr = `${filterYear}-01-01`;
+      filterDateEndStr = `${filterYear + 1}-01-01`;
+    } else {
+      // Padrão: mês atual
+      filterYear = now.getFullYear();
+      filterMonth = now.getMonth() + 1;
+      filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
+      const nextMonth = filterMonth === 12 ? 1 : filterMonth + 1;
+      const nextYear = filterMonth === 12 ? filterYear + 1 : filterYear;
+      filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
     }
     
-    const filterDateStr = `${filterYear}-${String(filterMonth).padStart(2, '0')}-01`;
-    const nextMonth = filterMonth === 12 ? 1 : filterMonth + 1;
-    const nextYear = filterMonth === 12 ? filterYear + 1 : filterYear;
-    const filterDateEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    // Formato para exibição no filtro
+    const filterDateDisplay = period === 'custom' && customDate 
+      ? customDate 
+      : `${filterYear}-${String(filterMonth || 1).padStart(2, '0')}`;
     
-    console.log(`📅 Filtro de data: ${filterDateStr} até ${filterDateEndStr}`);
+    console.log(`📅 Filtro de período: ${period} - ${filterDateStr} até ${filterDateEndStr}`);
 
     // Buscar nome do condomínio
     const condominiumResult = await query(
@@ -382,7 +438,8 @@ const showDashboard = async (req, res) => {
       title: 'Dashboard Conselho - Prestação de Contas',
       user: req.user,
       condominiumName: condominiumName,
-      filterDate: req.query.date || `${filterYear}-${String(filterMonth).padStart(2, '0')}`,
+      filterDate: filterDateDisplay,
+      period: period,
       error: req.query.error || null,
       success: req.query.success || null,
       stats: stats,

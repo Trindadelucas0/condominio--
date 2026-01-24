@@ -250,11 +250,27 @@ router.get('/consumo', async (req, res) => {
       return res.status(400).send('Usuário não está associado a um condomínio');
     }
     const financeiroService = require('../services/financeiroService');
-    const consumptions = await financeiroService.listConsumption(req.user.condominiumId);
+    
+    // Extrai filtros dos query parameters
+    const filters = {
+      year: req.query.year || new Date().getFullYear(),
+      month: req.query.month ? parseInt(req.query.month) : undefined,
+      billId: req.query.billId ? parseInt(req.query.billId) : undefined,
+    };
+    
+    // Busca contas para o filtro
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
+    
+    // Busca consumo com filtros
+    const consumption = await financeiroService.listConsumption(req.user.condominiumId, filters);
+    
     res.render('administrativo/financeiro/consumo/list', {
       title: 'Consumo Mensal',
       user: req.user,
-      consumptions: consumptions || [],
+      consumption: consumption || [],
+      bills: bills || [],
+      filters: filters,
+      query: req.query,
       req: req,
     });
   } catch (error) {
