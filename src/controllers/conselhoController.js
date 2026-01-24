@@ -143,42 +143,66 @@ const showDashboard = async (req, res) => {
 
     const periodBalance = periodEntries - periodExits;
 
-    // Calcular mês anterior para comparações
-    const lastMonth = filterMonth === 1 ? 12 : filterMonth - 1;
-    const lastMonthYear = filterMonth === 1 ? filterYear - 1 : filterYear;
+    // Calcular mês anterior para comparações (usar mês atual se filterMonth não estiver definido)
+    const effectiveMonth = filterMonth || now.getMonth() + 1;
+    const lastMonth = effectiveMonth === 1 ? 12 : effectiveMonth - 1;
+    const lastMonthYear = effectiveMonth === 1 ? filterYear - 1 : filterYear;
 
-    // Buscar analytics avançados (com cache)
-    const analyticsCacheKey = `dashboard:analytics:conselho:${condominiumId}`;
-    let analytics = cacheService.get(analyticsCacheKey);
+    // Buscar analytics avançados (sem cache para respeitar filtros de data)
+    // Calcular período anterior para comparação baseado no tipo de período
+    let previousPeriodMonth, previousPeriodYear;
     
-    if (!analytics) {
-      analytics = {
-        historical: await dashboardAnalyticsService.getHistoricalData(condominiumId, 12),
-        projections: await dashboardAnalyticsService.getProjections(condominiumId, 3),
-        trend: await dashboardAnalyticsService.getTrend(condominiumId, 'balance'),
-        categoryData: await dashboardAnalyticsService.getDataByCategory(condominiumId, 6),
-      };
-      
-      // Comparação com mês anterior
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
-      const currentLastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-      const currentLastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-
-      analytics.comparison = await dashboardAnalyticsService.comparePeriods(
-        condominiumId,
-        { month: currentLastMonth, year: currentLastMonthYear },
-        { month: currentMonth, year: currentYear }
-      );
-      
-      // Cache por 5 minutos
-      cacheService.set(analyticsCacheKey, analytics, 300);
+    if (period === 'custom' && customDate) {
+      // Para período customizado (mês), comparar com mês anterior
+      const effectiveMonth = filterMonth || now.getMonth() + 1;
+      previousPeriodMonth = effectiveMonth === 1 ? 12 : effectiveMonth - 1;
+      previousPeriodYear = effectiveMonth === 1 ? filterYear - 1 : filterYear;
+    } else if (period === 'current' || period === 'last') {
+      // Para mês atual ou anterior, comparar com mês anterior
+      previousPeriodMonth = lastMonth;
+      previousPeriodYear = lastMonthYear;
+    } else if (period === 'quarter') {
+      // Para trimestre, comparar com trimestre anterior
+      const effectiveMonth = filterMonth || (Math.floor(now.getMonth() / 3) * 3 + 1);
+      previousPeriodMonth = effectiveMonth === 1 ? 10 : effectiveMonth - 3; // Trimestre anterior
+      previousPeriodYear = effectiveMonth === 1 ? filterYear - 1 : filterYear;
+    } else if (period === 'semester') {
+      // Para semestre, comparar com semestre anterior
+      const effectiveMonth = filterMonth || (now.getMonth() < 6 ? 1 : 7);
+      previousPeriodMonth = effectiveMonth === 1 ? 7 : 1; // Semestre anterior
+      previousPeriodYear = effectiveMonth === 1 ? filterYear - 1 : filterYear;
+    } else if (period === 'year' || period === 'last-year') {
+      // Para ano, comparar com ano anterior
+      previousPeriodMonth = 1;
+      previousPeriodYear = filterYear - 1;
+    } else {
+      // Padrão: mês anterior
+      previousPeriodMonth = lastMonth;
+      previousPeriodYear = lastMonthYear;
     }
+
+    const analytics = {
+      historical: await dashboardAnalyticsService.getHistoricalData(condominiumId, 12),
+      projections: await dashboardAnalyticsService.getProjections(condominiumId, 3),
+      trend: await dashboardAnalyticsService.getTrend(condominiumId, 'balance'),
+      categoryData: await dashboardAnalyticsService.getDataByCategory(condominiumId, 6),
+    };
+    
+    // Comparação com período anterior (usando primeiro mês de cada período para comparação)
+    const currentPeriodMonth = filterMonth || parseInt(filterDateStr.split('-')[1]);
+    const currentPeriodYear = filterYear || parseInt(filterDateStr.split('-')[0]);
+    
+    analytics.comparison = await dashboardAnalyticsService.comparePeriods(
+      condominiumId,
+      { month: previousPeriodMonth, year: previousPeriodYear },
+      { month: currentPeriodMonth, year: currentPeriodYear }
+    );
 
     // Buscar estatísticas patrimoniais
     const patrimonioStats = await patrimonioService.getDashboardStats(condominiumId);
 
-    // Buscar estatísticas de inadimplência
+    // Buscar estatísticas de inadimplência (taxas vencidas até o final do período selecionado)
+    // A inadimplência mostra todas as taxas não pagas que venceram até o final do período
     const delinquencyResult = await query(`
       SELECT 
         COUNT(DISTINCT mf.apartment_id) as total_inadimplentes,
@@ -188,8 +212,8 @@ const showDashboard = async (req, res) => {
       INNER JOIN apartments a ON mf.apartment_id = a.id
       WHERE a.condominium_id = $1
         AND mf.paid = FALSE
-        AND mf.due_date < CURRENT_DATE
-    `, [condominiumId]);
+        AND mf.due_date < $2::date
+    `, [condominiumId, filterDateEndStr]);
     const delinquency = delinquencyResult.rows[0] || {
       total_inadimplentes: 0,
       total_taxas_vencidas: 0,
@@ -205,7 +229,7 @@ const showDashboard = async (req, res) => {
       ? ((parseInt(delinquency.total_inadimplentes) / totalApartments) * 100).toFixed(1)
       : 0;
 
-    // Buscar estatísticas de manutenções
+    // Buscar estatísticas de manutenções (filtradas por período)
     const maintenanceResult = await query(`
       SELECT 
         COUNT(*) FILTER (WHERE status = 'PENDING') as pendentes,
@@ -215,7 +239,9 @@ const showDashboard = async (req, res) => {
         COUNT(*) as total
       FROM maintenances
       WHERE condominium_id = $1
-    `, [condominiumId]);
+        AND created_at >= $2::date
+        AND created_at < $3::date
+    `, [condominiumId, filterDateStr, filterDateEndStr]);
     const maintenanceStats = maintenanceResult.rows[0] || {
       pendentes: 0,
       em_andamento: 0,
@@ -224,7 +250,7 @@ const showDashboard = async (req, res) => {
       total: 0
     };
 
-    // Buscar estatísticas de ocorrências
+    // Buscar estatísticas de ocorrências (filtradas por período)
     const occurrencesResult = await query(`
       SELECT 
         COUNT(*) FILTER (WHERE status = 'ABERTA') as abertas,
@@ -234,7 +260,9 @@ const showDashboard = async (req, res) => {
         COUNT(*) as total
       FROM occurrences
       WHERE condominium_id = $1
-    `, [condominiumId]);
+        AND created_at >= $2::date
+        AND created_at < $3::date
+    `, [condominiumId, filterDateStr, filterDateEndStr]);
     const occurrencesStats = occurrencesResult.rows[0] || {
       abertas: 0,
       em_andamento: 0,
@@ -243,7 +271,7 @@ const showDashboard = async (req, res) => {
       total: 0
     };
 
-    // Buscar estatísticas de assembleias
+    // Buscar estatísticas de assembleias (filtradas por período)
     const assembliesResult = await query(`
       SELECT 
         COUNT(*) FILTER (WHERE status = 'SCHEDULED') as agendadas,
@@ -253,7 +281,9 @@ const showDashboard = async (req, res) => {
         COUNT(*) as total
       FROM assemblies
       WHERE condominium_id = $1
-    `, [condominiumId]);
+        AND created_at >= $2::date
+        AND created_at < $3::date
+    `, [condominiumId, filterDateStr, filterDateEndStr]);
     const assembliesStats = assembliesResult.rows[0] || {
       agendadas: 0,
       em_andamento: 0,
@@ -262,7 +292,7 @@ const showDashboard = async (req, res) => {
       total: 0
     };
 
-    // Buscar estatísticas de orçamentos
+    // Buscar estatísticas de orçamentos (filtradas por período)
     const budgetsResult = await query(`
       SELECT 
         COUNT(*) FILTER (WHERE status = 'PENDING') as pendentes,
@@ -271,7 +301,9 @@ const showDashboard = async (req, res) => {
         COUNT(*) as total
       FROM budget_requests
       WHERE condominium_id = $1
-    `, [condominiumId]);
+        AND created_at >= $2::date
+        AND created_at < $3::date
+    `, [condominiumId, filterDateStr, filterDateEndStr]);
     const budgetsStats = budgetsResult.rows[0] || {
       pendentes: 0,
       aprovados: 0,
@@ -351,28 +383,31 @@ const showDashboard = async (req, res) => {
       ? (((occurrencesStats.resolvidas + occurrencesStats.fechadas) / occurrencesStats.total) * 100).toFixed(1)
       : 0;
 
-    // KPI 4: Taxa de Conclusão de Tarefas
+    // KPI 4: Taxa de Conclusão de Tarefas (filtradas por período)
     const tasksResult = await query(`
       SELECT 
         COUNT(*) FILTER (WHERE status = 'COMPLETED') as concluidas,
         COUNT(*) as total
       FROM tasks
       WHERE condominium_id = $1
-    `, [condominiumId]);
+        AND created_at >= $2::date
+        AND created_at < $3::date
+    `, [condominiumId, filterDateStr, filterDateEndStr]);
     const tasksStats = tasksResult.rows[0] || { concluidas: 0, total: 0 };
     const tasksCompletionRate = tasksStats.total > 0
       ? ((parseInt(tasksStats.concluidas) / parseInt(tasksStats.total)) * 100).toFixed(1)
       : 0;
 
-    // KPI 5: Tempo Médio de Resolução de Ocorrências (em dias)
+    // KPI 5: Tempo Médio de Resolução de Ocorrências (em dias) - filtrado por período
     const avgResolutionTimeResult = await query(`
       SELECT 
         AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 86400) as avg_days
       FROM occurrences
       WHERE condominium_id = $1
         AND resolved_at IS NOT NULL
-        AND resolved_at >= CURRENT_DATE - INTERVAL '6 months'
-    `, [condominiumId]);
+        AND created_at >= $2::date
+        AND created_at < $3::date
+    `, [condominiumId, filterDateStr, filterDateEndStr]);
     const avgResolutionTime = parseFloat(avgResolutionTimeResult.rows[0]?.avg_days || 0);
 
     // KPI 6: Eficiência Financeira (Entradas / Saídas)
@@ -385,8 +420,38 @@ const showDashboard = async (req, res) => {
       ? (((totalApartments - parseInt(delinquency.total_inadimplentes)) / totalApartments) * 100).toFixed(1)
       : 0;
 
-    // KPI 8: Crescimento de Receitas (comparação com mês anterior)
-    const lastMonthEntriesResult = await query(`
+    // KPI 8: Crescimento de Receitas (comparação com período anterior equivalente)
+    // Calcular período anterior baseado no tipo de período selecionado
+    let previousPeriodStartDate, previousPeriodEndDate;
+    if (period === 'year' || period === 'last-year') {
+      // Para ano, comparar com ano anterior
+      previousPeriodStartDate = `${filterYear - 1}-01-01`;
+      previousPeriodEndDate = `${filterYear}-01-01`;
+    } else if (period === 'semester') {
+      // Para semestre, comparar com semestre anterior
+      const effectiveMonth = filterMonth || (now.getMonth() < 6 ? 1 : 7);
+      const prevSemesterMonth = effectiveMonth === 1 ? 7 : 1;
+      const prevSemesterYear = effectiveMonth === 1 ? filterYear - 1 : filterYear;
+      previousPeriodStartDate = `${prevSemesterYear}-${String(prevSemesterMonth).padStart(2, '0')}-01`;
+      const nextPrevMonth = prevSemesterMonth === 1 ? 7 : 1;
+      const nextPrevYear = prevSemesterMonth === 1 ? prevSemesterYear : prevSemesterYear + 1;
+      previousPeriodEndDate = `${nextPrevYear}-${String(nextPrevMonth).padStart(2, '0')}-01`;
+    } else if (period === 'quarter') {
+      // Para trimestre, comparar com trimestre anterior
+      const effectiveMonth = filterMonth || (Math.floor(now.getMonth() / 3) * 3 + 1);
+      const prevQuarterMonth = effectiveMonth === 1 ? 10 : effectiveMonth - 3;
+      const prevQuarterYear = effectiveMonth === 1 ? filterYear - 1 : filterYear;
+      previousPeriodStartDate = `${prevQuarterYear}-${String(prevQuarterMonth).padStart(2, '0')}-01`;
+      const nextPrevMonth = prevQuarterMonth === 10 ? 1 : prevQuarterMonth + 3;
+      const nextPrevYear = prevQuarterMonth === 10 ? prevQuarterYear + 1 : prevQuarterYear;
+      previousPeriodEndDate = `${nextPrevYear}-${String(nextPrevMonth).padStart(2, '0')}-01`;
+    } else {
+      // Para mês (custom, current, last), comparar com mês anterior
+      previousPeriodStartDate = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
+      previousPeriodEndDate = filterDateStr;
+    }
+
+    const lastPeriodEntriesResult = await query(`
       SELECT COALESCE(SUM(amount), 0) as total
       FROM financial_entries
       WHERE condominium_id = $1 
@@ -394,33 +459,25 @@ const showDashboard = async (req, res) => {
         AND entry_date >= $2::date
         AND entry_date < $3::date
         AND received = TRUE
-    `, [
-      condominiumId, 
-      `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`,
-      filterDateStr
-    ]);
-    const lastMonthEntries = parseFloat(lastMonthEntriesResult.rows[0]?.total || 0);
-    const revenueGrowth = lastMonthEntries > 0
-      ? (((periodEntries - lastMonthEntries) / lastMonthEntries) * 100).toFixed(1)
+    `, [condominiumId, previousPeriodStartDate, previousPeriodEndDate]);
+    const lastPeriodEntries = parseFloat(lastPeriodEntriesResult.rows[0]?.total || 0);
+    const revenueGrowth = lastPeriodEntries > 0
+      ? (((periodEntries - lastPeriodEntries) / lastPeriodEntries) * 100).toFixed(1)
       : periodEntries > 0 ? 100 : 0;
 
-    // KPI 9: Redução de Custos (comparação com mês anterior)
-    const lastMonthExitsResult = await query(`
+    // KPI 9: Redução de Custos (comparação com período anterior equivalente)
+    const lastPeriodExitsResult = await query(`
       SELECT COALESCE(SUM(amount), 0) as total
       FROM financial_exits
       WHERE condominium_id = $1
         AND exit_date >= $2::date
         AND exit_date < $3::date
         AND payment_status = 'PAID'
-    `, [
-      condominiumId,
-      `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`,
-      filterDateStr
-    ]);
-    const lastMonthExits = parseFloat(lastMonthExitsResult.rows[0]?.total || 0);
-    const costReduction = lastMonthExits > 0
-      ? (((lastMonthExits - periodExits) / lastMonthExits) * 100).toFixed(1)
-      : periodExits < lastMonthExits ? 100 : 0;
+    `, [condominiumId, previousPeriodStartDate, previousPeriodEndDate]);
+    const lastPeriodExits = parseFloat(lastPeriodExitsResult.rows[0]?.total || 0);
+    const costReduction = lastPeriodExits > 0
+      ? (((lastPeriodExits - periodExits) / lastPeriodExits) * 100).toFixed(1)
+      : periodExits < lastPeriodExits ? 100 : 0;
 
     // KPI 10: Índice de Saúde Financeira (0-100)
     // Baseado em: saldo positivo, baixa inadimplência, eficiência financeira

@@ -955,6 +955,27 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar colunas da FASE 33:', error);
     }
 
+    // FASE 34: Comprovante de pagamento em financial_exits (marcar saída como paga)
+    console.log('🔍 Verificando colunas da FASE 34 (comprovante de pagamento em saídas)...');
+    try {
+      const columnExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_schema = 'public' AND table_name = 'financial_exits' AND column_name = 'payment_receipt_pdf_path'
+        )
+      `);
+      
+      if (!columnExists.rows[0].exists) {
+        console.log('⚠️  Colunas de comprovante de pagamento não encontradas em financial_exits. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase34.sql'));
+        console.log('✅ Colunas de comprovante de pagamento criadas com sucesso');
+      } else {
+        console.log('✅ Colunas de comprovante de pagamento já existem em financial_exits');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar colunas da FASE 34:', error);
+    }
+
     // Criação do usuário master inicial (se não existir)
     console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
     try {
