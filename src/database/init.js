@@ -934,6 +934,27 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar tabela da FASE 32:', error);
     }
 
+    // FASE 33: Campos de Conclusão de Tarefas
+    console.log('🔍 Verificando colunas de conclusão da FASE 33 (campos de conclusão de tarefas)...');
+    try {
+      const columnExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'tasks' AND column_name = 'completion_success'
+        )
+      `);
+      
+      if (!columnExists.rows[0].exists) {
+        console.log('⚠️  Colunas de conclusão não encontradas em tasks. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase33.sql'));
+        console.log('✅ Colunas de conclusão criadas com sucesso');
+      } else {
+        console.log('✅ Colunas de conclusão já existem em tasks');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar colunas da FASE 33:', error);
+    }
+
     // Criação do usuário master inicial (se não existir)
     console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
     try {
