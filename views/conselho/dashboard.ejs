@@ -1055,7 +1055,6 @@
 
   // Função para aplicar filtro de período
   function applyPeriodFilter(period) {
-    document.body.style.cursor = 'wait';
     window.location.href = `/conselho/dashboard?period=${period}`;
   }
 
@@ -1066,7 +1065,6 @@
     const periodSelect = document.getElementById('periodFilter');
     
     if (selectedDate && periodSelect.value === 'custom') {
-      document.body.style.cursor = 'wait';
       window.location.href = `/conselho/dashboard?date=${selectedDate}&period=custom`;
     }
   }

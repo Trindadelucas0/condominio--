@@ -285,6 +285,39 @@ async function applyCorrections() {
 }
 
 /**
+ * Garante colunas de comprovante de pagamento em financial_exits (marcar saída como paga).
+ * Idempotente; roda em todo startup (ex.: Render).
+ */
+async function applyPaymentReceiptColumnsCorrection() {
+  const client = await require('../config/database').getClient();
+  try {
+    await client.query('BEGIN');
+    const cols = [
+      { name: 'payment_receipt_pdf_path', def: 'VARCHAR(500) NULL' },
+      { name: 'payment_details', def: 'TEXT NULL' },
+      { name: 'payment_method', def: 'VARCHAR(50) NULL' },
+      { name: 'payment_notes', def: 'TEXT NULL' },
+    ];
+    for (const c of cols) {
+      const r = await client.query(`
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'financial_exits' AND column_name = $1
+      `, [c.name]);
+      if (r.rows.length === 0) {
+        await client.query(`ALTER TABLE financial_exits ADD COLUMN ${c.name} ${c.def}`);
+        console.log(`  → financial_exits: coluna ${c.name} adicionada`);
+      }
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Função para aplicar apenas a correção de permissão (pode ser chamada independentemente)
  */
 async function applyPermissionCorrection() {
@@ -365,8 +398,9 @@ async function ensureCorrectionsApplied() {
     
     const status = await checkIfCorrectionsApplied();
     
-    // SEMPRE aplica a correção de permissão (é idempotente e segura)
-    // Isso garante que a permissão estará sempre presente
+    // SEMPRE aplica correções idempotentes (rodam em todo startup, ex.: Render)
+    console.log('  → Garantindo colunas de comprovante em financial_exits...');
+    await applyPaymentReceiptColumnsCorrection();
     console.log('  → Verificando e garantindo permissão occurrences:resolve para OPERACIONAL...');
     await applyPermissionCorrection();
     
@@ -409,5 +443,6 @@ module.exports = {
   ensureCorrectionsApplied,
   checkIfCorrectionsApplied,
   applyCorrections,
-  applyPermissionCorrection
+  applyPermissionCorrection,
+  applyPaymentReceiptColumnsCorrection,
 };
