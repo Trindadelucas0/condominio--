@@ -663,6 +663,15 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/corrigir colunas de occurrences da FASE 22:', error);
     }
 
+    // Correção: Garantir que colunas de resolução de occurrences foram criadas
+    console.log('🔍 Verificando colunas de resolução de occurrences (correção)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'fixOccurrencesResolutionColumns.sql'));
+      console.log('✅ Colunas de resolução de occurrences verificadas/corrigidas');
+    } catch (error) {
+      console.error('Erro ao verificar/corrigir colunas de resolução de occurrences:', error);
+    }
+
     // FASE 23: Fechamento Mensal, Inadimplência, Assembleias, Fundo de Reserva
     console.log('🔍 Verificando tabelas da FASE 23 (fechamento mensal, inadimplência, assembleias, fundo de reserva)...');
     try {

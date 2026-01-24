@@ -833,20 +833,10 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
 
     const occurrence = occurrenceResult.rows[0];
 
-    // Validação: resolution_success é obrigatório
-    if (resolutionData.resolution_success === undefined || resolutionData.resolution_success === null) {
-      throw new Error('É obrigatório informar se a ocorrência foi resolvida com sucesso');
-    }
-
     // Validação: resolution_notes é obrigatório
     if (!resolutionData.resolution_notes || resolutionData.resolution_notes.trim() === '') {
       throw new Error('Notas de resolução são obrigatórias');
     }
-
-    // Prepara campos de atualização
-    const updateFields = [];
-    const updateValues = [];
-    let paramCount = 1;
 
     // Valida transição de estado
     const stateValidator = require('../utils/stateValidator');
@@ -862,15 +852,24 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
       throw new Error(transitionValidation.error || 'Transição de estado não permitida');
     }
 
+    // Prepara campos de atualização
+    const updateFields = [];
+    const updateValues = [];
+    let paramCount = 1;
+
     updateFields.push(`status = 'RESOLVIDA'`);
     updateFields.push(`resolved_at = CURRENT_TIMESTAMP`);
     updateFields.push(`resolved_by = $${paramCount++}`);
     updateValues.push(userId);
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
-    updateFields.push(`resolution_success = $${paramCount++}`);
-    updateValues.push(resolutionData.resolution_success === true || resolutionData.resolution_success === 'true');
     updateFields.push(`resolution_notes = $${paramCount++}`);
     updateValues.push(resolutionData.resolution_notes.trim());
+    
+    // Adiciona resolution_success apenas se fornecido (coluna pode não existir ainda)
+    if (resolutionData.resolution_success !== undefined && resolutionData.resolution_success !== null) {
+      updateFields.push(`resolution_success = $${paramCount++}`);
+      updateValues.push(resolutionData.resolution_success === true || resolutionData.resolution_success === 'true');
+    }
 
     // Campos opcionais
     if (resolutionData.resolution_method !== undefined && resolutionData.resolution_method !== null) {
@@ -915,13 +914,24 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
     updateValues.push(occurrenceId);
 
     // Atualiza ocorrência
-    const updateResult = await query(
-      `UPDATE occurrences 
-       SET ${updateFields.join(', ')}
-       WHERE id = $${paramCount}
-       RETURNING *`,
-      updateValues
-    );
+    let updateResult;
+    try {
+      updateResult = await query(
+        `UPDATE occurrences 
+         SET ${updateFields.join(', ')}
+         WHERE id = $${paramCount}
+         RETURNING *`,
+        updateValues
+      );
+    } catch (error) {
+      // Se erro for de coluna não encontrada, informa sobre o script SQL necessário
+      if (error.code === '42703' || error.message.includes('não existe')) {
+        console.error('ERRO: Colunas de resolução não encontradas na tabela occurrences.');
+        console.error('Execute o script: src/database/fixOccurrencesResolutionColumns.sql');
+        throw new Error('Colunas de resolução não encontradas. Execute o script de migração fixOccurrencesResolutionColumns.sql no banco de dados.');
+      }
+      throw error;
+    }
 
     const updated = updateResult.rows[0];
 

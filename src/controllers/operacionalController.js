@@ -431,14 +431,14 @@ const resolveOcorrencia = async (req, res) => {
     const userAgent = req.get('user-agent');
 
     // Prepara dados de resolução estruturados
-    // Converte resolution_success de string para boolean se necessário
+    // Converte resolution_success de string para boolean se necessário (opcional)
     let resolutionSuccess = req.body.resolution_success;
-    if (typeof resolutionSuccess === 'string') {
+    if (resolutionSuccess !== undefined && typeof resolutionSuccess === 'string') {
       resolutionSuccess = resolutionSuccess === 'true';
     }
 
     const resolutionData = {
-      resolution_success: resolutionSuccess,
+      resolution_success: resolutionSuccess, // Opcional - pode ser undefined
       resolution_notes: req.body.resolution_notes,
       resolution_method: req.body.resolution_method,
       resolution_cost: req.body.resolution_cost,
