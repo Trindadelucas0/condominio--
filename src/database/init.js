@@ -913,6 +913,27 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar coluna related_occurrence_id em tasks:', error);
     }
 
+    // FASE 32: Observações do Síndico
+    console.log('🔍 Verificando tabela da FASE 32 (observações do síndico)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'sindico_observations'
+        )
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabela sindico_observations não encontrada. Criando...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase32.sql'));
+        console.log('✅ Tabela sindico_observations criada com sucesso');
+      } else {
+        console.log('✅ Tabela sindico_observations já existe');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar tabela da FASE 32:', error);
+    }
+
     // Criação do usuário master inicial (se não existir)
     console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
     try {

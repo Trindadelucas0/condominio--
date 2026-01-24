@@ -29,12 +29,18 @@ if (process.env.DATABASE_URL) {
   
   // Normaliza a URL: adiciona porta padrão (5432) se não estiver presente
   // Formato esperado: postgresql://user:pass@host:port/database
-  // Verifica se tem @host mas não tem :port após o host
-  const urlMatch = dbUrl.match(/^([^:]+:\/\/[^@]+@[^:\/]+)(:\d+)?(\/.*)?$/);
-  if (urlMatch && !urlMatch[2]) {
-    // Não tem porta, adiciona porta padrão 5432
-    const port = ':5432';
-    dbUrl = urlMatch[1] + port + (urlMatch[3] || '');
+  // Verifica se após @host tem / mas não tem :port
+  const atIndex = dbUrl.indexOf('@');
+  if (atIndex > 0) {
+    const afterAt = dbUrl.substring(atIndex + 1);
+    const slashIndex = afterAt.indexOf('/');
+    if (slashIndex > 0) {
+      const hostPart = afterAt.substring(0, slashIndex);
+      // Se o host não tem :port, adiciona :5432
+      if (!hostPart.includes(':')) {
+        dbUrl = dbUrl.substring(0, atIndex + 1) + hostPart + ':5432' + afterAt.substring(slashIndex);
+      }
+    }
   }
   
   connectionString = dbUrl;

@@ -595,6 +595,123 @@ const listPendingFinancialExitsForApproval = async (condominiumId) => {
   }
 };
 
+// Função para listar alertas SLA (tarefas e ocorrências com SLA vencido)
+// Recebe: condominiumId, filtros opcionais
+// Retorna: lista de alertas SLA com paginação
+const listSLAAlerts = async (condominiumId, filters = {}) => {
+  try {
+    const page = filters.page || 1;
+    const perPage = filters.perPage || 20;
+    const offset = (page - 1) * perPage;
+
+    // Query para buscar tarefas com SLA vencido
+    let tasksQuery = `
+      SELECT 
+        t.id,
+        'TASK' as entity_type,
+        t.title,
+        t.description,
+        t.due_date as sla_due_date,
+        t.status,
+        t.priority,
+        t.assigned_to,
+        u.full_name as assigned_to_name,
+        t.created_at,
+        'Tarefa com prazo vencido' as alert_message
+      FROM tasks t
+      LEFT JOIN users u ON t.assigned_to = u.id
+      WHERE t.condominium_id = $1
+        AND t.status IN ('PENDING', 'IN_PROGRESS')
+        AND t.due_date IS NOT NULL
+        AND t.due_date <= CURRENT_TIMESTAMP
+    `;
+
+    // Query para buscar ocorrências com SLA vencido
+    let occurrencesQuery = `
+      SELECT 
+        o.id,
+        'OCCURRENCE' as entity_type,
+        o.title,
+        o.description,
+        o.sla_due_date,
+        o.status,
+        o.priority,
+        o.assigned_to,
+        u.full_name as assigned_to_name,
+        o.created_at,
+        'Ocorrência com SLA vencido' as alert_message
+      FROM occurrences o
+      LEFT JOIN users u ON o.assigned_to = u.id
+      WHERE o.condominium_id = $1
+        AND o.status IN ('ABERTA', 'EM_ATENDIMENTO')
+        AND o.sla_due_date IS NOT NULL
+        AND o.sla_due_date <= CURRENT_TIMESTAMP
+    `;
+
+    const params = [condominiumId];
+    let paramCount = 2;
+
+    // Aplicar filtros de busca
+    if (filters.search) {
+      const searchFilter = ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+      tasksQuery += searchFilter;
+      occurrencesQuery += searchFilter;
+      params.push(`%${filters.search}%`);
+      paramCount++;
+    }
+
+    // Aplicar filtro de prioridade
+    if (filters.priority) {
+      const priorityFilter = ` AND priority = $${paramCount}`;
+      tasksQuery += priorityFilter;
+      occurrencesQuery += priorityFilter;
+      params.push(filters.priority);
+      paramCount++;
+    }
+
+    // Combinar queries com UNION ALL
+    const combinedQuery = `
+      ${tasksQuery}
+      UNION ALL
+      ${occurrencesQuery}
+      ORDER BY sla_due_date ASC
+      LIMIT $${paramCount} OFFSET $${paramCount + 1}
+    `;
+    params.push(perPage, offset);
+
+    // Contar total de registros
+    const countTasksQuery = tasksQuery.replace(/SELECT[\s\S]*?FROM/, 'SELECT 1 FROM').replace(/ORDER BY[\s\S]*$/, '');
+    const countOccurrencesQuery = occurrencesQuery.replace(/SELECT[\s\S]*?FROM/, 'SELECT 1 FROM').replace(/ORDER BY[\s\S]*$/, '');
+    const countQuery = `
+      SELECT COUNT(*) as total FROM (
+        ${countTasksQuery}
+        UNION ALL
+        ${countOccurrencesQuery}
+      ) as combined
+    `;
+    const countParams = params.slice(0, params.length - 2); // Remove LIMIT e OFFSET
+    const countResult = await query(countQuery, countParams);
+    const totalRecords = parseInt(countResult.rows[0].total) || 0;
+    const totalPages = Math.ceil(totalRecords / perPage);
+
+    // Executar query principal
+    const result = await query(combinedQuery, params);
+
+    return {
+      alerts: result.rows,
+      pagination: {
+        currentPage: page,
+        perPage: perPage,
+        totalRecords: totalRecords,
+        totalPages: totalPages,
+      },
+    };
+  } catch (error) {
+    console.error('Erro ao listar alertas SLA:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   getDashboardStats,
   listOperacionais,
@@ -608,4 +725,5 @@ module.exports = {
   updateDocument,
   approveFinancialExit,
   listPendingFinancialExitsForApproval,
+  listSLAAlerts,
 };

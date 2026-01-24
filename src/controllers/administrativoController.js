@@ -871,6 +871,37 @@ const processAprovacaoFinanceira = async (req, res) => {
   }
 };
 
+// Função para exibir alertas SLA
+// GET /administrativo/alertas
+const showAlertasSLA = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const filters = {
+      search: req.query.search || undefined,
+      priority: req.query.priority || undefined,
+      page: req.query.page ? parseInt(req.query.page) : 1,
+      perPage: req.query.perPage ? parseInt(req.query.perPage) : 20,
+    };
+
+    const result = await administrativoService.listSLAAlerts(req.user.condominiumId, filters);
+
+    res.render('administrativo/alertas-sla', {
+      title: 'Alertas SLA',
+      user: req.user,
+      alerts: result.alerts || [],
+      pagination: result.pagination,
+      filters: filters,
+      query: req.query,
+    });
+  } catch (error) {
+    console.error('Erro ao listar alertas SLA:', error);
+    res.status(500).send('Erro ao carregar alertas SLA');
+  }
+};
+
 // REMOVIDO: Todas as funções financeiras e patrimoniais foram movidas para controllers separados
 // Exporta funções para uso nas rotas (DEVEM VIR DEPOIS de todas as declarações)
 module.exports = {
@@ -904,5 +935,7 @@ module.exports = {
   // Aprovações financeiras (ADMINISTRATIVO aprova até limite)
   showAprovacoesFinanceiras,
   processAprovacaoFinanceira,
+  // Alertas SLA
+  showAlertasSLA,
   // REMOVIDO: Funções patrimoniais (movidas para patrimonioController.js)
 };

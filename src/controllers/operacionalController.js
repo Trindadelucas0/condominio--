@@ -130,7 +130,16 @@ const updateChecklistItem = async (req, res) => {
 // GET /operacional/tarefas/:id/concluir
 const showCompleteTask = async (req, res) => {
   try {
-    const task = await operacionalService.getTaskById(req.params.id, req.user.id);
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const taskId = parseInt(req.params.id, 10);
+    if (isNaN(taskId) || taskId <= 0) {
+      return renderError(res, 400, 'ID da tarefa inválido');
+    }
+
+    const task = await operacionalService.getTaskById(taskId, req.user.id);
 
     if (!task) {
       return renderError(res, 404, 'Tarefa não encontrada');
@@ -161,7 +170,11 @@ const completeTask = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const taskId = req.params.id;
+    const taskId = parseInt(req.params.id, 10);
+    if (isNaN(taskId) || taskId <= 0) {
+      return renderError(res, 400, 'ID da tarefa inválido');
+    }
+
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
@@ -170,7 +183,7 @@ const completeTask = async (req, res) => {
     for (const f of files) {
       if (f.path && f.filename) {
         await operacionalService.addTaskEvidence(
-          parseInt(taskId, 10),
+          taskId,
           f.path,
           f.originalname || f.filename,
           f.mimetype,
@@ -196,17 +209,24 @@ const completeTask = async (req, res) => {
     console.error('Erro ao finalizar tarefa:', error);
     // Se houver erro, volta para o formulário com os dados
     try {
-      const task = await operacionalService.getTaskById(req.params.id, req.user.id);
-      res.render('operacional/complete-task', {
-        title: 'Concluir Tarefa',
-        user: req.user,
-        task: task,
-        error: error.message,
-        formData: req.body,
-      });
+      const taskId = parseInt(req.params.id, 10);
+      if (!isNaN(taskId) && taskId > 0) {
+        const task = await operacionalService.getTaskById(taskId, req.user.id);
+        if (task) {
+          return res.render('operacional/complete-task', {
+            title: 'Concluir Tarefa',
+            user: req.user,
+            task: task,
+            error: error.message,
+            formData: req.body,
+          });
+        }
+      }
     } catch (renderErr) {
-      res.redirect('/operacional/checklist?error=' + encodeURIComponent(error.message));
+      console.error('Erro ao renderizar formulário de erro:', renderErr);
     }
+    // Se não conseguir renderizar o formulário, redireciona para a lista
+    res.redirect('/operacional/checklist?error=' + encodeURIComponent(error.message));
   }
 };
 

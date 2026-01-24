@@ -52,6 +52,9 @@ router.post('/comunicados/:id/desativar', administrativoController.deactivateCom
 router.get('/aprovacoes-financeiras', administrativoController.showAprovacoesFinanceiras);
 router.post('/aprovacoes-financeiras/:id/processar', administrativoController.processAprovacaoFinanceira);
 
+// Alertas SLA
+router.get('/alertas', administrativoController.showAlertasSLA);
+
 // REGRA: Rotas financeiras e patrimoniais foram MOVIDAS para módulos separados
 // Financeiro: /financeiro/* (requer role FINANCEIRO)
 // Patrimônio: /patrimonio/* (requer role PATRIMONIO)

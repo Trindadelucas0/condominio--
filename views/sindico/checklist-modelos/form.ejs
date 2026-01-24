@@ -148,6 +148,14 @@
             <div class="pt-4 border-t border-gray-200">
               <h3 class="text-sm font-semibold text-gray-800 mb-2">Atribuição por setor</h3>
               <p class="text-sm text-gray-600 mb-3">Ao selecionar o <strong>Departamento</strong> acima, as pessoas do setor aparecem abaixo. Escolha como atribuir:</p>
+              <% 
+                const usersOp = typeof usersOperacional !== 'undefined' ? usersOperacional : [];
+                const usersLp = typeof usersLimpeza !== 'undefined' ? usersLimpeza : [];
+                const dep = model && model.department ? model.department : 'ZELADORIA';
+                const ids = model && model.assigned_user_ids ? model.assigned_user_ids : [];
+                const usersDept = dep === 'LIMPEZA' ? usersLp : usersOp;
+                const allAssigned = usersDept.length > 0 && ids.length === usersDept.length && usersDept.every(u => ids.includes(u.id));
+              %>
               <div class="space-y-4">
                 <label class="flex items-center p-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 cursor-pointer transition assign-option" data-mode="todos">
                   <input type="radio" name="assignMode" value="todos" class="rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 assign-mode-radio" <%= allAssigned ? 'checked' : '' %>>
@@ -165,14 +173,6 @@
                 </label>
               </div>
               <input type="hidden" name="assignAllSetor" id="assignAllSetor" value="<%= allAssigned ? '1' : '0' %>">
-              <% 
-                const usersOp = typeof usersOperacional !== 'undefined' ? usersOperacional : [];
-                const usersLp = typeof usersLimpeza !== 'undefined' ? usersLimpeza : [];
-                const dep = model && model.department ? model.department : 'ZELADORIA';
-                const ids = model && model.assigned_user_ids ? model.assigned_user_ids : [];
-                const usersDept = dep === 'LIMPEZA' ? usersLp : usersOp;
-                const allAssigned = usersDept.length > 0 && ids.length === usersDept.length && usersDept.every(u => ids.includes(u.id));
-              %>
               <div id="assign-container" class="mt-4 pt-4 border-t border-gray-200">
                 <p class="text-sm font-medium text-gray-700 mb-2">Pessoas do setor <span id="assign-setor-label"><%= dep === 'ZELADORIA' ? 'Zeladoria (Operacional)' : 'Limpeza' %></span>:</p>
                 <div id="assign-zeladoria" class="<%= dep === 'ZELADORIA' ? '' : 'hidden' %>">
