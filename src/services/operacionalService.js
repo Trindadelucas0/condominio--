@@ -816,6 +816,24 @@ const listOccurrences = async (userId, condominiumId, filters = {}) => {
   }
 };
 
+// Função auxiliar para verificar se uma coluna existe na tabela
+const columnExists = async (tableName, columnName) => {
+  try {
+    const result = await query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+          AND table_name = $1 
+          AND column_name = $2
+      )
+    `, [tableName, columnName]);
+    return result.rows[0].exists;
+  } catch (error) {
+    console.error(`Erro ao verificar se coluna ${columnName} existe:`, error);
+    return false;
+  }
+};
+
 // Função para resolver ocorrência com dados estruturados
 // Recebe: occurrenceId, userId, condominiumId, dados de resolução (resolutionData)
 // Retorna: ocorrência atualizada
@@ -852,6 +870,17 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
       throw new Error(transitionValidation.error || 'Transição de estado não permitida');
     }
 
+    // Verifica quais colunas de resolução existem na tabela
+    const resolutionColumns = {
+      resolution_success: await columnExists('occurrences', 'resolution_success'),
+      resolution_method: await columnExists('occurrences', 'resolution_method'),
+      resolution_cost: await columnExists('occurrences', 'resolution_cost'),
+      had_complications: await columnExists('occurrences', 'had_complications'),
+      complications_description: await columnExists('occurrences', 'complications_description'),
+      resolution_time_minutes: await columnExists('occurrences', 'resolution_time_minutes'),
+      preventive_measures: await columnExists('occurrences', 'preventive_measures')
+    };
+
     // Prepara campos de atualização
     const updateFields = [];
     const updateValues = [];
@@ -865,14 +894,14 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
     updateFields.push(`resolution_notes = $${paramCount++}`);
     updateValues.push(resolutionData.resolution_notes.trim());
     
-    // Adiciona resolution_success apenas se fornecido (coluna pode não existir ainda)
-    if (resolutionData.resolution_success !== undefined && resolutionData.resolution_success !== null) {
+    // Adiciona resolution_success apenas se a coluna existir e o valor for fornecido
+    if (resolutionColumns.resolution_success && resolutionData.resolution_success !== undefined && resolutionData.resolution_success !== null) {
       updateFields.push(`resolution_success = $${paramCount++}`);
       updateValues.push(resolutionData.resolution_success === true || resolutionData.resolution_success === 'true');
     }
 
-    // Campos opcionais
-    if (resolutionData.resolution_method !== undefined && resolutionData.resolution_method !== null) {
+    // Campos opcionais - apenas se as colunas existirem
+    if (resolutionColumns.resolution_method && resolutionData.resolution_method !== undefined && resolutionData.resolution_method !== null) {
       const validMethods = ['INTERNA', 'TERCEIRO', 'MANUTENCAO', 'OUTRA'];
       if (validMethods.includes(resolutionData.resolution_method.toUpperCase())) {
         updateFields.push(`resolution_method = $${paramCount++}`);
@@ -880,7 +909,7 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
       }
     }
 
-    if (resolutionData.resolution_cost !== undefined && resolutionData.resolution_cost !== null) {
+    if (resolutionColumns.resolution_cost && resolutionData.resolution_cost !== undefined && resolutionData.resolution_cost !== null) {
       const cost = parseFloat(resolutionData.resolution_cost);
       if (!isNaN(cost) && cost >= 0) {
         updateFields.push(`resolution_cost = $${paramCount++}`);
@@ -888,17 +917,17 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
       }
     }
 
-    if (resolutionData.had_complications !== undefined && resolutionData.had_complications !== null) {
+    if (resolutionColumns.had_complications && resolutionData.had_complications !== undefined && resolutionData.had_complications !== null) {
       updateFields.push(`had_complications = $${paramCount++}`);
       updateValues.push(resolutionData.had_complications === true || resolutionData.had_complications === 'true');
     }
 
-    if (resolutionData.complications_description !== undefined && resolutionData.complications_description !== null && resolutionData.complications_description.trim() !== '') {
+    if (resolutionColumns.complications_description && resolutionData.complications_description !== undefined && resolutionData.complications_description !== null && resolutionData.complications_description.trim() !== '') {
       updateFields.push(`complications_description = $${paramCount++}`);
       updateValues.push(resolutionData.complications_description.trim());
     }
 
-    if (resolutionData.resolution_time_minutes !== undefined && resolutionData.resolution_time_minutes !== null) {
+    if (resolutionColumns.resolution_time_minutes && resolutionData.resolution_time_minutes !== undefined && resolutionData.resolution_time_minutes !== null) {
       const minutes = parseInt(resolutionData.resolution_time_minutes);
       if (!isNaN(minutes) && minutes > 0) {
         updateFields.push(`resolution_time_minutes = $${paramCount++}`);
@@ -906,7 +935,7 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
       }
     }
 
-    if (resolutionData.preventive_measures !== undefined && resolutionData.preventive_measures !== null && resolutionData.preventive_measures.trim() !== '') {
+    if (resolutionColumns.preventive_measures && resolutionData.preventive_measures !== undefined && resolutionData.preventive_measures !== null && resolutionData.preventive_measures.trim() !== '') {
       updateFields.push(`preventive_measures = $${paramCount++}`);
       updateValues.push(resolutionData.preventive_measures.trim());
     }
@@ -914,24 +943,13 @@ const resolveOccurrence = async (occurrenceId, userId, condominiumId, resolution
     updateValues.push(occurrenceId);
 
     // Atualiza ocorrência
-    let updateResult;
-    try {
-      updateResult = await query(
-        `UPDATE occurrences 
-         SET ${updateFields.join(', ')}
-         WHERE id = $${paramCount}
-         RETURNING *`,
-        updateValues
-      );
-    } catch (error) {
-      // Se erro for de coluna não encontrada, informa sobre o script SQL necessário
-      if (error.code === '42703' || error.message.includes('não existe')) {
-        console.error('ERRO: Colunas de resolução não encontradas na tabela occurrences.');
-        console.error('Execute o script: src/database/fixOccurrencesResolutionColumns.sql');
-        throw new Error('Colunas de resolução não encontradas. Execute o script de migração fixOccurrencesResolutionColumns.sql no banco de dados.');
-      }
-      throw error;
-    }
+    const updateResult = await query(
+      `UPDATE occurrences 
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramCount}
+       RETURNING *`,
+      updateValues
+    );
 
     const updated = updateResult.rows[0];
 
