@@ -1,218 +1,555 @@
 <!-- Navbar principal do sistema -->
 <!-- NAVBAR DINÂMICA: Exibe menus automaticamente baseado nas roles do usuário -->
-<!-- Quando uma role é adicionada ao usuário, os menus aparecem automaticamente -->
-<!-- Usa req.user.roles (array) que vem do middleware de autenticação -->
+<!-- Design moderno e tecnológico com menu dropdown organizado -->
 
-<nav class="bg-primary-600 text-white shadow-md sticky top-0 z-50">
+<style>
+  /* Animações personalizadas para o navbar */
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(34, 163, 41, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(34, 163, 41, 0);
+    }
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Estilos para dropdown moderno */
+  .nav-dropdown {
+    position: relative;
+  }
+
+  .nav-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    min-width: 280px;
+    max-width: 800px;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /* Dropdown com múltiplas colunas quando tem muitos itens */
+  .nav-dropdown-menu.multi-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 600px;
+    max-width: 900px;
+  }
+
+  .nav-dropdown-menu.multi-column .nav-dropdown-items-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .nav-dropdown-menu.multi-column .nav-dropdown-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    border-right: 1px solid #e5e7eb;
+    min-width: 200px;
+  }
+
+  .nav-dropdown-menu.multi-column .nav-dropdown-column:last-child {
+    border-right: none;
+  }
+
+  .nav-dropdown-menu.multi-column .nav-dropdown-item {
+    border-bottom: 1px solid #f3f4f6;
+    border-right: none;
+  }
+
+  .nav-dropdown-menu.multi-column .nav-dropdown-column .nav-dropdown-item:last-child {
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .nav-dropdown:hover .nav-dropdown-menu,
+  .nav-dropdown-menu:hover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .nav-dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: #374151;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    border-bottom: 1px solid #f3f4f6;
+    white-space: nowrap;
+  }
+
+  .nav-dropdown-item:last-child {
+    border-bottom: none;
+  }
+
+  .nav-dropdown-item:hover {
+    background: #f9fafb;
+    color: #22a329;
+    padding-left: 1.25rem;
+  }
+
+  .nav-dropdown-header {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    grid-column: 1 / -1;
+  }
+
+  .nav-dropdown-items-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .nav-dropdown-section {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .nav-dropdown-section:last-child {
+    border-bottom: none;
+  }
+
+  /* Badge de notificação animado */
+  .notification-badge {
+    animation: pulse-glow 2s infinite;
+  }
+
+  /* Logo com efeito hover */
+  .logo-container {
+    transition: transform 0.3s ease;
+  }
+
+  .logo-container:hover {
+    transform: scale(1.05);
+  }
+
+  /* Botão de menu moderno */
+  .menu-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .menu-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+
+  .menu-button:hover::before {
+    width: 300px;
+    height: 300px;
+  }
+
+  /* Navbar com gradiente moderno */
+  .navbar-gradient {
+    background: linear-gradient(135deg, #22a329 0%, #1a8a20 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  /* Link ativo */
+  .nav-link-active {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+  }
+</style>
+
+<nav class="navbar-gradient text-white shadow-xl sticky top-0 z-50 border-b border-primary-700/30">
     <div class="container mx-auto px-4">
         <div class="flex justify-between items-center py-3 sm:py-4">
-            <!-- Logo/Título -->
-            <div class="flex items-center space-x-3">
-                <!-- Logo Verde -->
-                <div class="bg-white rounded-full p-2 flex-shrink-0">
-                    <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            <!-- Logo/Título - Sempre visível -->
+            <div class="flex items-center space-x-3 logo-container">
+                <!-- Logo com ícone moderno -->
+                <div class="bg-white rounded-xl p-2.5 flex-shrink-0 shadow-lg">
+                    <svg class="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                     </svg>
                 </div>
-                <a href="/" class="text-lg sm:text-xl font-bold hover:text-primary-100 transition-colors duration-200 hidden sm:block">
-                    <span class="text-white">ÊXITO</span> <span class="text-primary-200">CONDOMÍNIOS</span>
-                </a>
-                <a href="/" class="text-lg font-bold hover:text-primary-100 transition-colors duration-200 sm:hidden">
-                    ÊXITO
+                <a href="/" class="text-xl sm:text-2xl font-extrabold hover:text-primary-100 transition-all duration-300">
+                    <span class="text-white tracking-tight">ÊXITO</span> 
+                    <span class="text-primary-200 font-bold">CONDOMÍNIOS</span>
                 </a>
             </div>
 
-            <!-- Menu Mobile Toggle -->
-            <button id="mobile-menu-toggle" type="button" class="md:hidden p-2 rounded-lg hover:bg-primary-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300">
-                <svg id="menu-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
-            </button>
-
-            <!-- Menu de navegação DINÂMICO (baseado em roles) -->
-            <div id="nav-menu" class="hidden md:flex items-center space-x-1 lg:space-x-2">
+            <!-- Menu Desktop - Organizado com dropdowns -->
+            <div id="nav-menu" class="hidden lg:flex items-center space-x-1 xl:space-x-2">
                 <% 
                 // Verifica se user existe, não é null e tem roles
                 if (typeof user !== 'undefined' && user !== null && user.roles && Array.isArray(user.roles)) {
                     const roles = user.roles;
+                    let totalLinks = 0;
+                    const menuItems = [];
                     
-                    // SUPER_MASTER
-                    if (roles.includes('SUPER_MASTER')) { %>
-                        <a href="/master/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Master - Dashboard</a>
-                        <a href="/master/condominios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Condomínios</a>
-                        <a href="/master/usuarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Usuários</a>
-                    <% }
+                    // Coletar todos os links primeiro para decidir se usa dropdown
+                    if (roles.includes('SUPER_MASTER')) {
+                        menuItems.push({ type: 'master', items: [
+                            { href: '/master/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+                            { href: '/master/condominios', label: 'Condomínios', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+                            { href: '/master/usuarios', label: 'Usuários', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' }
+                        ]});
+                        totalLinks += 3;
+                    }
                     
-                    // SINDICO / SUBSINDICO
-                    if (roles.includes('SINDICO') || roles.includes('SUBSINDICO')) { %>
-                        <a href="/sindico/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Síndico - Dashboard</a>
-                        <a href="/sindico/tarefas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
-                        <a href="/sindico/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências</a>
-                        <a href="/sindico/aprovacoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Aprovações</a>
-                        <a href="/sindico/manutencoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Manutenções</a>
-                        <a href="/sindico/checklist-modelos" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Modelos Checklist</a>
-                        <a href="/sindico/checklists-acompanhamento" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Acompanhar Checklists</a>
-                        <a href="/sindico/alertas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Alertas</a>
-                        <a href="/sindico/logs" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Logs</a>
-                        <a href="/assembleias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Assembleias</a>
-                    <% }
+                    if (roles.includes('SINDICO') || roles.includes('SUBSINDICO')) {
+                        menuItems.push({ type: 'sindico', items: [
+                            { href: '/sindico/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/sindico/tarefas', label: 'Tarefas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                            { href: '/sindico/ocorrencias', label: 'Ocorrências', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+                            { href: '/sindico/aprovacoes', label: 'Aprovações', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+                            { href: '/sindico/manutencoes', label: 'Manutenções', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
+                            { href: '/sindico/checklist-modelos', label: 'Modelos Checklist', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+                            { href: '/sindico/checklists-acompanhamento', label: 'Acompanhar Checklists', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/sindico/alertas', label: 'Alertas', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+                            { href: '/sindico/logs', label: 'Logs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                            { href: '/assembleias', label: 'Assembleias', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' }
+                        ]});
+                        totalLinks += 10;
+                    }
                     
-                    // FINANCEIRO (módulo separado)
-                    if (roles.includes('FINANCEIRO')) { %>
-                        <a href="/financeiro/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Financeiro - Dashboard</a>
-                        <a href="/financeiro/entradas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Entradas</a>
-                        <a href="/financeiro/saidas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Saídas</a>
-                        <a href="/financeiro/apartamentos" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Apartamentos</a>
-                        <a href="/financeiro/taxas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Taxas</a>
-                        <a href="/financeiro/fechamento-mensal" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Fechamento Mensal</a>
-                        <a href="/financeiro/relatorios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Relatórios</a>
-                        <a href="/financeiro/fundo-reserva" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Fundo de Reserva</a>
-                        <a href="/financeiro/contas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Contas</a>
-                        <a href="/financeiro/orcamentos-pendentes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Orçamentos</a>
-                        <a href="/financeiro/centros-custo" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Centros de Custo</a>
-                    <% }
+                    if (roles.includes('FINANCEIRO')) {
+                        menuItems.push({ type: 'financeiro', items: [
+                            { href: '/financeiro/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/financeiro/entradas', label: 'Entradas', icon: 'M12 4v16m8-8H4' },
+                            { href: '/financeiro/saidas', label: 'Saídas', icon: 'M20 12H4' },
+                            { href: '/financeiro/apartamentos', label: 'Apartamentos', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+                            { href: '/financeiro/taxas', label: 'Taxas', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                            { href: '/financeiro/fechamento-mensal', label: 'Fechamento Mensal', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+                            { href: '/financeiro/relatorios', label: 'Relatórios', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                            { href: '/financeiro/fundo-reserva', label: 'Fundo de Reserva', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                            { href: '/financeiro/contas', label: 'Contas', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+                            { href: '/financeiro/orcamentos-pendentes', label: 'Orçamentos', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                            { href: '/financeiro/centros-custo', label: 'Centros de Custo', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' }
+                        ]});
+                        totalLinks += 11;
+                    }
                     
-                    // PATRIMONIO (módulo separado)
-                    if (roles.includes('PATRIMONIO')) { %>
-                        <a href="/patrimonio/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Patrimônio - Dashboard</a>
-                        <a href="/patrimonio/ativos" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ativos</a>
-                    <% }
+                    if (roles.includes('PATRIMONIO')) {
+                        menuItems.push({ type: 'patrimonio', items: [
+                            { href: '/patrimonio/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/patrimonio/ativos', label: 'Ativos', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' }
+                        ]});
+                        totalLinks += 2;
+                    }
                     
-                    // ADMINISTRATIVO (NÃO tem mais acesso a financeiro/patrimonio)
-                    if (roles.includes('ADMINISTRATIVO')) { %>
-                        <a href="/administrativo/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Admin - Dashboard</a>
-                        <a href="/administrativo/tarefas" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
-                        <a href="/administrativo/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências</a>
-                        <a href="/administrativo/documentos" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Documentos</a>
-                        <a href="/assembleias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Assembleias</a>
-                    <% }
+                    if (roles.includes('ADMINISTRATIVO')) {
+                        menuItems.push({ type: 'administrativo', items: [
+                            { href: '/administrativo/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/administrativo/tarefas', label: 'Tarefas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                            { href: '/administrativo/ocorrencias', label: 'Ocorrências', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+                            { href: '/administrativo/documentos', label: 'Documentos', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                            { href: '/assembleias', label: 'Assembleias', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' }
+                        ]});
+                        totalLinks += 5;
+                    }
                     
-                    // OPERACIONAL
-                    if (roles.includes('OPERACIONAL')) { %>
-                        <a href="/operacional/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Operacional - Dashboard</a>
-                        <a href="/operacional/checklists-diarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklists do Dia</a>
-                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
-                        <a href="/operacional/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências</a>
-                        <a href="/operacional/manutencoes" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Manutenções</a>
-                    <% }
+                    if (roles.includes('OPERACIONAL')) {
+                        menuItems.push({ type: 'operacional', items: [
+                            { href: '/operacional/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/operacional/checklists-diarios', label: 'Checklists do Dia', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+                            { href: '/operacional/checklist', label: 'Tarefas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                            { href: '/operacional/ocorrencias', label: 'Ocorrências', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+                            { href: '/operacional/manutencoes', label: 'Manutenções', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
+                        ]});
+                        totalLinks += 5;
+                    }
                     
-                    // LIMPEZA (tem suas próprias rotas de ocorrências)
-                    if (roles.includes('LIMPEZA') && !roles.includes('OPERACIONAL')) { %>
-                        <a href="/limpeza/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Limpeza - Dashboard</a>
-                        <a href="/operacional/checklists-diarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklists do Dia</a>
-                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
-                        <a href="/limpeza/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências de Limpeza</a>
-                    <% } else if (roles.includes('LIMPEZA') && roles.includes('OPERACIONAL')) { %>
-                        <!-- Se tem ambas, mostra ambos os menus -->
-                        <a href="/operacional/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Operacional - Dashboard</a>
-                        <a href="/limpeza/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Limpeza - Dashboard</a>
-                        <a href="/operacional/checklists-diarios" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Checklists do Dia</a>
-                        <a href="/operacional/checklist" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Tarefas</a>
-                        <a href="/operacional/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências (Zeladoria)</a>
-                        <a href="/limpeza/ocorrencias" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Ocorrências (Limpeza)</a>
-                    <% }
+                    if (roles.includes('LIMPEZA') && !roles.includes('OPERACIONAL')) {
+                        menuItems.push({ type: 'limpeza', items: [
+                            { href: '/limpeza/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/operacional/checklists-diarios', label: 'Checklists do Dia', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+                            { href: '/operacional/checklist', label: 'Tarefas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                            { href: '/limpeza/ocorrencias', label: 'Ocorrências de Limpeza', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' }
+                        ]});
+                        totalLinks += 4;
+                    } else if (roles.includes('LIMPEZA') && roles.includes('OPERACIONAL')) {
+                        menuItems.push({ type: 'limpeza', items: [
+                            { href: '/limpeza/dashboard', label: 'Limpeza - Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                            { href: '/limpeza/ocorrencias', label: 'Ocorrências (Limpeza)', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' }
+                        ]});
+                        totalLinks += 2;
+                    }
                     
-                    // CONSELHO
-                    if (roles.includes('CONSELHO')) { %>
-                        <a href="/conselho/dashboard" class="hover:bg-primary-700 px-3 py-2 rounded transition-all duration-200">Conselho - Dashboard</a>
-                    <% }
+                    if (roles.includes('CONSELHO')) {
+                        menuItems.push({ type: 'conselho', items: [
+                            { href: '/conselho/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' }
+                        ]});
+                        totalLinks += 1;
+                    }
+
+                    // Se tiver mais de 5 links, usar dropdown, senão mostrar inline
+                    const useDropdown = totalLinks > 5;
+                    
+                    if (useDropdown) {
+                        // Renderizar com dropdowns organizados por módulo
+                        menuItems.forEach((module, idx) => {
+                            const moduleNames = {
+                                'master': 'Master',
+                                'sindico': 'Síndico',
+                                'financeiro': 'Financeiro',
+                                'patrimonio': 'Patrimônio',
+                                'administrativo': 'Administrativo',
+                                'operacional': 'Operacional',
+                                'limpeza': 'Limpeza',
+                                'conselho': 'Conselho'
+                            };
+                            
+                            const moduleName = moduleNames[module.type] || module.type;
+                            const mainLink = module.items[0]; // Primeiro item é o dashboard
+                            const itemCount = module.items.length;
+                            // Se tiver mais de 6 itens, usar múltiplas colunas
+                            const useMultiColumn = itemCount > 6;
+                            const columnsCount = useMultiColumn ? Math.ceil(itemCount / Math.ceil(itemCount / 3)) : 1;
+                %>
+                            <div class="nav-dropdown">
+                                <a href="<%= mainLink.href %>" class="hover:bg-primary-700/50 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium flex items-center space-x-2 group">
+                                    <span><%= moduleName %></span>
+                                    <svg class="w-4 h-4 transform group-hover:rotate-180 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </a>
+                                <div class="nav-dropdown-menu <%= useMultiColumn ? 'multi-column' : '' %>">
+                                    <div class="nav-dropdown-header"><%= moduleName %></div>
+                                    <div class="nav-dropdown-items-container">
+                                        <% if (useMultiColumn) { 
+                                            // Dividir itens em 3 colunas de forma equilibrada
+                                            const itemsPerColumn = Math.ceil(itemCount / 3);
+                                            const columns = [];
+                                            for (let i = 0; i < itemCount; i++) {
+                                                const colIndex = Math.floor(i / itemsPerColumn);
+                                                if (!columns[colIndex]) columns[colIndex] = [];
+                                                columns[colIndex].push(module.items[i]);
+                                            }
+                                            
+                                            // Garantir que temos no máximo 3 colunas
+                                            while (columns.length > 3) {
+                                                const lastCol = columns.pop();
+                                                columns[columns.length - 1].push(...lastCol);
+                                            }
+                                            
+                                            columns.forEach((columnItems) => { %>
+                                                <div class="nav-dropdown-column">
+                                                    <% columnItems.forEach((item) => { %>
+                                                        <a href="<%= item.href %>" class="nav-dropdown-item flex items-center space-x-2">
+                                                            <svg class="w-4 h-4 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= item.icon %>"></path>
+                                                            </svg>
+                                                            <span><%= item.label %></span>
+                                                        </a>
+                                                    <% }); %>
+                                                </div>
+                                            <% });
+                                        } else { 
+                                            // Renderizar em coluna única
+                                            module.items.forEach((item) => { %>
+                                                <a href="<%= item.href %>" class="nav-dropdown-item flex items-center space-x-2">
+                                                    <svg class="w-4 h-4 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= item.icon %>"></path>
+                                                    </svg>
+                                                    <span><%= item.label %></span>
+                                                </a>
+                                            <% }); 
+                                        } %>
+                                    </div>
+                                </div>
+                            </div>
+                <%      });
+                    } else {
+                        // Renderizar links inline quando há poucos itens
+                        menuItems.forEach((module) => {
+                            module.items.forEach((item) => { %>
+                                <a href="<%= item.href %>" class="hover:bg-primary-700/50 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium">
+                                    <%= item.label %>
+                                </a>
+                    <%      });
+                        });
+                    }
                 }
                 %>
 
                 <!-- Notificações -->
                 <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
-                    <div class="relative">
-                        <a href="/notifications" class="hover:bg-primary-700 px-3 py-2 rounded relative transition-all duration-200">
+                    <div class="relative ml-2">
+                        <a href="/notifications" class="hover:bg-primary-700/50 px-3 py-2.5 rounded-lg relative transition-all duration-200 flex items-center">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                             </svg>
-                            <span id="notification-badge" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden font-semibold">0</span>
+                            <span id="notification-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden font-semibold notification-badge">0</span>
                         </a>
                     </div>
                 <% } %>
 
                 <!-- Informações do usuário e logout -->
                 <% if (typeof user !== 'undefined' && user !== null) { %>
-                    <div class="flex items-center space-x-2 sm:space-x-3 border-l border-primary-400 pl-3 sm:pl-4 ml-3 sm:ml-4">
-                        <span class="text-xs sm:text-sm font-medium hidden sm:inline">
-                            <%= user.fullName || user.full_name || 'Usuário' %>
-                        </span>
+                    <div class="flex items-center space-x-3 border-l border-primary-400/50 pl-4 ml-4">
+                        <div class="hidden xl:flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-sm font-bold">
+                                <%= (user.fullName || user.full_name || 'U').charAt(0).toUpperCase() %>
+                            </div>
+                            <span class="text-sm font-medium">
+                                <%= user.fullName || user.full_name || 'Usuário' %>
+                            </span>
+                        </div>
                         <form method="POST" action="/auth/logout" class="inline">
-                            <button type="submit" class="bg-primary-700 hover:bg-primary-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300">Sair</button>
+                            <button type="submit" class="bg-primary-700 hover:bg-primary-800 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300 shadow-md hover:shadow-lg">
+                                Sair
+                            </button>
                         </form>
                     </div>
                 <% } %>
             </div>
+
+            <!-- Menu Mobile Toggle -->
+            <button id="mobile-menu-toggle" type="button" class="lg:hidden p-2 rounded-lg hover:bg-primary-700/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-300 menu-button">
+                <svg id="menu-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
         </div>
         
         <!-- Menu Mobile -->
-        <div id="mobile-menu" class="hidden md:hidden pb-4 border-t border-primary-500 mt-2 pt-4">
-            <div class="flex flex-col space-y-2">
+        <div id="mobile-menu" class="hidden lg:hidden pb-4 border-t border-primary-500/30 mt-2 pt-4 animate-slide-down">
+            <div class="flex flex-col space-y-1">
                 <% 
                 if (typeof user !== 'undefined' && user !== null && user.roles && Array.isArray(user.roles)) {
                     const roles = user.roles;
                     
                     if (roles.includes('SUPER_MASTER')) { %>
-                        <a href="/master/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Master - Dashboard</a>
-                        <a href="/master/condominios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Condomínios</a>
-                        <a href="/master/usuarios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Usuários</a>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider">Master</div>
+                        <a href="/master/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/master/condominios" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Condomínios</a>
+                        <a href="/master/usuarios" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Usuários</a>
                     <% }
                     
                     if (roles.includes('SINDICO') || roles.includes('SUBSINDICO')) { %>
-                        <a href="/sindico/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Síndico - Dashboard</a>
-                        <a href="/sindico/tarefas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
-                        <a href="/sindico/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
-                        <a href="/sindico/aprovacoes" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Aprovações</a>
-                        <a href="/sindico/checklist-modelos" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Modelos Checklist</a>
-                        <a href="/sindico/checklists-acompanhamento" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Acompanhar Checklists</a>
-                        <a href="/sindico/manutencoes" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Manutenções</a>
-                        <a href="/sindico/alertas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Alertas</a>
-                        <a href="/sindico/logs" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Logs</a>
-                        <a href="/assembleias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Assembleias</a>
-                    <% }
-                    
-                    if (roles.includes('OPERACIONAL')) { %>
-                        <a href="/operacional/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Operacional - Dashboard</a>
-                        <a href="/operacional/checklists-diarios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Checklists do Dia</a>
-                        <a href="/operacional/checklist" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
-                        <a href="/operacional/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
-                    <% }
-                    
-                    if (roles.includes('LIMPEZA') && !roles.includes('OPERACIONAL')) { %>
-                        <a href="/limpeza/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Limpeza - Dashboard</a>
-                        <a href="/operacional/checklists-diarios" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Checklists do Dia</a>
-                        <a href="/operacional/checklist" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
-                        <a href="/limpeza/ocorrencias" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Síndico</div>
+                        <a href="/sindico/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/sindico/tarefas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/sindico/ocorrencias" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                        <a href="/sindico/aprovacoes" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Aprovações</a>
+                        <a href="/sindico/manutencoes" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Manutenções</a>
+                        <a href="/sindico/checklist-modelos" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Modelos Checklist</a>
+                        <a href="/sindico/checklists-acompanhamento" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Acompanhar Checklists</a>
+                        <a href="/sindico/alertas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Alertas</a>
+                        <a href="/sindico/logs" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Logs</a>
+                        <a href="/assembleias" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Assembleias</a>
                     <% }
                     
                     if (roles.includes('FINANCEIRO')) { %>
-                        <a href="/financeiro/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Financeiro - Dashboard</a>
-                        <a href="/financeiro/entradas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Entradas</a>
-                        <a href="/financeiro/saidas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Saídas</a>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Financeiro</div>
+                        <a href="/financeiro/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/financeiro/entradas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Entradas</a>
+                        <a href="/financeiro/saidas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Saídas</a>
+                        <a href="/financeiro/apartamentos" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Apartamentos</a>
+                        <a href="/financeiro/taxas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Taxas</a>
+                        <a href="/financeiro/fechamento-mensal" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Fechamento Mensal</a>
+                        <a href="/financeiro/relatorios" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Relatórios</a>
+                        <a href="/financeiro/fundo-reserva" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Fundo de Reserva</a>
+                        <a href="/financeiro/contas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Contas</a>
+                        <a href="/financeiro/orcamentos-pendentes" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Orçamentos</a>
+                        <a href="/financeiro/centros-custo" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Centros de Custo</a>
+                    <% }
+                    
+                    if (roles.includes('PATRIMONIO')) { %>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Patrimônio</div>
+                        <a href="/patrimonio/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/patrimonio/ativos" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Ativos</a>
                     <% }
                     
                     if (roles.includes('ADMINISTRATIVO')) { %>
-                        <a href="/administrativo/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Admin - Dashboard</a>
-                        <a href="/administrativo/tarefas" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Tarefas</a>
-                        <a href="/administrativo/documentos" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Documentos</a>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Administrativo</div>
+                        <a href="/administrativo/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/administrativo/tarefas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/administrativo/ocorrencias" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                        <a href="/administrativo/documentos" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Documentos</a>
+                        <a href="/assembleias" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Assembleias</a>
+                    <% }
+                    
+                    if (roles.includes('OPERACIONAL')) { %>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Operacional</div>
+                        <a href="/operacional/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/operacional/checklists-diarios" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Checklists do Dia</a>
+                        <a href="/operacional/checklist" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/operacional/ocorrencias" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                        <a href="/operacional/manutencoes" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Manutenções</a>
+                    <% }
+                    
+                    if (roles.includes('LIMPEZA') && !roles.includes('OPERACIONAL')) { %>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Limpeza</div>
+                        <a href="/limpeza/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/operacional/checklists-diarios" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Checklists do Dia</a>
+                        <a href="/operacional/checklist" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Tarefas</a>
+                        <a href="/limpeza/ocorrencias" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Ocorrências</a>
+                    <% } else if (roles.includes('LIMPEZA') && roles.includes('OPERACIONAL')) { %>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Limpeza</div>
+                        <a href="/limpeza/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
+                        <a href="/limpeza/ocorrencias" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Ocorrências (Limpeza)</a>
                     <% }
                     
                     if (roles.includes('CONSELHO')) { %>
-                        <a href="/conselho/dashboard" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium">Conselho - Dashboard</a>
+                        <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Conselho</div>
+                        <a href="/conselho/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
                     <% }
                 }
                 %>
                 <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
-                    <a href="/notifications" class="block px-3 py-2 rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm font-medium relative">
-                        Notificações
-                        <span id="notification-badge-mobile" class="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 hidden font-semibold">0</span>
-                    </a>
-                    <div class="border-t border-primary-500/50 my-2 pt-2">
-                        <div class="px-3 py-2 text-xs text-primary-200">
-                            <%= user.fullName %>
+                    <div class="border-t border-primary-500/30 my-2 pt-2">
+                        <a href="/notifications" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium relative">
+                            Notificações
+                            <span id="notification-badge-mobile" class="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 hidden font-semibold">0</span>
+                        </a>
+                        <div class="px-4 py-2 text-xs text-primary-200">
+                            <%= user.fullName || user.full_name || 'Usuário' %>
                         </div>
-                        <form method="POST" action="/auth/logout" class="px-3">
-                            <button type="submit" class="w-full bg-primary-700 hover:bg-primary-800 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left">Sair</button>
+                        <form method="POST" action="/auth/logout" class="px-4">
+                            <button type="submit" class="w-full bg-primary-700 hover:bg-primary-800 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 shadow-md">Sair</button>
                         </form>
                     </div>
                 <% } %>
@@ -222,7 +559,6 @@
 </nav>
 
 <script>
-  // Aguardar o DOM estar pronto
   document.addEventListener('DOMContentLoaded', function() {
     // Toggle menu mobile
     const toggleButton = document.getElementById('mobile-menu-toggle');
@@ -237,10 +573,8 @@
         
         if (isHidden) {
           mobileMenu.classList.remove('hidden');
-          mobileMenu.classList.add('animate-slideDown');
         } else {
           mobileMenu.classList.add('hidden');
-          mobileMenu.classList.remove('animate-slideDown');
         }
         
         // Animar o ícone do botão (hamburger para X)
@@ -248,12 +582,10 @@
         const path = icon?.querySelector('path');
         if (path) {
           if (isHidden) {
-            // Mudar para X
             path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
             path.setAttribute('stroke-linecap', 'round');
             path.setAttribute('stroke-linejoin', 'round');
           } else {
-            // Mudar para hamburger
             path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
           }
         }
@@ -263,20 +595,28 @@
       document.addEventListener('click', function(e) {
         if (!toggleButton.contains(e.target) && !mobileMenu.contains(e.target)) {
           mobileMenu.classList.add('hidden');
-          const icon = toggleButton.querySelector('svg');
-          if (icon) {
-            icon.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+          const icon = toggleButton.querySelector('#menu-icon');
+          const path = icon?.querySelector('path');
+          if (path) {
+            path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
           }
         }
       });
     }
     
-    // Atualizar badge mobile também
+    // Atualizar badge de notificações
     <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
     fetch('/notifications/unread-count')
       .then(response => response.json())
       .then(data => {
+        const badge = document.getElementById('notification-badge');
         const badgeMobile = document.getElementById('notification-badge-mobile');
+        
+        if (badge && data.count > 0) {
+          badge.textContent = data.count > 99 ? '99+' : data.count;
+          badge.classList.remove('hidden');
+        }
+        
         if (badgeMobile && data.count > 0) {
           badgeMobile.textContent = data.count > 99 ? '99+' : data.count;
           badgeMobile.classList.remove('hidden');
@@ -284,5 +624,15 @@
       })
       .catch(err => console.error('Erro ao buscar notificações:', err));
     <% } %>
+
+    // Destacar link ativo baseado na URL atual
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('#nav-menu a[href], #mobile-menu a[href]');
+    
+    navLinks.forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('nav-link-active');
+      }
+    });
   });
 </script>
