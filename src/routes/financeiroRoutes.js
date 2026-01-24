@@ -253,16 +253,16 @@ router.get('/consumo', async (req, res) => {
     
     // Extrai filtros dos query parameters
     const filters = {
-      year: req.query.year || new Date().getFullYear(),
+      year: req.query.year ? parseInt(req.query.year) : new Date().getFullYear(),
       month: req.query.month ? parseInt(req.query.month) : undefined,
       billId: req.query.billId ? parseInt(req.query.billId) : undefined,
     };
     
     // Busca contas para o filtro
-    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
     
     // Busca consumo com filtros
-    const consumption = await financeiroService.listConsumption(req.user.condominiumId, filters);
+    const consumption = await financeiroService.listConsumption(req.user.condominiumId, filters).catch(() => []);
     
     res.render('administrativo/financeiro/consumo/list', {
       title: 'Consumo Mensal',
@@ -275,7 +275,24 @@ router.get('/consumo', async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao listar consumo:', error);
-    res.status(500).send('Erro ao carregar consumo');
+    // Em caso de erro, ainda renderiza a página com valores padrão
+    const financeiroService = require('../services/financeiroService');
+    const filters = {
+      year: req.query.year ? parseInt(req.query.year) : new Date().getFullYear(),
+      month: req.query.month ? parseInt(req.query.month) : undefined,
+      billId: req.query.billId ? parseInt(req.query.billId) : undefined,
+    };
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
+    res.render('administrativo/financeiro/consumo/list', {
+      title: 'Consumo Mensal',
+      user: req.user,
+      consumption: [],
+      bills: bills || [],
+      filters: filters,
+      query: req.query,
+      req: req,
+      error: 'Erro ao carregar consumo. Tente novamente.',
+    });
   }
 });
 
