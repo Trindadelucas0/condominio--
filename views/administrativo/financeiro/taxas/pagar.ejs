@@ -52,6 +52,11 @@
       </div>
     </div>
 
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <%= error %>
+      </div>
+    <% } %>
     <form method="POST" action="/financeiro/taxas/<%= fee.id %>/pagar" enctype="multipart/form-data">
       <div class="space-y-4">
         <div>
@@ -76,7 +81,7 @@
 
         <div>
           <label for="paymentReceiptPdf" class="block text-sm font-medium text-gray-700 mb-2">
-            Comprovante (PDF)
+            Comprovante (PDF) <span class="text-red-500">*</span>
           </label>
           <input
             type="file"

@@ -36,17 +36,8 @@ async function startServer() {
     });
   } catch (error) {
     console.error('❌ Erro ao iniciar servidor:', error.message);
-    // Em desenvolvimento, ainda inicia o servidor mesmo com erro nas correções
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
-    } else {
-      console.warn('⚠️  Continuando mesmo com erro nas correções (modo desenvolvimento)');
-      app.listen(PORT, () => {
-        console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-        console.log(`📝 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`📅 Data/Hora: ${new Date().toLocaleString('pt-BR')}`);
-      });
-    }
+    // Em qualquer ambiente, não sobe o servidor se a inicialização (DB/correções) falhar
+    process.exit(1);
   }
 }
 

@@ -112,9 +112,21 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
 
     const existingFee = existingResult.rows.length > 0 ? existingResult.rows[0] : null;
     
-    // Se já existe e está paga, não permite editar
+    // Se já existe e está paga: reabre a taxa (paid = false) e a entrada vinculada (received = false)
+    // Assim o usuário pode "recriar" ou corrigir sem precisar de outro mês/ano
     if (existingFee && existingFee.paid) {
-      throw new Error('Taxa já foi paga e não pode ser editada');
+      await query(
+        `UPDATE monthly_fees SET paid = FALSE, paid_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [existingFee.id]
+      );
+      if (existingFee.financial_entry_id) {
+        await query(
+          `UPDATE financial_entries SET received = FALSE, received_at = NULL WHERE id = $1 AND condominium_id = $2`,
+          [existingFee.financial_entry_id, condominiumId]
+        );
+      }
+      existingFee.paid = false;
+      existingFee.paid_at = null;
     }
 
     // Busca dados do apartamento para descrição da entrada
@@ -197,15 +209,15 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
         }
       }
     } else {
-      // Cria nova taxa
+      // Cria nova taxa (paid = FALSE: taxa recém-criada nunca vem como paga)
       // O campo 'amount' recebe o valor total (base + multas + juros)
       // Os campos 'late_fee' e 'interest' registram as multas e juros (manuais ou calculados)
       const result = await query(
         `INSERT INTO monthly_fees (
           apartment_id, condominium_id, month, year, amount, due_date,
-          late_fee, interest
+          late_fee, interest, paid
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE)
         RETURNING *`,
         [
           apartmentId, 
@@ -381,14 +393,17 @@ const markFeeAsPaid = async (feeId, condominiumId, userId, paymentData, ipAddres
 
     const updated = updateResult.rows[0];
 
-    // IMPORTANTE: Marca a entrada financeira vinculada como recebida para atualizar o saldo
-    // O saldo financeiro é calculado como: entradas recebidas - saídas pagas
-    // Portanto, ao marcar a entrada como recebida, o saldo é atualizado automaticamente
+    const financeiroService = require('./financeiroService');
+    const cacheService = require('./cacheService');
+
+    // Fluxo: taxa paga → entrada financeira deve ficar recebida e aprovada → saldo atualizado
+    // 1) Se já tem entrada vinculada: aprovar (se pendente) e marcar como recebida
+    // 2) Se não tem entrada vinculada: criar entrada já recebida e vincular à taxa
+    const receiptPdfPath = paymentReceiptPath || 'taxa_paga_sem_comprovante.pdf';
+    const receiptDetails = `Pagamento da taxa de condomínio - ${paymentMethod}`;
+    const receiptNotes = `Taxa marcada como paga${fee.late_fee > 0 || fee.interest > 0 ? '. Valor inclui multas e juros.' : ''}`;
+
     if (fee.financial_entry_id) {
-      const financeiroService = require('./financeiroService');
-      const cacheService = require('./cacheService');
-      
-      // Busca a entrada financeira
       const entryResult = await query(
         `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
         [fee.financial_entry_id, condominiumId]
@@ -396,8 +411,7 @@ const markFeeAsPaid = async (feeId, condominiumId, userId, paymentData, ipAddres
 
       if (entryResult.rows.length > 0) {
         const entry = entryResult.rows[0];
-        
-        // Se a entrada não está aprovada, aprova primeiro
+
         if (entry.review_status === 'PENDING_REVIEW') {
           try {
             await financeiroService.approveEntry(
@@ -409,19 +423,12 @@ const markFeeAsPaid = async (feeId, condominiumId, userId, paymentData, ipAddres
               userAgent
             );
           } catch (approveError) {
-            console.warn('Não foi possível aprovar entrada automaticamente:', approveError.message);
-            // Continua mesmo assim - tenta marcar como recebida diretamente
+            console.warn('Aprovar entrada:', approveError.message);
           }
         }
 
-        // Marca como recebida (atualiza o saldo financeiro)
-        // Se não conseguir usar a função markEntryAsReceived, atualiza diretamente no banco
         if (!entry.received) {
           try {
-            // Tenta usar a função do service primeiro (validações completas)
-            const receiptPdfPath = paymentReceiptPath || 'taxa_paga_sem_comprovante.pdf';
-            const receiptDetails = `Pagamento da taxa de condomínio - ${paymentMethod}`;
-            
             await financeiroService.markEntryAsReceived(
               entry.id,
               condominiumId,
@@ -430,57 +437,87 @@ const markFeeAsPaid = async (feeId, condominiumId, userId, paymentData, ipAddres
                 receiptMethod: paymentMethod,
                 receiptPdfPath: receiptPdfPath,
                 receiptDetails: receiptDetails,
-                receiptNotes: `Taxa marcada como paga automaticamente${fee.late_fee > 0 || fee.interest > 0 ? '. Valor inclui multas e juros de taxas anteriores em atraso.' : ''}`
+                receiptNotes: receiptNotes,
               },
               ipAddress,
               userAgent
             );
           } catch (receiveError) {
-            // Se falhar (ex: validações de comprovante), atualiza diretamente no banco
-            // Isso garante que o saldo seja atualizado mesmo sem comprovante
-            console.warn('Não foi possível usar markEntryAsReceived, atualizando diretamente:', receiveError.message);
-            
+            console.warn('markEntryAsReceived falhou, atualizando direto:', receiveError.message);
             await query(
               `UPDATE financial_entries 
-               SET received = TRUE, 
-                   received_at = CURRENT_TIMESTAMP,
-                   receipt_method = $1,
-                   receipt_details = $2,
-                   receipt_pdf_path = $3,
-                   receipt_notes = $4,
+               SET received = TRUE, received_at = CURRENT_TIMESTAMP,
+                   receipt_method = $1, receipt_details = $2, receipt_pdf_path = $3, receipt_notes = $4,
+                   review_status = 'APPROVED', reviewed_by = $5, reviewed_at = CURRENT_TIMESTAMP,
                    updated_at = CURRENT_TIMESTAMP
-               WHERE id = $5 AND condominium_id = $6 AND received = FALSE`,
+               WHERE id = $6 AND condominium_id = $7 AND received = FALSE`,
               [
                 paymentMethod,
-                `Pagamento da taxa de condomínio - ${paymentMethod}`,
-                paymentReceiptPath || 'taxa_paga_sem_comprovante.pdf',
-                `Taxa marcada como paga automaticamente${fee.late_fee > 0 || fee.interest > 0 ? '. Valor inclui multas e juros de taxas anteriores em atraso.' : ''}`,
+                receiptDetails,
+                receiptPdfPath,
+                receiptNotes,
+                userId,
                 entry.id,
-                condominiumId
+                condominiumId,
               ]
             );
-
-            // Registra no log
             await logAction({
-              userId: userId,
-              condominiumId: condominiumId,
+              userId,
+              condominiumId,
               action: 'MARK_RECEIVED',
               module: 'FINANCIAL',
               entityType: 'financial_entries',
               entityId: entry.id,
               beforeData: entry,
-              afterData: { ...entry, received: true, received_at: new Date() },
-              ipAddress: ipAddress,
-              userAgent: userAgent,
+              afterData: { ...entry, received: true },
+              ipAddress,
+              userAgent,
             });
           }
-
-          // Invalida cache do dashboard para atualizar saldo imediatamente
-          cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
-          cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
         }
       }
+    } else {
+      // Taxa sem entrada vinculada (ex.: criada antes do vínculo): cria entrada já recebida para atualizar saldo
+      const aptResult = await query(
+        `SELECT a.number, a.block FROM apartments a WHERE a.id = $1 AND a.condominium_id = $2`,
+        [fee.apartment_id, condominiumId]
+      );
+      const apt = aptResult.rows[0];
+      const aptLabel = apt ? (apt.block ? `Apt ${apt.number} - Bloco ${apt.block}` : `Apt ${apt.number}`) : `Taxa #${fee.id}`;
+      const entryDescription = `Taxa de Condomínio - ${aptLabel} - ${String(fee.month).padStart(2, '0')}/${fee.year} (paga)`;
+
+      const entryDate = fee.due_date ? (typeof fee.due_date === 'string' ? fee.due_date.slice(0, 10) : new Date(fee.due_date).toISOString().slice(0, 10)) : new Date().toISOString().slice(0, 10);
+      const newEntry = await financeiroService.createEntry(
+        condominiumId,
+        userId,
+        {
+          description: entryDescription,
+          amount: totalAmount,
+          entryDate: entryDate,
+          category: 'TAXA',
+          received: true,
+          linkedToId: fee.id,
+          linkedToType: 'MONTHLY_FEE',
+        },
+        ipAddress,
+        userAgent
+      );
+
+      await query(
+        `UPDATE financial_entries SET review_status = 'APPROVED', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP,
+         received = TRUE, received_at = CURRENT_TIMESTAMP,
+         receipt_method = $2, receipt_details = $3, receipt_pdf_path = $4, receipt_notes = $5, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $6 AND condominium_id = $7`,
+        [userId, paymentMethod, receiptDetails, receiptPdfPath, receiptNotes, newEntry.id, condominiumId]
+      );
+      await query(
+        `UPDATE monthly_fees SET financial_entry_id = $1 WHERE id = $2`,
+        [newEntry.id, feeId]
+      );
     }
+
+    cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
 
     await logAction({
       userId: userId,

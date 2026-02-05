@@ -7,6 +7,7 @@ const path = require('path');
 const financeiroController = require('../controllers/financeiroController');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { uploadPayment, uploadReceipt } = require('../middlewares/upload');
+const { validateNumericIdParam } = require('../middlewares/validateParams');
 
 // Todas as rotas exigem autenticação
 router.use(authenticate);
@@ -14,6 +15,9 @@ router.use(authenticate);
 // Todas as rotas exigem perfil FINANCEIRO, SINDICO ou SUBSINDICO
 // SINDICO tem acesso total ao condomínio, incluindo financeiro
 router.use(authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'));
+
+// Valida req.params.id como inteiro positivo quando presente (evita NaN em rotas com :id)
+router.use(validateNumericIdParam('id'));
 
 // Dashboard
 router.get('/dashboard', financeiroController.showDashboard);
@@ -622,8 +626,8 @@ router.post('/saidas/:id/verificar', async (req, res) => {
       category: req.body.category || 'MANUTENCAO',
     };
     
-    // Obtém roles do usuário
-    const userRoles = req.user.role ? [req.user.role] : [];
+    // Obtém roles do usuário (req.user.roles é array definido pelo middleware auth)
+    const userRoles = req.user.roles || [];
     
     await financeiroService.updateExit(
       req.params.id,
@@ -842,6 +846,7 @@ router.get('/taxas/:id/pagar', async (req, res) => {
       user: req.user,
       fee: fee,
       req: req,
+      error: req.query.error || null,
     });
   } catch (error) {
     console.error('Erro ao carregar formulário de pagamento:', error);

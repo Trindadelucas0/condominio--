@@ -22,6 +22,7 @@ const showLogin = (req, res) => {
       user_inactive: 'Usuário inativo. Entre em contato com o administrador',
       condominium_inactive: 'Condomínio inativo. Entre em contato com o administrador do sistema',
       invalid_credentials: 'Usuário ou senha incorretos',
+      no_role: 'Seu usuário não possui perfil de acesso. Entre em contato com o administrador.',
     },
   });
 };

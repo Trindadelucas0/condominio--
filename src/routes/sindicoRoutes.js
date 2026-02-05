@@ -10,10 +10,14 @@ const reportService = require('../services/reportService');
 const dashboardConfigService = require('../services/dashboardConfigService');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { getErrorMessage } = require('../utils/errorMessages');
+const { validateNumericIdParam } = require('../middlewares/validateParams');
 const fs = require('fs');
 
 // Todas as rotas exigem autenticação
 router.use(authenticate);
+
+// Valida req.params.id como inteiro positivo quando presente (evita NaN em rotas com :id)
+router.use(validateNumericIdParam('id'));
 
 // Rotas GET (leitura): FINANCEIRO pode visualizar (só olhar)
 // Rotas POST (ação): apenas SINDICO e SUBSINDICO
@@ -230,7 +234,7 @@ router.post('/saidas/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async (re
     }
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
-    const userRoles = [req.user.role];
+    const userRoles = req.user.roles || [];
     
     const result = await financeiroService.approveExit(
       req.params.id,
