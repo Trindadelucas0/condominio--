@@ -2318,7 +2318,7 @@ const reportService = {
                 return;
               }
               
-              console.log(`PDF gerado com sucesso: ${fileName} (${stats.size} bytes)`);
+              console.log(`PDF gerado com sucesso: ${finalFileName} (${stats.size} bytes)`);
               
               // Registrar log
               try {
@@ -2330,7 +2330,7 @@ const reportService = {
                   entityType: 'monthly_report',
                   entityId: null,
                   beforeData: null,
-                  afterData: { month, year, filePath, fileName, size: stats.size },
+                  afterData: { month, year, filePath, fileName: finalFileName, size: stats.size },
                   ipAddress: ipAddress,
                   userAgent: userAgent,
                 });

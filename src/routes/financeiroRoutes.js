@@ -8,6 +8,7 @@ const financeiroController = require('../controllers/financeiroController');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { uploadPayment, uploadReceipt } = require('../middlewares/upload');
 const { validateNumericIdParam } = require('../middlewares/validateParams');
+const { requireCondominium } = require('../middlewares/requireCondominium');
 
 // Todas as rotas exigem autenticação
 router.use(authenticate);
@@ -15,6 +16,9 @@ router.use(authenticate);
 // Todas as rotas exigem perfil FINANCEIRO, SINDICO ou SUBSINDICO
 // SINDICO tem acesso total ao condomínio, incluindo financeiro
 router.use(authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'));
+
+// Todas as rotas exigem condomínio (middleware único; evita repetir if condominiumId em cada handler)
+router.use(requireCondominium);
 
 // Valida req.params.id como inteiro positivo quando presente (evita NaN em rotas com :id)
 router.use(validateNumericIdParam('id'));
@@ -28,9 +32,6 @@ router.get('/entradas/:id/editar', financeiroController.showEditEntry);
 // Rota de recebimento deve vir ANTES da rota genérica /:id para evitar conflito
 router.get('/entradas/:id/receber', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId);
     if (!entry) {
@@ -56,10 +57,6 @@ router.post('/entradas/:id/receber', async (req, res) => {
   // Aplica middleware de upload
   uploadReceipt(req, res, async (err) => {
     try {
-      if (!req.user.condominiumId) {
-        return res.status(400).send('Usuário não está associado a um condomínio');
-      }
-
       if (err) {
         console.error('Erro no upload:', err);
         const financeiroService = require('../services/financeiroService');
@@ -136,9 +133,6 @@ router.post('/saidas', financeiroController.createExit);
 // Rota de pagamento deve vir ANTES da rota genérica /:id para evitar conflito
 router.get('/saidas/:id/pagar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
     const exit = exits.find(e => e.id === parseInt(req.params.id));
@@ -168,10 +162,6 @@ router.post('/saidas/:id/pagar', async (req, res) => {
   // Aplica middleware de upload
   uploadPayment(req, res, async (err) => {
     try {
-      if (!req.user.condominiumId) {
-        return res.status(400).send('Usuário não está associado a um condomínio');
-      }
-
       if (err) {
         console.error('Erro no upload:', err);
         const financeiroService = require('../services/financeiroService');
@@ -250,9 +240,6 @@ router.get('/consumo/novo', financeiroController.showCreateConsumption);
 router.post('/consumo', financeiroController.createConsumption);
 router.get('/consumo', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     
     // Extrai filtros dos query parameters
@@ -303,9 +290,6 @@ router.get('/consumo', async (req, res) => {
 // Centros de Custo
 router.get('/centros-custo', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
     res.render('administrativo/financeiro/centros-custo/list', {
@@ -334,10 +318,6 @@ router.get('/centros-custo/novo', async (req, res) => {
 
 router.post('/centros-custo', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
-
     const financeiroService = require('../services/financeiroService');
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -371,9 +351,6 @@ router.post('/centros-custo', async (req, res) => {
 // Entradas rejeitadas (para corrigir)
 router.get('/entradas-rejeitadas', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     const entries = await financeiroService.listRejectedEntries(req.user.condominiumId);
     res.render('financeiro/entradas-rejeitadas', {
@@ -391,9 +368,6 @@ router.get('/entradas-rejeitadas', async (req, res) => {
 // Orçamentos aguardando análise do financeiro
 router.get('/orcamentos-pendentes', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const orcamentoService = require('../services/orcamentoService');
     const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'PENDING_FINANCEIRO');
     
@@ -416,9 +390,6 @@ router.get('/orcamentos-pendentes', async (req, res) => {
 // Revisar orçamento (financeiro)
 router.post('/orcamentos/:id/revisar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const orcamentoService = require('../services/orcamentoService');
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -443,9 +414,6 @@ router.post('/orcamentos/:id/revisar', async (req, res) => {
 // Orçamentos aprovados (para liberar)
 router.get('/orcamentos-aprovados', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const orcamentoService = require('../services/orcamentoService');
     const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'APPROVED');
     
@@ -469,9 +437,6 @@ router.get('/orcamentos-aprovados', async (req, res) => {
 // Orçamentos rejeitados
 router.get('/orcamentos-rejeitados', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const orcamentoService = require('../services/orcamentoService');
     
     // Permite filtrar por status (mas por padrão mostra apenas REJECTED)
@@ -504,9 +469,6 @@ router.get('/orcamentos-rejeitados', async (req, res) => {
 // Detalhes de orçamento rejeitado (ou qualquer orçamento para o financeiro)
 router.get('/orcamentos-rejeitados/:id', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const orcamentoService = require('../services/orcamentoService');
     const budgetRequestId = parseInt(req.params.id);
     
@@ -533,9 +495,6 @@ router.get('/orcamentos-rejeitados/:id', async (req, res) => {
 // Saídas que precisam verificação (criadas automaticamente de orçamentos)
 router.get('/saidas-verificacao', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     const { query } = require('../config/database');
     
@@ -569,9 +528,6 @@ router.get('/saidas-verificacao', async (req, res) => {
 // Verificar e completar saída
 router.get('/saidas/:id/verificar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
     const exit = exits.find(e => e.id === parseInt(req.params.id));
@@ -610,9 +566,6 @@ router.get('/saidas/:id/verificar', async (req, res) => {
 
 router.post('/saidas/:id/verificar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const financeiroService = require('../services/financeiroService');
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -658,9 +611,6 @@ router.post('/saidas/:id/verificar', async (req, res) => {
 // Liberar ou retornar orçamento (financeiro)
 router.post('/orcamentos/:id/:action', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const { action } = req.params; // 'liberar' ou 'retornar'
     if (action !== 'liberar' && action !== 'retornar') {
       return res.status(400).send('Ação inválida');
@@ -691,9 +641,6 @@ router.post('/orcamentos/:id/:action', async (req, res) => {
 const monthlyClosureService = require('../services/monthlyClosureService');
 router.get('/fechamento-mensal', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const closures = await monthlyClosureService.listClosures(req.user.condominiumId, { limit: 12 });
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
@@ -741,9 +688,6 @@ router.get('/fechamento-mensal', async (req, res) => {
 
 router.post('/fechamento-mensal/fechar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const { month, year, notes, createNewClosure, action, reserveFundAmount } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -772,9 +716,6 @@ router.post('/fechamento-mensal/fechar', async (req, res) => {
 
 router.post('/fechamento-mensal/:id/reabrir', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const { reason } = req.body;
     if (!reason || !reason.trim()) {
       return res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent('Motivo da reabertura é obrigatório'));
@@ -811,9 +752,6 @@ router.get('/apartamentos/novo', (req, res) => {
 router.get('/apartamentos', inadimplenciaController.listApartments);
 router.post('/apartamentos', inadimplenciaController.createApartment);
 router.get('/taxas/nova', (req, res) => {
-  if (!req.user.condominiumId) {
-    return res.status(400).send('Usuário não está associado a um condomínio');
-  }
   const inadimplenciaService = require('../services/inadimplenciaService');
   inadimplenciaService.listApartments(req.user.condominiumId).then(apartments => {
     res.render('administrativo/financeiro/taxas/form', {
@@ -829,9 +767,6 @@ router.get('/taxas/nova', (req, res) => {
 });
 router.get('/taxas/:id/pagar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const inadimplenciaService = require('../services/inadimplenciaService');
     const fees = await inadimplenciaService.listMonthlyFees(req.user.condominiumId, { limit: 1000 });
     const fee = fees.find(f => f.id === parseInt(req.params.id));
@@ -861,9 +796,6 @@ router.post('/taxas/:id/pagar', uploadPayment, inadimplenciaController.markFeeAs
 const reportService = require('../services/reportService');
 router.get('/relatorios', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const reports = await reportService.listGeneratedReports(req.user.condominiumId);
     res.render('administrativo/financeiro/relatorios/list', {
       title: 'Relatórios',
@@ -879,9 +811,6 @@ router.get('/relatorios', async (req, res) => {
 
 router.post('/relatorios/mensal/gerar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const { month, year } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -895,146 +824,38 @@ router.post('/relatorios/mensal/gerar', async (req, res) => {
       userAgent
     );
     
-    res.redirect(`/financeiro/relatorios?success=generated&file=${report.filePath}`);
+    const fileParam = report.fileName || (report.filePath ? path.basename(report.filePath) : '');
+    res.redirect(`/financeiro/relatorios?success=generated&file=${encodeURIComponent(fileParam)}`);
   } catch (error) {
     console.error('Erro ao gerar relatório:', error);
     res.redirect('/financeiro/relatorios?error=' + encodeURIComponent(error.message));
   }
 });
 
-// Visualizar relatório PDF no navegador
+// Visualizar relatório PDF no navegador (helper único: serveReportFile)
+const { serveReportFile } = require('../utils/serveReportFile');
 router.get('/relatorios/visualizar', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
-    
-    const fileName = req.query.file;
-    if (!fileName) {
-      return res.status(400).send('Nome do arquivo não fornecido');
-    }
-    
-    const path = require('path');
-    const fs = require('fs');
-    const reportsDir = path.join(__dirname, '../../uploads/reports');
-    
-    // Normalizar o nome do arquivo para evitar problemas com caminhos
-    const normalizedFileName = path.basename(fileName);
-    const filePath = path.join(reportsDir, normalizedFileName);
-    
-    // Verificar se o arquivo existe
-    if (!fs.existsSync(filePath)) {
-      console.error('Arquivo não encontrado:', filePath);
-      return res.status(404).send('Relatório não encontrado');
-    }
-    
-    // Verificar se é PDF (segurança)
-    if (!normalizedFileName.endsWith('.pdf')) {
-      return res.status(400).send('Apenas arquivos PDF podem ser visualizados');
-    }
-    
-    // Verificar tamanho do arquivo
-    const stats = fs.statSync(filePath);
-    if (stats.size === 0) {
-      console.error('Arquivo PDF está vazio:', filePath);
-      return res.status(500).send('O arquivo PDF está vazio ou corrompido');
-    }
-    
-    // Verificar se o arquivo está dentro do diretório de relatórios (segurança)
-    const resolvedPath = path.resolve(filePath);
-    const resolvedDir = path.resolve(reportsDir);
-    if (!resolvedPath.startsWith(resolvedDir)) {
-      return res.status(403).send('Acesso negado');
-    }
-    
-    console.log(`Enviando PDF para visualização: ${normalizedFileName} (${stats.size} bytes)`);
-    
-    // Enviar PDF para visualização no navegador usando caminho absoluto
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(normalizedFileName)}"`);
-    res.setHeader('Content-Length', stats.size);
-    
-    // Usar sendFile com caminho absoluto e callback para tratamento de erros
-    res.sendFile(resolvedPath, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${encodeURIComponent(normalizedFileName)}"`,
-        'Content-Length': stats.size
-      }
-    }, (err) => {
-      if (err) {
-        console.error('Erro ao enviar arquivo PDF:', err);
-        if (!res.headersSent) {
-          res.status(500).send('Erro ao visualizar relatório: ' + err.message);
-        }
-      } else {
-        console.log('PDF enviado com sucesso para visualização');
-      }
-    });
+    await serveReportFile(req, res, 'inline');
   } catch (error) {
     console.error('Erro ao visualizar relatório:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Erro ao visualizar relatório: ' + error.message);
-    }
+    if (!res.headersSent) res.status(500).send('Erro ao visualizar relatório');
   }
 });
 
-// Baixar relatório
+// Baixar relatório (mesmo helper, disposition attachment)
 router.get('/relatorios/download', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
-    
-    const fileName = req.query.file;
-    if (!fileName) {
-      return res.status(400).send('Nome do arquivo não fornecido');
-    }
-    
-    const path = require('path');
-    const fs = require('fs');
-    const reportsDir = path.join(__dirname, '../../uploads/reports');
-    
-    // Normalizar o nome do arquivo para evitar problemas com caminhos
-    const normalizedFileName = path.basename(fileName);
-    const filePath = path.join(reportsDir, normalizedFileName);
-    
-    // Verificar se o arquivo existe
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).send('Relatório não encontrado');
-    }
-    
-    // Verificar se o arquivo está dentro do diretório de relatórios (segurança)
-    const resolvedPath = path.resolve(filePath);
-    const resolvedDir = path.resolve(reportsDir);
-    if (!resolvedPath.startsWith(resolvedDir)) {
-      return res.status(403).send('Acesso negado');
-    }
-    
-    // Enviar arquivo para download usando caminho absoluto
-    res.download(resolvedPath, normalizedFileName, (err) => {
-      if (err) {
-        console.error('Erro ao baixar relatório:', err);
-        if (!res.headersSent) {
-          res.status(500).send('Erro ao baixar relatório: ' + err.message);
-        }
-      }
-    });
+    await serveReportFile(req, res, 'attachment');
   } catch (error) {
     console.error('Erro ao baixar relatório:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Erro ao baixar relatório: ' + error.message);
-    }
+    if (!res.headersSent) res.status(500).send('Erro ao baixar relatório');
   }
 });
 
 // Excluir relatório
 router.post('/relatorios/excluir', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
-    
     const fileName = req.body.fileName || req.query.fileName;
     if (!fileName) {
       return res.status(400).send('Nome do arquivo não fornecido');
@@ -1060,9 +881,6 @@ router.post('/relatorios/excluir', async (req, res) => {
 const reserveFundService = require('../services/reserveFundService');
 router.get('/fundo-reserva', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const fund = await reserveFundService.getReserveFund(req.user.condominiumId);
     res.render('administrativo/financeiro/fundo-reserva', {
       title: 'Fundo de Reserva',
@@ -1078,9 +896,6 @@ router.get('/fundo-reserva', async (req, res) => {
 
 router.post('/fundo-reserva', async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
     

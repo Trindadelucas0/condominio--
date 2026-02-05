@@ -3,11 +3,19 @@
 
 const { query } = require('../config/database');
 
+// Whitelist de tabelas permitidas (evita SQL injection se tableName vier de fonte externa)
+// Tabelas usadas por validateCondominiumOwnership (evita SQL injection)
+const ALLOWED_OWNERSHIP_TABLES = ['financial_exits', 'financial_entries'];
+
 // Função para validar que um registro pertence ao condomínio
-// Recebe: tableName, recordId, condominiumId
+// Recebe: tableName, recordId, condominiumId (tableName deve estar na whitelist)
 // Retorna: boolean
 const validateCondominiumOwnership = async (tableName, recordId, condominiumId) => {
   try {
+    if (!ALLOWED_OWNERSHIP_TABLES.includes(tableName)) {
+      console.error(`validateCondominiumOwnership: tabela não permitida: ${tableName}`);
+      return false;
+    }
     const result = await query(
       `SELECT condominium_id FROM ${tableName} WHERE id = $1`,
       [recordId]

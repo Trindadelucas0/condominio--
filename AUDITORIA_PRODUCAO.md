@@ -100,10 +100,7 @@
 
 ## 5️⃣ VALIDAÇÕES QUE ESTÃO FALTANDO
 
-### 5.1 Login
-- **Onde:** `authController.processLogin`, `authService.login`.
-- **Faltando:** Limite de tentativas (rate limit) por IP ou por usuário; bloqueio temporário após N falhas. Sem isso, o sistema fica exposto a força bruta na senha.
-- **Faltando:** Validação de tamanho/caracteres em `username` e `password` (evitar payloads gigantes ou caracteres especiais que possam afetar log ou downstream).
+
 
 ### 5.2 Entrada de valores e datas no financeiro
 - **Onde:** Vários formulários (entradas, saídas, taxas, fechamento).
@@ -114,9 +111,7 @@
 - **Faltando:** Em várias rotas a verificação de “este recurso pertence ao condomínio do usuário” é feita indiretamente (ex.: listar tudo do condomínio e fazer `find(id)`). Se houver erro de filtro ou outra rota que busque por id sem condominium_id, pode vazar dado de outro condomínio. O padrão correto é: em toda operação que usa `entityId`, passar também `condominiumId` e o service/query filtrar por ambos.
 - **Já existe:** `validateCondominiumOwnership` e uso em parte do financeiroService; falta aplicar de forma sistemática em todos os endpoints que alteram/deletam por id.
 
-### 5.4 Upload de arquivos
-- **Onde:** Multer em financeiro (receipts, payments), orçamentos, contratos, etc.
-- **Faltando:** Validação de tipo por conteúdo (magic bytes), não só por extensão/mimetype do cliente. Limite de tamanho está definido; falta garantir que nomes de arquivo salvos não permitem path traversal (já há uso de `path.basename` em relatórios; revisar todos os pontos que gravam `req.file.originalname` ou `req.file.filename` em banco ou em disco).
+
 
 ### 5.5 Feedback ao usuário
 - **Onde:** Vários `res.redirect('...?error=' + encodeURIComponent(error.message))`.
@@ -137,10 +132,6 @@
 - **Problema:** Dificulta teste unitário (mock) e obscurece dependências. Ciclos de dependência podem aparecer (A chama B, B chama A).
 - **Sugestão:** Injetar dependências no topo do módulo ou passar como parâmetro onde fizer sentido; evitar require dinâmico dentro de função.
 
-### 6.3 Organização de pastas
-- **Estrutura atual:** `controllers`, `services`, `routes`, `database` (com muitos SQL e scripts de migração/correção), `utils`.
-- **Problema:** `database` mistura init, migrations, corrections e scripts avulsos (ex.: `fix_monthly_closures_constraint.js`). Não fica claro o que rodar em qual ordem em um deploy novo.
-- **Sugestão:** Separar: `database/schema` (init), `database/migrations` (com ordem definida), `database/scripts` (one-off) e documentar no README o fluxo de deploy (init → migrations → aplicação).
 
 ### 6.4 Views recebendo objeto `req` inteiro
 - **Onde:** Várias chamadas `res.render(..., { ..., req: req })`.
@@ -151,10 +142,6 @@
 
 ## 7️⃣ RISCOS EM PRODUÇÃO
 
-### 7.1 Sessão / JWT
-- **Onde:** Cookies `accessToken`, `refreshToken`, `token`; middleware `authenticate`.
-- **Riscos:** Em produção, `secure: process.env.NODE_ENV === 'production'` deve estar true (está). Falta garantir que em produção não se usa `sameSite: 'lax'` em contexto que exija `strict` (já está `strict`). Refresh em alta concorrência: várias abas renovando ao mesmo tempo podem gerar múltiplas chamadas a `refreshAccessToken`; garantir que o refresh token não é reutilizável de forma que quebre sessões (comportamento do jwtHelper não foi auditado em detalhe).
-- **Recomendação:** Revisar política de rotação de refresh token e expiração; considerar blacklist de tokens em logout se necessário.
 
 ### 7.2 Concorrência
 - **Onde:** Fechamento mensal, aprovação de saída, “marcar como pago”.

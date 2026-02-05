@@ -11,10 +11,14 @@ const dashboardConfigService = require('../services/dashboardConfigService');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { getErrorMessage } = require('../utils/errorMessages');
 const { validateNumericIdParam } = require('../middlewares/validateParams');
+const { requireCondominium } = require('../middlewares/requireCondominium');
 const fs = require('fs');
 
 // Todas as rotas exigem autenticação
 router.use(authenticate);
+
+// Todas as rotas exigem condomínio (middleware único; evita repetir if condominiumId em cada handler)
+router.use(requireCondominium);
 
 // Valida req.params.id como inteiro positivo quando presente (evita NaN em rotas com :id)
 router.use(validateNumericIdParam('id'));
@@ -41,9 +45,6 @@ router.get('/tarefas', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), sindico
 // Relatório de tarefas - FINANCEIRO pode gerar (DEVE vir ANTES da rota com parâmetro :id)
 router.get('/tarefas/relatorio', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     
     const filters = {
       status: req.query.status,
@@ -146,9 +147,6 @@ router.get('/manutencoes/:id', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'),
 const financeiroService = require('../services/financeiroService');
 router.get('/entradas-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const entries = await financeiroService.listPendingEntries(req.user.condominiumId);
     res.render('sindico/entradas-pendentes', {
       title: 'Entradas Aguardando Análise',
@@ -165,9 +163,6 @@ router.get('/entradas-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO
 // Aprovação de saídas financeiras - FINANCEIRO pode visualizar, mas só SINDICO/SUBSINDICO aprova
 router.get('/saidas-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const exits = await financeiroService.listExits(req.user.condominiumId, { 
       paymentStatus: 'PENDING',
       limit: 1000 
@@ -185,9 +180,6 @@ router.get('/saidas-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO')
 });
 router.post('/entradas/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
     await financeiroService.approveEntry(
@@ -206,9 +198,6 @@ router.post('/entradas/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async (
 });
 router.post('/entradas/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
     await financeiroService.rejectEntry(
@@ -229,9 +218,6 @@ router.post('/entradas/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), async 
 // Aprovar ou rejeitar saída financeira
 router.post('/saidas/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
     const userRoles = req.user.roles || [];
@@ -263,9 +249,6 @@ router.post('/saidas/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async (re
 
 router.post('/saidas/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     if (!req.body.rejectionReason || !req.body.rejectionReason.trim()) {
       const errorMessage = getErrorMessage({ message: 'REJECTION_REASON_REQUIRED' });
       return res.redirect('/sindico/saidas-pendentes?error=' + encodeURIComponent(errorMessage));
@@ -291,9 +274,6 @@ router.post('/saidas/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), async (r
 // Orçamentos pendentes de aprovação
 router.get('/orcamentos-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const orcamentoService = require('../services/orcamentoService');
     const budgets = await orcamentoService.listBudgetRequestsByStatus(req.user.condominiumId, 'PENDING_SINDICO');
     
@@ -329,9 +309,6 @@ router.get('/orcamentos-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDI
 // Aprovar ou rejeitar orçamento
 router.post('/orcamentos/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     
     // Debug: verifica se approvedQuoteId foi enviado
     console.log('[APROVAR ORÇAMENTO] Dados recebidos:', {
@@ -369,9 +346,6 @@ router.post('/orcamentos/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async
 
 router.post('/orcamentos/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const orcamentoService = require('../services/orcamentoService');
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -396,9 +370,6 @@ router.post('/orcamentos/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), asyn
 // Aprovação de ocorrências
 router.get('/ocorrencias-pendentes-aprovacao', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const sindicoService = require('../services/sindicoService');
     const occurrences = await sindicoService.listPendingOccurrencesForApproval(req.user.condominiumId, req.user.id);
     res.render('sindico/ocorrencias-aprovacao', {
@@ -414,9 +385,6 @@ router.get('/ocorrencias-pendentes-aprovacao', authorize('FINANCEIRO', 'SINDICO'
 });
 router.post('/ocorrencias/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const sindicoService = require('../services/sindicoService');
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -435,9 +403,6 @@ router.post('/ocorrencias/:id/aprovar', authorize('SINDICO', 'SUBSINDICO'), asyn
 });
 router.post('/ocorrencias/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     const sindicoService = require('../services/sindicoService');
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
@@ -461,9 +426,6 @@ router.post('/ocorrencias/:id/rejeitar', authorize('SINDICO', 'SUBSINDICO'), asy
 // Relatórios
 router.get('/aprovacoes/relatorio', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
     
     const format = req.query.format || 'pdf'; // pdf ou excel
     const filters = {
@@ -525,10 +487,6 @@ router.get('/aprovacoes/relatorio', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDI
 // Configuração do dashboard
 router.post('/dashboard/config', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).json({ success: false, error: 'Usuário não está associado a um condomínio' });
-    }
-    
     const widgets = req.body.widgets;
     
     await dashboardConfigService.saveUserConfig(
@@ -552,10 +510,6 @@ router.post('/dashboard/config', authorize('SINDICO', 'SUBSINDICO'), async (req,
 // Resetar configuração do dashboard
 router.post('/dashboard/config/reset', authorize('SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
-    if (!req.user.condominiumId) {
-      return res.status(400).json({ success: false, error: 'Usuário não está associado a um condomínio' });
-    }
-    
     await dashboardConfigService.resetToDefault(req.user.id, req.user.condominiumId);
     
     const cacheService = require('../services/cacheService');
