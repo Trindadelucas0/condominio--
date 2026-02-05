@@ -849,6 +849,10 @@ const getDashboardStats = async (condominiumId) => {
     );
     const prevMonthExits = parseFloat(prevMonthExitsResult.rows[0].total);
 
+    // Saldo do mês atual e do mês passado (entradas - saídas do mês)
+    const saldoMesAtual = currentMonthEntries - currentMonthExits;
+    const saldoMesPassado = prevMonthEntries - prevMonthExits;
+
     // Variações percentuais
     const entriesVariation = prevMonthEntries > 0 
       ? ((currentMonthEntries - prevMonthEntries) / prevMonthEntries) * 100 
@@ -979,6 +983,8 @@ const getDashboardStats = async (condominiumId) => {
       stats: {
         saldo: balance,
         balance: balance,
+        saldoMesAtual,
+        saldoMesPassado,
         totalEntradas: totalEntries,
         totalSaidas: totalExitsPaid + totalExitsApproved,
         rejectedEntries,
@@ -1133,7 +1139,7 @@ const getEntryById = async (entryId, condominiumId) => {
        FROM financial_entries fe
        LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id AND cc.condominium_id = $2
        LEFT JOIN users u ON fe.created_by = u.id
-       WHERE fe.id = $1 AND fe.condominium_id = $2`,
+       WHERE fe.id = $1 AND fe.condominium_id = $2 AND fe.deleted_at IS NULL`,
       [entryId, condominiumId]
     );
 
@@ -1405,6 +1411,76 @@ const listEntries = async (condominiumId, filters = {}) => {
     return result.rows;
   } catch (error) {
     console.error('Erro ao listar entradas financeiras:', error);
+    throw error;
+  }
+};
+
+// Listar entradas excluídas (soft delete) para recuperação
+const listDeletedEntries = async (condominiumId, limit = 50) => {
+  try {
+    const result = await query(
+      `SELECT fe.*, cc.name as cost_center_name, u.full_name as created_by_name,
+              du.full_name as deleted_by_name
+       FROM financial_entries fe
+       LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id AND cc.condominium_id = fe.condominium_id
+       LEFT JOIN users u ON fe.created_by = u.id
+       LEFT JOIN users du ON fe.deleted_by = du.id
+       WHERE fe.condominium_id = $1 AND fe.deleted_at IS NOT NULL
+       ORDER BY fe.deleted_at DESC
+       LIMIT $2`,
+      [condominiumId, limit]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Erro ao listar entradas excluídas:', error);
+    throw error;
+  }
+};
+
+// Restaurar entrada que foi excluída (soft delete)
+const restoreEntry = async (entryId, condominiumId, userId, ipAddress, userAgent) => {
+  try {
+    const currentResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+    if (currentResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+    const current = currentResult.rows[0];
+    if (!current.deleted_at) {
+      throw new Error('Entrada não está excluída');
+    }
+
+    await query(
+      `UPDATE financial_entries
+       SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    const updatedResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+    const updated = updatedResult.rows[0];
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'RESTORE',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress,
+      userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao restaurar entrada:', error);
     throw error;
   }
 };
@@ -2039,6 +2115,8 @@ module.exports = {
   updateEntry,
   deleteEntry,
   listEntries,
+  listDeletedEntries,
+  restoreEntry,
   approveEntry,
   rejectEntry,
   listPendingEntries,

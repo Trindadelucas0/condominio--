@@ -138,11 +138,11 @@
     <% } %>
 
     <% if (widget.key === 'balance') { %>
-      <!-- Saldo Financeiro -->
+      <!-- Saldo total do condomínio -->
       <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 <%= stats.balance >= 0 ? 'border-green-500' : 'border-red-500' %> card-elevate animate-fade-in-up" style="animation-delay: <%= index * 0.1 %>s">
         <div class="flex items-center justify-between mb-4">
           <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Saldo Atual</p>
+            <p class="text-sm font-semibold text-gray-600 mb-1">Saldo total do condomínio</p>
             <p class="text-4xl font-bold bg-gradient-to-r <%= stats.balance >= 0 ? 'from-green-600 to-emerald-600' : 'from-red-600 to-red-700' %> bg-clip-text text-transparent">
               R$ <%= stats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
             </p>

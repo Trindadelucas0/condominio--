@@ -346,103 +346,86 @@
       </div>
     </div>
 
-    <!-- Cards de KPIs principais - Design Moderno -->
+    <!-- Cards de KPIs principais - Saldo total, mês atual, mês passado + Média -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <!-- Saldo Atual - Card Melhorado para Legibilidade -->
       <% 
         const balance = stats.balance !== undefined ? stats.balance : (stats.saldo !== undefined ? stats.saldo : 0);
         const balanceValue = typeof balance === 'number' ? balance : 0;
-        const isPositive = balanceValue >= 0;
-        const formattedBalance = balanceValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const saldoMesAtual = typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0;
+        const saldoMesPassado = typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0;
       %>
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= isPositive ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up">
+      <!-- Saldo total do condomínio -->
+      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= balanceValue >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <p class="text-gray-500 text-sm font-medium mb-1">Saldo Atual</p>
+              <p class="text-gray-500 text-sm font-medium mb-1">Saldo total do condomínio</p>
               <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 <%= isPositive ? 'bg-green-500' : 'bg-red-500' %> rounded-full"></div>
-                <span class="text-xs font-semibold <%= isPositive ? 'text-green-600' : 'text-red-600' %> uppercase tracking-wide">
-                  <%= isPositive ? 'Positivo' : 'Negativo' %>
+                <div class="w-2 h-2 <%= balanceValue >= 0 ? 'bg-green-500' : 'bg-red-500' %> rounded-full"></div>
+                <span class="text-xs font-semibold <%= balanceValue >= 0 ? 'text-green-600' : 'text-red-600' %> uppercase tracking-wide">
+                  <%= balanceValue >= 0 ? 'Positivo' : 'Negativo' %>
                 </span>
               </div>
             </div>
-            <div class="<%= isPositive ? 'bg-green-100' : 'bg-red-100' %> rounded-lg p-3">
-              <svg class="w-8 h-8 <%= isPositive ? 'text-green-600' : 'text-red-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="<%= balanceValue >= 0 ? 'bg-green-100' : 'bg-red-100' %> rounded-lg p-3">
+              <svg class="w-8 h-8 <%= balanceValue >= 0 ? 'text-green-600' : 'text-red-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
           </div>
           <div class="border-t border-gray-100 pt-4">
-            <p class="text-4xl font-bold <%= isPositive ? 'text-green-600' : 'text-red-600' %> leading-tight">
+            <p class="text-4xl font-bold <%= balanceValue >= 0 ? 'text-green-600' : 'text-red-600' %> leading-tight">
               <span class="text-2xl font-semibold text-gray-500 mr-1">R$</span>
-              <%= formattedBalance %>
+              <%= balanceValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
             </p>
+            <p class="text-xs text-gray-500 mt-1">Todos os meses (incl. fechados)</p>
           </div>
         </div>
       </div>
 
-      <!-- Entradas do Mês - Card Melhorado -->
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 border-green-500 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-100">
+      <!-- Saldo do mês atual -->
+      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= saldoMesAtual >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-100">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <p class="text-gray-500 text-sm font-medium mb-1">Entradas</p>
-              <p class="text-xs text-gray-400">Mês Atual</p>
+              <p class="text-gray-500 text-sm font-medium mb-1">Saldo do mês atual</p>
             </div>
-            <div class="bg-green-100 rounded-lg p-3">
-              <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            <div class="<%= saldoMesAtual >= 0 ? 'bg-green-100' : 'bg-red-100' %> rounded-lg p-3">
+              <svg class="w-8 h-8 <%= saldoMesAtual >= 0 ? 'text-green-600' : 'text-red-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
               </svg>
             </div>
           </div>
-          <div class="border-t border-gray-100 pt-4 mb-3">
-            <p class="text-4xl font-bold text-green-600 leading-tight">
+          <div class="border-t border-gray-100 pt-4">
+            <p class="text-4xl font-bold <%= saldoMesAtual >= 0 ? 'text-green-600' : 'text-red-600' %> leading-tight">
               <span class="text-2xl font-semibold text-gray-500 mr-1">R$</span>
-              <%= typeof kpis !== 'undefined' && kpis.currentMonth ? kpis.currentMonth.entries.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0,00' %>
+              <%= saldoMesAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
             </p>
+            <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês corrente</p>
           </div>
-          <% if (typeof kpis !== 'undefined' && kpis.variations && kpis.variations.entries !== 0) { %>
-            <div class="flex items-center space-x-2 pt-2">
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold <%= kpis.variations.entries >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
-                <span class="mr-1"><%= kpis.variations.entries >= 0 ? '↑' : '↓' %></span>
-                <%= Math.abs(kpis.variations.entries).toFixed(1) %>%
-              </span>
-              <span class="text-xs text-gray-500">vs mês anterior</span>
-            </div>
-          <% } %>
         </div>
       </div>
 
-      <!-- Saídas do Mês - Card Melhorado -->
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 border-red-500 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-200">
+      <!-- Saldo do mês passado -->
+      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= saldoMesPassado >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-200">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <p class="text-gray-500 text-sm font-medium mb-1">Saídas</p>
-              <p class="text-xs text-gray-400">Mês Atual</p>
+              <p class="text-gray-500 text-sm font-medium mb-1">Saldo do mês passado</p>
             </div>
-            <div class="bg-red-100 rounded-lg p-3">
-              <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+            <div class="<%= saldoMesPassado >= 0 ? 'bg-green-100' : 'bg-red-100' %> rounded-lg p-3">
+              <svg class="w-8 h-8 <%= saldoMesPassado >= 0 ? 'text-green-600' : 'text-red-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
               </svg>
             </div>
           </div>
-          <div class="border-t border-gray-100 pt-4 mb-3">
-            <p class="text-4xl font-bold text-red-600 leading-tight">
+          <div class="border-t border-gray-100 pt-4">
+            <p class="text-4xl font-bold <%= saldoMesPassado >= 0 ? 'text-green-600' : 'text-red-600' %> leading-tight">
               <span class="text-2xl font-semibold text-gray-500 mr-1">R$</span>
-              <%= typeof kpis !== 'undefined' && kpis.currentMonth ? kpis.currentMonth.exits.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0,00' %>
+              <%= saldoMesPassado.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
             </p>
+            <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês anterior</p>
           </div>
-          <% if (typeof kpis !== 'undefined' && kpis.variations && kpis.variations.exits !== 0) { %>
-            <div class="flex items-center space-x-2 pt-2">
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold <%= kpis.variations.exits >= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' %>">
-                <span class="mr-1"><%= kpis.variations.exits >= 0 ? '↑' : '↓' %></span>
-                <%= Math.abs(kpis.variations.exits).toFixed(1) %>%
-              </span>
-              <span class="text-xs text-gray-500">vs mês anterior</span>
-            </div>
-          <% } %>
         </div>
       </div>
 

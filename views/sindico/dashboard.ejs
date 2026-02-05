@@ -107,35 +107,32 @@
         <h2 class="text-xl font-bold text-gray-900">Resumo Financeiro</h2>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-l-4 border-green-500">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Entradas</p>
-          <p class="text-2xl font-bold text-green-700">R$ <%= stats.totalEntries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
-          <% if (typeof analytics !== 'undefined' && analytics.comparison && analytics.comparison.variations.entries !== 0) { %>
-            <p class="text-xs mt-2 <%= analytics.comparison.variations.entries >= 0 ? 'text-green-600' : 'text-red-600' %>">
-              <%= analytics.comparison.variations.entries >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.entries).toFixed(1) %>% vs mês anterior
-            </p>
-          <% } %>
-        </div>
-        <div class="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 border-l-4 border-red-500">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Saídas Pagas</p>
-          <p class="text-2xl font-bold text-red-700">R$ <%= stats.totalExitsPaid.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
-          <% if (typeof analytics !== 'undefined' && analytics.comparison && analytics.comparison.variations.exits !== 0) { %>
-            <p class="text-xs mt-2 <%= analytics.comparison.variations.exits >= 0 ? 'text-red-600' : 'text-green-600' %>">
-              <%= analytics.comparison.variations.exits >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.exits).toFixed(1) %>% vs mês anterior
-            </p>
-          <% } %>
-        </div>
         <div class="bg-gradient-to-r <%= stats.balance >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= stats.balance >= 0 ? 'border-green-500' : 'border-red-500' %>">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo</p>
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo total do condomínio</p>
           <p class="text-2xl font-bold <%= stats.balance >= 0 ? 'text-green-700' : 'text-red-700' %>">
             R$ <%= stats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
           </p>
+          <p class="text-xs text-gray-500 mt-1">Todos os meses (incl. fechados)</p>
           <% if (typeof analytics !== 'undefined' && analytics.trend) { %>
             <p class="text-xs mt-2 <%= analytics.trend.trend === 'GROWING' ? 'text-green-600' : analytics.trend.trend === 'DECLINING' ? 'text-red-600' : 'text-gray-600' %>">
               <% if (analytics.trend.trend === 'GROWING') { %>📈 Crescendo<% } else if (analytics.trend.trend === 'DECLINING') { %>📉 Declinando<% } else { %>➡️ Estável<% } %>
               (<%= analytics.trend.rate.toFixed(1) %>%)
             </p>
           <% } %>
+        </div>
+        <div class="bg-gradient-to-r <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0) >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0) >= 0 ? 'border-green-500' : 'border-red-500' %>">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo do mês atual</p>
+          <p class="text-2xl font-bold <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0) >= 0 ? 'text-green-700' : 'text-red-700' %>">
+            R$ <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          </p>
+          <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês corrente</p>
+        </div>
+        <div class="bg-gradient-to-r <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0) >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0) >= 0 ? 'border-green-500' : 'border-red-500' %>">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo do mês passado</p>
+          <p class="text-2xl font-bold <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0) >= 0 ? 'text-green-700' : 'text-red-700' %>">
+            R$ <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          </p>
+          <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês anterior</p>
         </div>
       </div>
     </div>
@@ -512,7 +509,7 @@
       { key: 'pending_approvals', title: 'Aprovações Pendentes', visible: true },
       { key: 'critical_alerts', title: 'Alertas Críticos', visible: true },
       { key: 'warning_alerts', title: 'Alertas de Aviso', visible: true },
-      { key: 'balance', title: 'Saldo Financeiro', visible: true },
+      { key: 'balance', title: 'Saldo total do condomínio', visible: true },
       { key: 'current_month_expenses', title: 'Gastos do Mês', visible: true },
       { key: 'delinquency_rate', title: 'Inadimplência', visible: true },
       { key: 'pending_expenses', title: 'Despesas Pendentes', visible: true },

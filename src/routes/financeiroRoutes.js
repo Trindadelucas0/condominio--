@@ -122,9 +122,11 @@ router.post('/entradas/:id/receber', async (req, res) => {
 });
 // Rota de exclusão deve vir ANTES da rota genérica /:id para evitar conflito
 router.post('/entradas/:id/excluir', financeiroController.deleteEntry);
+router.post('/entradas/:id/restaurar', financeiroController.restoreEntry);
 // Rota de atualização
 router.post('/entradas/:id', financeiroController.updateEntry);
 router.post('/entradas', financeiroController.createEntry);
+router.get('/entradas-excluidas', financeiroController.listDeletedEntries);
 router.get('/entradas', financeiroController.listEntries);
 
 // Saídas

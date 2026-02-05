@@ -98,13 +98,18 @@
             </div>
           </div>
         </div>
-        <a href="/financeiro/entradas/nova" class="group relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
-          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
-          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-          </svg>
-          <span class="relative z-10">Nova Entrada</span>
-        </a>
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="/financeiro/entradas/nova" class="group relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+            <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+            <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span class="relative z-10">Nova Entrada</span>
+          </a>
+          <a href="/financeiro/entradas-excluidas" class="inline-flex items-center px-4 py-2 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium transition-colors">
+            Ver entradas excluídas
+          </a>
+        </div>
       </div>
 
       <!-- Mensagens Modernas -->
@@ -134,6 +139,21 @@
             <div>
               <p class="font-semibold text-green-800">Entrada marcada como recebida!</p>
               <p class="text-sm text-green-600">O registro foi atualizado com sucesso.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+      <% if (typeof query !== 'undefined' && query.success === 'restored') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-green-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-green-800">Entrada restaurada!</p>
+              <p class="text-sm text-green-600">A entrada excluída foi recuperada e voltou à lista.</p>
             </div>
           </div>
         </div>

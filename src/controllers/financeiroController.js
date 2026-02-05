@@ -98,6 +98,7 @@ const listEntries = async (req, res) => {
       title: 'Entradas Financeiras',
       user: req.user,
       entries,
+      query: req.query,
     });
   } catch (error) {
     console.error('Erro ao listar entradas:', error);
@@ -425,6 +426,49 @@ const deleteEntry = async (req, res) => {
   }
 };
 
+// Listar entradas excluídas (soft delete) para recuperação
+// GET /financeiro/entradas-excluidas
+const listDeletedEntries = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+    const entries = await financeiroService.listDeletedEntries(req.user.condominiumId, 100);
+    res.render('administrativo/financeiro/entradas/excluidas', {
+      title: 'Entradas excluídas',
+      user: req.user,
+      entries,
+      query: req.query,
+    });
+  } catch (error) {
+    console.error('Erro ao listar entradas excluídas:', error);
+    renderError(res, 500, 'Erro ao carregar entradas excluídas', error);
+  }
+};
+
+// Restaurar entrada excluída
+// POST /financeiro/entradas/:id/restaurar
+const restoreEntry = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    await financeiroService.restoreEntry(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      ipAddress,
+      userAgent
+    );
+    res.redirect('/financeiro/entradas?success=restored');
+  } catch (error) {
+    console.error('Erro ao restaurar entrada:', error);
+    res.redirect('/financeiro/entradas-excluidas?error=' + encodeURIComponent(error.message));
+  }
+};
+
 // Exporta funções para uso nas rotas
 module.exports = {
   showDashboard,
@@ -434,6 +478,8 @@ module.exports = {
   updateEntry,
   deleteEntry,
   listEntries,
+  listDeletedEntries,
+  restoreEntry,
   showCreateExit,
   createExit,
   listExits,

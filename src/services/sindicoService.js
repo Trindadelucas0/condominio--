@@ -142,9 +142,31 @@ const getDashboardStats = async (condominiumId) => {
     
     const currentMonthExpenses = currentMonthExitsPaid + currentMonthExitsApproved;
 
+    // Entradas recebidas do mês atual (para saldo do mês)
+    const currentMonthEntriesResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
+       WHERE condominium_id = $1 
+       AND EXTRACT(MONTH FROM entry_date) = $2 
+       AND EXTRACT(YEAR FROM entry_date) = $3 
+       AND received = TRUE AND deleted_at IS NULL`,
+      [condominiumId, currentMonth, currentYear]
+    );
+    const currentMonthEntries = parseFloat(currentMonthEntriesResult.rows[0].total);
+
     // Gastos do mês anterior (para comparação)
     const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
     const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+    // Entradas recebidas do mês passado (para saldo do mês passado)
+    const lastMonthEntriesResult = await query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
+       WHERE condominium_id = $1 
+       AND EXTRACT(MONTH FROM entry_date) = $2 
+       AND EXTRACT(YEAR FROM entry_date) = $3 
+       AND received = TRUE AND deleted_at IS NULL`,
+      [condominiumId, lastMonth, lastMonthYear]
+    );
+    const lastMonthEntries = parseFloat(lastMonthEntriesResult.rows[0].total);
     
     const lastMonthExitsPaidResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
@@ -167,6 +189,12 @@ const getDashboardStats = async (condominiumId) => {
     const lastMonthExitsApproved = parseFloat(lastMonthExitsApprovedResult.rows[0].total);
     
     const lastMonthExpenses = lastMonthExitsPaid + lastMonthExitsApproved;
+
+    // Saldo do mês atual e do mês passado (entradas recebidas - saídas pagas - saídas aprovadas do mês)
+    const currentMonthExits = currentMonthExitsPaid + currentMonthExitsApproved;
+    const lastMonthExits = lastMonthExitsPaid + lastMonthExitsApproved;
+    const saldoMesAtual = currentMonthEntries - currentMonthExits;
+    const saldoMesPassado = lastMonthEntries - lastMonthExits;
     
     // Comparativo com mês anterior (%)
     const expensesVariation = lastMonthExpenses > 0 
@@ -270,6 +298,8 @@ const getDashboardStats = async (condominiumId) => {
       pendingExpenses,
       pendingAmount,
       balance,
+      saldoMesAtual,
+      saldoMesPassado,
       totalEntries,
       totalExitsPaid,
       overdueTasks,
