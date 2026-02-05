@@ -666,3 +666,70 @@ a:hover {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ============================================
+   16. MOBILE & RESPONSIVE (dispositivos móveis)
+   ============================================ */
+
+/* Evita zoom indesejado no iOS em inputs */
+input, select, textarea, button {
+  font-size: max(16px, 1rem);
+}
+
+/* Área segura para dispositivos com notch */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Tabelas: scroll horizontal em telas pequenas */
+.table-responsive,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+.table-responsive {
+  overflow-x: auto;
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+@media (min-width: 640px) {
+  .table-responsive {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* Touch targets mínimos (44px recomendado) */
+@media (max-width: 1024px) {
+  .touch-target-min {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  a.btn-primary, a.btn-secondary, button[type="submit"], .nav-dropdown-item {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Container em mobile: padding reduzido mas legível */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* Cards e grids em 1 coluna no mobile */
+@media (max-width: 640px) {
+  .mobile-stack {
+    flex-direction: column;
+  }
+}
