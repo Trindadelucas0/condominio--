@@ -158,6 +158,21 @@
           </div>
         </div>
       <% } %>
+      <% if (typeof query !== 'undefined' && query.success === 'comprovante_adicionado') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-green-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-green-800">Comprovante adicionado!</p>
+              <p class="text-sm text-green-600">O comprovante foi salvo com sucesso.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
 
       <!-- Estatísticas Rápidas -->
       <% 
@@ -324,12 +339,14 @@
                           </svg>
                           Marcar como Recebido
                         </a>
-                      <% } else { %>
+                      <% } else {
+                        const hasRealReceipt = entry.receipt_pdf_path && entry.receipt_pdf_path.trim() && entry.receipt_pdf_path.trim() !== 'taxa_paga_sem_comprovante.pdf';
+                      %>
                         <div class="flex flex-col items-end space-y-1">
                           <span class="text-xs text-gray-500">
                             Recebido em <%= new Date(entry.received_at).toLocaleDateString('pt-BR') %>
                           </span>
-                          <% if (entry.receipt_pdf_path) { %>
+                          <% if (hasRealReceipt) { %>
                             <a href="/financeiro/entradas/<%= entry.id %>/comprovante" target="_blank" class="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium group">
                               <svg class="w-4 h-4 mr-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -337,6 +354,14 @@
                               </svg>
                               Ver Comprovante
                             </a>
+                          <% } else { %>
+                            <button type="button" class="js-comprovante-sem-link inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium group" data-entry-id="<%= entry.id %>">
+                              <svg class="w-4 h-4 mr-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                              </svg>
+                              Ver Comprovante
+                            </button>
                           <% } %>
                         </div>
                       <% } %>
@@ -350,5 +375,65 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal: Comprovante não adicionado -->
+  <div id="modal-comprovante-nao-adicionado" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" id="modal-comprovante-backdrop"></div>
+      <div class="relative inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-6 py-6">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+              <h3 class="text-lg font-semibold text-gray-900" id="modal-title">Comprovante não disponível</h3>
+              <div class="mt-2">
+                <p class="text-sm text-gray-600">O comprovante desta entrada não foi adicionado. Deseja adicionar agora?</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <button type="button" id="modal-comprovante-btn-nao" class="inline-flex justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              Não
+            </button>
+            <a id="modal-comprovante-btn-sim" href="#" class="inline-flex justify-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+              Sim, adicionar
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var modal = document.getElementById('modal-comprovante-nao-adicionado');
+      var backdrop = document.getElementById('modal-comprovante-backdrop');
+      var btnNao = document.getElementById('modal-comprovante-btn-nao');
+      var btnSim = document.getElementById('modal-comprovante-btn-sim');
+
+      function openModal(entryId) {
+        btnSim.href = '/financeiro/entradas/' + entryId + '/comprovante/adicionar';
+        modal.classList.remove('hidden');
+      }
+
+      function closeModal() {
+        modal.classList.add('hidden');
+      }
+
+      document.querySelectorAll('.js-comprovante-sem-link').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          openModal(btn.getAttribute('data-entry-id'));
+        });
+      });
+
+      if (btnNao) btnNao.addEventListener('click', closeModal);
+      if (backdrop) backdrop.addEventListener('click', closeModal);
+    })();
+  </script>
 
 <%- include('../../../partials/footer') %>

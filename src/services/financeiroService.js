@@ -2102,6 +2102,90 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
   }
 };
 
+// Função para adicionar/atualizar comprovante em entrada já recebida
+// Recebe: entryId, condominiumId, userId, { receiptPdfPath, receiptDetails, receiptNotes, receiptMethod }, ipAddress, userAgent
+// Retorna: entrada atualizada
+const addReceiptToEntry = async (entryId, condominiumId, userId, receiptData, ipAddress, userAgent) => {
+  try {
+    const { receiptPdfPath, receiptDetails, receiptNotes, receiptMethod } = receiptData;
+
+    if (!receiptPdfPath || !receiptPdfPath.trim()) {
+      throw new Error('Comprovante em PDF é obrigatório');
+    }
+    if (!receiptDetails || !receiptDetails.trim()) {
+      throw new Error('Detalhes do recebimento são obrigatórios');
+    }
+
+    const currentResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2 AND deleted_at IS NULL`,
+      [entryId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    if (!current.received) {
+      throw new Error('Entrada ainda não foi marcada como recebida. Use o fluxo "Marcar como Recebido".');
+    }
+
+    const owns = await validateCondominiumOwnership('financial_entries', entryId, condominiumId);
+    if (!owns) {
+      throw new Error('Entrada não pertence a este condomínio');
+    }
+
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    const updateResult = await query(
+      `UPDATE financial_entries
+       SET receipt_pdf_path = $1,
+           receipt_details = $2,
+           receipt_notes = $3,
+           receipt_method = COALESCE(NULLIF(TRIM($4), ''), receipt_method),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 AND condominium_id = $6 AND received = TRUE
+       RETURNING *`,
+      [
+        receiptPdfPath.trim(),
+        receiptDetails.trim(),
+        receiptNotes ? receiptNotes.trim() : null,
+        receiptMethod ? receiptMethod.trim() : null,
+        entryId,
+        condominiumId
+      ]
+    );
+
+    if (updateResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada ou não está recebida');
+    }
+
+    const updated = updateResult.rows[0];
+
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'ADD_RECEIPT',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao adicionar comprovante à entrada:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   createExit,
   updateExit,
@@ -2122,6 +2206,7 @@ module.exports = {
   listPendingEntries,
   listRejectedEntries,
   markEntryAsReceived,
+  addReceiptToEntry,
   createAccount,
   listAccounts,
   createConsumption,

@@ -1,0 +1,139 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <!-- Cabeçalho -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Adicionar Comprovante</h1>
+    <p class="text-gray-600 mt-2">Esta entrada já foi marcada como recebida. Anexe o comprovante em PDF.</p>
+  </div>
+
+  <!-- Mensagem de erro -->
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= error %>
+    </div>
+  <% } %>
+
+  <!-- Informações da entrada -->
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Informações da Entrada</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <p class="text-sm text-gray-500">Descrição</p>
+        <p class="font-semibold text-gray-800"><%= entry.description %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Valor</p>
+        <p class="font-bold text-green-600 text-lg">
+          R$ <%= parseFloat(entry.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+        </p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Data da Entrada</p>
+        <p class="font-semibold text-gray-800"><%= new Date(entry.entry_date).toLocaleDateString('pt-BR') %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Categoria</p>
+        <p class="font-semibold text-gray-800"><%= entry.category %></p>
+      </div>
+      <% if (entry.cost_center_name) { %>
+        <div>
+          <p class="text-sm text-gray-500">Centro de Custo</p>
+          <p class="font-semibold text-gray-800"><%= entry.cost_center_name %></p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Formulário -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Comprovante e Detalhes</h2>
+    
+    <form method="POST" action="/financeiro/entradas/<%= entry.id %>/comprovante/adicionar" enctype="multipart/form-data">
+      <!-- Método de Recebimento (opcional ao adicionar) -->
+      <div class="mb-4">
+        <label for="receiptMethod" class="block text-sm font-medium text-gray-700 mb-2">
+          Método de Recebimento
+        </label>
+        <select
+          id="receiptMethod"
+          name="receiptMethod"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Selecione (opcional)...</option>
+          <option value="PIX" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'PIX') ? 'selected' : '' %>>PIX</option>
+          <option value="TRANSFERENCIA" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'TRANSFERENCIA') ? 'selected' : '' %>>Transferência Bancária</option>
+          <option value="DINHEIRO" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'DINHEIRO') ? 'selected' : '' %>>Dinheiro</option>
+          <option value="CHEQUE" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'CHEQUE') ? 'selected' : '' %>>Cheque</option>
+          <option value="BOLETO" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'BOLETO') ? 'selected' : '' %>>Boleto</option>
+          <option value="CARTAO" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'CARTAO') ? 'selected' : '' %>>Cartão de Débito/Crédito</option>
+          <option value="OUTRA" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'OUTRA') ? 'selected' : '' %>>Outra</option>
+        </select>
+      </div>
+
+      <!-- Upload de PDF -->
+      <div class="mb-4">
+        <label for="receiptPdf" class="block text-sm font-medium text-gray-700 mb-2">
+          Comprovante em PDF <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="file"
+          id="receiptPdf"
+          name="receiptPdf"
+          accept="application/pdf"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+        <p class="text-xs text-gray-500 mt-1">Apenas arquivos PDF são permitidos (máximo 10MB)</p>
+      </div>
+
+      <!-- Detalhes do Recebimento -->
+      <div class="mb-4">
+        <label for="receiptDetails" class="block text-sm font-medium text-gray-700 mb-2">
+          Detalhes do Recebimento <span class="text-red-500">*</span>
+        </label>
+        <textarea
+          id="receiptDetails"
+          name="receiptDetails"
+          rows="4"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ex: Recebido via PIX, comprovante anexado. Valor confirmado na conta corrente do condomínio."
+          required
+        ><%= typeof formData !== 'undefined' && formData.receiptDetails ? formData.receiptDetails : '' %></textarea>
+      </div>
+
+      <!-- Observações Adicionais -->
+      <div class="mb-6">
+        <label for="receiptNotes" class="block text-sm font-medium text-gray-700 mb-2">
+          Observações Adicionais (Opcional)
+        </label>
+        <textarea
+          id="receiptNotes"
+          name="receiptNotes"
+          rows="3"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Informações adicionais sobre o recebimento..."
+        ><%= typeof formData !== 'undefined' && formData.receiptNotes ? formData.receiptNotes : '' %></textarea>
+      </div>
+
+      <!-- Botões -->
+      <div class="flex justify-end space-x-4">
+        <a
+          href="/financeiro/entradas"
+          class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+        >
+          Salvar Comprovante
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

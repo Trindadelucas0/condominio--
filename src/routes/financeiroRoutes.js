@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const fs = require('fs');
 const financeiroController = require('../controllers/financeiroController');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { uploadPayment, uploadReceipt } = require('../middlewares/upload');
@@ -28,6 +29,115 @@ router.get('/dashboard', financeiroController.showDashboard);
 
 // Entradas
 router.get('/entradas/nova', financeiroController.showCreateEntry);
+// Comprovante: ver PDF ou resposta controlada quando não há comprovante
+router.get('/entradas/:id/comprovante', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId).catch(() => null);
+    if (!entry) {
+      return res.status(404).send('Entrada não encontrada');
+    }
+    const pathValue = entry.receipt_pdf_path && entry.receipt_pdf_path.trim();
+    const isPlaceholder = !pathValue || pathValue === 'taxa_paga_sem_comprovante.pdf';
+    if (isPlaceholder) {
+      return res.status(200).json({ hasReceipt: false, entryId: entry.id });
+    }
+    const baseDir = path.join(__dirname, '../../');
+    const absolutePath = path.resolve(baseDir, pathValue.replace(/^\//, ''));
+    if (!fs.existsSync(absolutePath)) {
+      return res.status(200).json({ hasReceipt: false, entryId: entry.id });
+    }
+    res.setHeader('Content-Type', 'application/pdf');
+    res.sendFile(absolutePath, (err) => {
+      if (err && !res.headersSent) {
+        console.error('Erro ao enviar comprovante:', err);
+        res.status(500).json({ hasReceipt: false, entryId: entry.id });
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao obter comprovante:', error);
+    res.status(500).json({ hasReceipt: false });
+  }
+});
+// Adicionar comprovante (entrada já recebida)
+router.get('/entradas/:id/comprovante/adicionar', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId).catch(() => null);
+    if (!entry) {
+      return res.status(404).send('Entrada não encontrada');
+    }
+    if (!entry.received) {
+      return res.redirect('/financeiro/entradas?error=entry_not_received');
+    }
+    res.render('administrativo/financeiro/entradas/comprovante-adicionar', {
+      title: 'Adicionar Comprovante',
+      user: req.user,
+      entry: entry,
+      req: req,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de adicionar comprovante:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+});
+router.post('/entradas/:id/comprovante/adicionar', (req, res, next) => {
+  uploadReceipt(req, res, async (err) => {
+    try {
+      if (err) {
+        const financeiroService = require('../services/financeiroService');
+        const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId).catch(() => null);
+        return res.render('administrativo/financeiro/entradas/comprovante-adicionar', {
+          title: 'Adicionar Comprovante',
+          user: req.user,
+          entry: entry || {},
+          req: req,
+          error: err.message || 'Erro ao fazer upload do arquivo',
+          formData: req.body,
+        });
+      }
+      const financeiroService = require('../services/financeiroService');
+      if (!req.file) {
+        const entryNoFile = await financeiroService.getEntryById(req.params.id, req.user.condominiumId);
+        return res.render('administrativo/financeiro/entradas/comprovante-adicionar', {
+          title: 'Adicionar Comprovante',
+          user: req.user,
+          entry: entryNoFile,
+          req: req,
+          error: 'Comprovante em PDF é obrigatório',
+          formData: req.body,
+        });
+      }
+      const receiptPdfPath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+      await financeiroService.addReceiptToEntry(
+        req.params.id,
+        req.user.condominiumId,
+        req.user.id,
+        {
+          receiptPdfPath,
+          receiptDetails: req.body.receiptDetails,
+          receiptNotes: req.body.receiptNotes,
+          receiptMethod: req.body.receiptMethod,
+        },
+        req.ip || req.connection?.remoteAddress,
+        req.get('user-agent')
+      );
+      res.redirect('/financeiro/entradas?success=comprovante_adicionado');
+    } catch (error) {
+      console.error('Erro ao adicionar comprovante:', error);
+      const financeiroService = require('../services/financeiroService');
+      const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId).catch(() => null);
+      res.render('administrativo/financeiro/entradas/comprovante-adicionar', {
+        title: 'Adicionar Comprovante',
+        user: req.user,
+        entry: entry || {},
+        req: req,
+        error: error.message,
+        formData: req.body,
+      });
+    }
+  });
+});
 router.get('/entradas/:id/editar', financeiroController.showEditEntry);
 // Rota de recebimento deve vir ANTES da rota genérica /:id para evitar conflito
 router.get('/entradas/:id/receber', async (req, res) => {
