@@ -610,9 +610,9 @@ const initializeDatabase = async () => {
         await executeSQLFile(path.join(__dirname, 'extendTablesPhase22.sql'));
         console.log('✅ Tabelas da FASE 22 criadas com sucesso');
       } else {
-        // Verifica se campos novos foram adicionados (executa mesmo se tabela existe)
-        await executeSQLFile(path.join(__dirname, 'extendTablesPhase22.sql'));
-        console.log('✅ Tabelas da FASE 22 atualizadas');
+        // Tabela já existe: não re-executar o script pesado (evita ~1.5s por startup).
+        // Colunas faltantes são cobertas pelos scripts fixPhase22*.sql abaixo.
+        console.log('✅ Tabelas da FASE 22 já existem (atualizações via scripts de correção)');
       }
     } catch (error) {
       console.error('Erro ao verificar/criar tabelas da FASE 22:', error);
