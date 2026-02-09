@@ -1,0 +1,158 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+<%- include('../partials/notifications') %>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-8">
+      <div class="flex items-center space-x-3 mb-2">
+        <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Como funciona o sistema</h1>
+          <p class="text-gray-600 mt-1">Perfil Síndico — tudo o que você faz, quem depende de você e como o fluxo anda</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Papel do Síndico -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Seu papel no sistema</h2>
+      <p class="text-gray-700 mb-3">Como <strong>Síndico (ou Subsíndico)</strong>, você é o responsável por <strong>aprovar</strong> decisões que envolvem valores altos, orçamentos e registros que exigem chancela da administração. Você não lança entradas/saídas no dia a dia — isso é feito pelo <strong>Financeiro</strong>. Você <strong>revisa e aprova ou rejeita</strong>. Também define os <strong>checklists</strong> do condomínio e acompanha a execução pela equipe. O fluxo de várias áreas <strong>depende da sua aprovação</strong> para seguir.</p>
+      <ul class="text-gray-700 list-disc list-inside space-y-1">
+        <li><strong>Financeiro</strong> envia para você: saídas acima de R$ 5.000 e, quando configurado, entradas que precisam de aprovação.</li>
+        <li><strong>Administrativo</strong> e <strong>Financeiro</strong> enviam orçamentos: você escolhe qual cotação aprovar.</li>
+        <li><strong>Operacional/Limpeza</strong> registram ocorrências: você pode aprovar ou rejeitar quando for o caso.</li>
+        <li>Você cria os <strong>modelos de checklist</strong>; o sistema e a equipe operacional dependem disso para o dia a dia.</li>
+      </ul>
+    </section>
+
+    <!-- Conceitos -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">O que é cada coisa (conceitos)</h2>
+      <div class="space-y-4 text-gray-700">
+        <div class="pl-3 border-l-4 border-purple-300">
+          <strong>Entrada</strong> — É a <em>receita</em> do condomínio (taxa paga, multa, outro). Quem lança e recebe no sistema é o <strong>Financeiro</strong>. Quando uma entrada precisar da sua aprovação (conforme regra do condomínio), ela aparece para você em <strong>Entradas pendentes</strong> ou em <strong>Aprovações</strong>. Você aprova ou rejeita. Se rejeitar, volta para o Financeiro corrigir e reenviar.
+        </div>
+        <div class="pl-3 border-l-4 border-purple-300">
+          <strong>Saída</strong> — É a <em>despesa</em> (conta de luz, serviço pago etc.). O <strong>Financeiro</strong> cria a saída. Conforme o valor: até certo limite a aprovação é automática ou do próprio Financeiro; <strong>acima de R$ 5.000</strong> a saída vai para você em <strong>Aprovações</strong>. Você aprova ou rejeita. Rejeitada, volta ao Financeiro. Aprovada, o Financeiro efetua o pagamento e anexa o comprovante. Valores muito altos podem exigir <strong>2 ou 3 aprovações</strong> de síndicos.
+        </div>
+        <div class="pl-3 border-l-4 border-purple-300">
+          <strong>Orçamento</strong> — Pedido de compra ou contratação de serviço. O <strong>Administrativo</strong> cria a solicitação e cadastra as <strong>cotações</strong> (fornecedores e valores). O <strong>Financeiro</strong> revisa (centro de custo, notas) e <strong>libera</strong> para aprovação. Aí entra você: em <strong>Aprovações</strong> você vê as cotações e escolhe qual <strong>aprovar</strong>. Aprovada, vira saída; o Financeiro verifica e paga. Rejeitada, volta ao Administrativo/Financeiro.
+        </div>
+        <div class="pl-3 border-l-4 border-purple-300">
+          <strong>Ocorrência</strong> — Registro feito pela equipe de campo (zeladoria, limpeza): por exemplo vazamento, sujeira, avaria. Eles criam no sistema. O <strong>Administrativo</strong> faz a <strong>triagem</strong> (classifica e pode converter em tarefa). Você pode <strong>aprovar ou rejeitar</strong> a ocorrência quando for o caso, e adicionar observações. Rejeitada, o responsável pode corrigir.
+        </div>
+        <div class="pl-3 border-l-4 border-purple-300">
+          <strong>Checklist</strong> — Lista de tarefas rotineiras do dia (limpar área, verificar portaria etc.). <strong>Você</strong> cria e edita o <strong>modelo</strong> (itens fixos). O sistema gera o checklist do dia a partir do modelo. O <strong>Operacional</strong> ou <strong>Limpeza</strong> executa e marca itens. Você <strong>acompanha</strong> os checklists do dia e pode <strong>questionar</strong> itens não feitos; o operacional responde na mesma tela. O fluxo do checklist <strong>depende de você</strong> ter configurado o modelo.
+        </div>
+        <div class="pl-3 border-l-4 border-purple-300">
+          <strong>Aprovação</strong> — Ato de você dar o ok (ou rejeitar) em entradas, saídas, orçamentos e ocorrências. Cada tipo tem regra: saídas acima de R$ 5.000 vão para você; R$ 5k–10k em geral 1 aprovação; ≥ R$ 10k podem ser 2; ≥ R$ 50k podem ser 3. Enquanto você não aprovar (ou outro síndico, quando for múltiplas aprovações), o fluxo não avança — o Financeiro não paga a saída, por exemplo.
+        </div>
+      </div>
+    </section>
+
+    <!-- Fluxos detalhados -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Fluxos completos: quem faz o quê e para quem envia</h2>
+
+      <div class="space-y-6 text-gray-700">
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">1. Fluxo de Saída (despesa)</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Financeiro</strong> cria a saída (valor, descrição, centro de custo, vencimento).</li>
+            <li>Conforme o valor: se for &lt; R$ 1.000, aprovação automática; R$ 1k–5k o <strong>Financeiro</strong> aprova; <strong>acima de R$ 5.000</strong> o item vai para <strong>você (Síndico)</strong> em Aprovações.</li>
+            <li><strong>Você</strong> abre Aprovações → vê a saída → confere dados → clica em <strong>Aprovar</strong> ou <strong>Rejeitar</strong>. Se rejeitar, volta ao Financeiro (ele altera e pode reenviar). Valores ≥ R$ 10k podem precisar de 2ª aprovação; ≥ R$ 50k de 3ª.</li>
+            <li>Depois de aprovada, <strong>Financeiro</strong> marca como paga (data + comprovante). O fluxo só fecha com comprovante.</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> O Financeiro. Enquanto você não aprovar, a saída não pode ser paga.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">2. Fluxo de Orçamento</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Administrativo</strong> cria a solicitação de orçamento e adiciona as cotações (fornecedor, valor, anexos).</li>
+            <li><strong>Financeiro</strong> revisa (atribui centro de custo, notas) e <strong>libera</strong> para aprovação do Síndico.</li>
+            <li><strong>Você</strong> em Aprovações vê o orçamento e as cotações → escolhe qual cotação <strong>aprovar</strong>. Aprovado, o sistema gera a saída; rejeitado, volta ao Administrativo/Financeiro.</li>
+            <li><strong>Financeiro</strong> confere a saída gerada (tela Verificação de saídas), confirma e depois paga (comprovante).</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Administrativo e Financeiro. Sem sua aprovação na cotação, não vira saída nem pagamento.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">3. Fluxo de Entrada (quando precisa de aprovação)</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Financeiro</strong> cria a entrada e, quando a regra exige, envia para aprovação do Síndico.</li>
+            <li><strong>Você</strong> vê em Entradas pendentes ou Aprovações → Aprova ou Rejeita. Rejeitada volta ao Financeiro para corrigir.</li>
+            <li><strong>Financeiro</strong> após aprovação marca como recebida (data + comprovante).</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Financeiro. Sem seu ok, a entrada não pode ser marcada como recebida.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">4. Fluxo de Ocorrência</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Operacional</strong> ou <strong>Limpeza</strong> registra a ocorrência (com foto se quiser).</li>
+            <li><strong>Administrativo</strong> tria: classifica e pode <strong>converter em tarefa</strong> para o operacional executar.</li>
+            <li>Quando a ocorrência exige sua chancela, <strong>você</strong> aprova ou rejeita e pode adicionar observações. Rejeitada, o responsável pode ajustar.</li>
+          </ol>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">5. Fluxo de Checklist</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Você</strong> cria/edita o <strong>modelo de checklist</strong> (itens que se repetem todo dia).</li>
+            <li>O <strong>sistema</strong> gera o checklist do dia com base no modelo.</li>
+            <li><strong>Operacional/Limpeza</strong> executa: inicia o checklist, marca itens feitos, anexa fotos, finaliza.</li>
+            <li><strong>Você</strong> em Acompanhar checklists vê os do dia; pode <strong>questionar</strong> itens não feitos; o operacional responde na mesma tela.</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Operacional e Limpeza. Sem modelo definido por você, não há checklist do dia.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dependências entre setores -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Dependências entre setores (o que precisa de quem para o fluxo andar)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-gray-700 border border-gray-200 rounded-lg">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="text-left p-3 border-b">O que</th>
+              <th class="text-left p-3 border-b">Quem inicia</th>
+              <th class="text-left p-3 border-b">Quem depende de você (Síndico)</th>
+              <th class="text-left p-3 border-b">O que você faz</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-gray-100"><td class="p-3">Saída &gt; R$ 5.000</td><td class="p-3">Financeiro</td><td class="p-3">Financeiro (não pode pagar sem aprovar)</td><td class="p-3">Aprovar ou rejeitar em Aprovações</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Orçamento</td><td class="p-3">Administrativo (cotações); Financeiro (libera)</td><td class="p-3">Administrativo, Financeiro</td><td class="p-3">Escolher cotação e aprovar em Aprovações</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Entrada (quando configurado)</td><td class="p-3">Financeiro</td><td class="p-3">Financeiro</td><td class="p-3">Aprovar ou rejeitar</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Ocorrência</td><td class="p-3">Operacional/Limpeza</td><td class="p-3">Administrativo / responsável</td><td class="p-3">Aprovar ou rejeitar quando for o caso</td></tr>
+            <tr><td class="p-3">Checklist do dia</td><td class="p-3">Você (modelo); sistema (gera dia)</td><td class="p-3">Operacional, Limpeza</td><td class="p-3">Criar/editar modelo; acompanhar e questionar itens</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Onde fazer -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Onde fazer cada coisa (suas telas)</h2>
+      <ul class="space-y-2 text-gray-700">
+        <li><strong>Dashboard</strong> — Resumo e quantas aprovações pendentes você tem; atalhos.</li>
+        <li><strong>Aprovações</strong> — Lista do que precisa do seu ok: saídas &gt; R$ 5.000, orçamentos, ocorrências. Abra o item → Aprovar ou Rejeitar.</li>
+        <li><strong>Tarefas</strong> — Ver todas as tarefas do condomínio; acompanhar; adicionar observações; gerar relatórios. Quem cria é o Administrativo; quem executa é o Operacional.</li>
+        <li><strong>Ocorrências</strong> — Ver o que a equipe registrou; aprovar ou rejeitar; adicionar observações.</li>
+        <li><strong>Modelos de checklist</strong> — Criar e editar o modelo (itens do dia). <strong>Acompanhar checklists</strong> — Ver os do dia já feitos; questionar itens não feitos; o operacional responde.</li>
+        <li><strong>Alertas e Logs</strong> — Alertas (SLA, vencimentos) e histórico de ações (auditoria).</li>
+      </ul>
+    </section>
+
+    <p class="text-gray-500 text-sm text-center">Para aprender onde clicar em cada tela, use o botão <strong>Em dúvida? Tutorial</strong> no menu.</p>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

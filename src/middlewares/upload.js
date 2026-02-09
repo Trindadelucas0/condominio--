@@ -8,11 +8,15 @@ const fs = require('fs');
 // Cria diretórios de uploads se não existirem
 const receiptsDir = path.join(__dirname, '../../uploads/receipts');
 const paymentsDir = path.join(__dirname, '../../uploads/payments');
+const billReceiptsDir = path.join(__dirname, '../../uploads/bill-receipts');
 if (!fs.existsSync(receiptsDir)) {
   fs.mkdirSync(receiptsDir, { recursive: true });
 }
 if (!fs.existsSync(paymentsDir)) {
   fs.mkdirSync(paymentsDir, { recursive: true });
+}
+if (!fs.existsSync(billReceiptsDir)) {
+  fs.mkdirSync(billReceiptsDir, { recursive: true });
 }
 
 // Configuração do multer para armazenar PDFs de recebimento (entradas)
@@ -79,6 +83,51 @@ const uploadReceipt = uploadReceipts.single('receiptPdf');
 
 // Middleware para upload de um único arquivo PDF de pagamento
 const uploadPayment = uploadPayments.single('paymentReceiptPdf');
+
+// Configuração para comprovante de conta (bills - Fase 35)
+const billReceiptsStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, billReceiptsDir);
+  },
+  filename: function (req, file, cb) {
+    const billId = req.body.billId || req.params.id || 'new';
+    const timestamp = Date.now();
+    const originalName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const ext = path.extname(originalName) || '.pdf';
+    cb(null, `bill_receipt_${billId}_${timestamp}${ext}`);
+  }
+});
+
+const uploadBillReceipts = multer({
+  storage: billReceiptsStorage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+const uploadBillReceipt = uploadBillReceipts.single('receiptPdf');
+
+// Configuração para anexo de boleto (payable_items - novo vencimento)
+const boletosDir = path.join(__dirname, '../../uploads/boletos');
+if (!fs.existsSync(boletosDir)) {
+  fs.mkdirSync(boletosDir, { recursive: true });
+}
+const boletosStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, boletosDir);
+  },
+  filename: function (req, file, cb) {
+    const billId = req.params.id || req.body.billId || 'avulso';
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname) || '.pdf';
+    cb(null, `boleto_${billId}_${timestamp}${ext}`);
+  }
+});
+const uploadBoletos = multer({
+  storage: boletosStorage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+const uploadBoleto = uploadBoletos.single('boletoPdf');
 
 // Configuração para upload de contratos/documentos (limite maior: 50MB)
 const contractsDir = path.join(__dirname, '../../uploads/contracts');
@@ -172,6 +221,8 @@ const uploadBudgetAttachmentsMiddleware = uploadBudgetAttachments.array('attachm
 module.exports = {
   uploadReceipt,
   uploadPayment,
+  uploadBillReceipt,
+  uploadBoleto,
   uploadContract,
   uploadSingleContract,
   uploadBudgetAttachments: uploadBudgetAttachmentsMiddleware,

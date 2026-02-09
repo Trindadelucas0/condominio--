@@ -29,6 +29,11 @@ router.use(validateNumericIdParam('id'));
 // Dashboard - FINANCEIRO pode visualizar
 router.get('/dashboard', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), sindicoController.showDashboard);
 
+// Como funciona o sistema (fluxo e conceitos do Síndico)
+router.get('/como-funciona', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), (req, res) => {
+  res.render('sindico/como-funciona', { title: 'Como funciona o sistema', user: req.user });
+});
+
 // Aprovações - FINANCEIRO pode visualizar, mas só SINDICO/SUBSINDICO pode aprovar
 router.get('/aprovacoes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), sindicoController.showAprovacoes);
 router.post('/aprovacoes/:id/processar', authorize('SINDICO', 'SUBSINDICO'), sindicoController.processAprovacao);

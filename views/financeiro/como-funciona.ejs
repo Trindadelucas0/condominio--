@@ -1,0 +1,158 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+<%- include('../partials/notifications') %>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-emerald-50/30">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-8">
+      <div class="flex items-center space-x-3 mb-2">
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-3 shadow-lg">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Como funciona o sistema</h1>
+          <p class="text-gray-600 mt-1">Perfil Financeiro — tudo o que você faz, quem depende de você e como o fluxo anda</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Papel do Financeiro -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Seu papel no sistema</h2>
+      <p class="text-gray-700 mb-3">Como <strong>Financeiro</strong>, você é responsável por <strong>todo o fluxo de caixa</strong>: entradas (receitas), saídas (despesas), contas fixas, contas a pagar e comprovantes. Você <strong>cria</strong> entradas e saídas, <strong>recebe</strong> entradas (data + comprovante), <strong>paga</strong> saídas (após aprovação quando for o caso) e <strong>anexa comprovante</strong> em tudo que entra ou sai. Conforme o valor, parte das saídas e eventualmente entradas precisam de <strong>aprovação do Síndico</strong> — até lá você não pode marcar como paga/recebida. Orçamentos criados pelo <strong>Administrativo</strong> passam por você para revisão (centro de custo) antes de irem ao Síndico aprovar; aprovados, você verifica e paga. O fluxo de caixa <strong>depende de você</strong> lançar, aprovar (no seu limite), pagar e comprovar.</p>
+      <ul class="text-gray-700 list-disc list-inside space-y-1">
+        <li><strong>Síndico</strong> depende de você: saídas acima de R$ 5.000 e entradas (quando configurado) vão para ele aprovar; orçamentos você libera para ele aprovar. Você não paga saída alta sem aprovação dele.</li>
+        <li><strong>Administrativo</strong> envia orçamentos para você revisar e liberar; você não cria a solicitação de orçamento, só revisa e libera.</li>
+        <li>Ninguém paga ou recebe no sistema por você: <strong>só o perfil Financeiro</strong> marca entrada como recebida e saída como paga, sempre com comprovante.</li>
+      </ul>
+    </section>
+
+    <!-- Conceitos -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">O que é cada coisa (conceitos)</h2>
+      <div class="space-y-4 text-gray-700">
+        <div class="pl-3 border-l-4 border-green-300">
+          <strong>Entrada</strong> — É a <em>receita</em> do condomínio (taxa, multa, outro). <strong>Você</strong> cria a entrada (menu Entradas → Nova entrada: descrição, valor, vencimento, apartamento se for taxa). Depois, quando o dinheiro de fato entrar, você clica em <strong>Receber</strong>: informa a data do recebimento e anexa o comprovante (PDF). Se a entrada precisar de aprovação do <strong>Síndico</strong>, ela fica pendente até ele aprovar ou rejeitar; rejeitada volta para você corrigir. O fluxo da entrada depende de você criar e, após aprovação (quando houver), receber com comprovante.
+        </div>
+        <div class="pl-3 border-l-4 border-green-300">
+          <strong>Saída</strong> — É a <em>despesa</em> (pagamento). <strong>Você</strong> cria a saída (valor, descrição, centro de custo, vencimento). Conforme o valor: &lt; R$ 1.000 aprovação automática; R$ 1k–5k <strong>você</strong> aprova (em Aprovações); acima de R$ 5.000 vai para o <strong>Síndico</strong> aprovar. Depois de aprovada, <strong>você</strong> marca como paga (menu Saídas → na lista, Pagar): data do pagamento e comprovante. Sem comprovante o fluxo não fecha. Rejeitada pelo Síndico, você altera e pode reenviar.
+        </div>
+        <div class="pl-3 border-l-4 border-green-300">
+          <strong>Conta</strong> — Fornecedor fixo (água, luz, gás). Você cadastra em <strong>Contas</strong>. Dentro de cada conta você adiciona <strong>novo boleto</strong> (data de vencimento, valor, anexo do boleto). Cada boleto vira automaticamente um item em <strong>Contas a Pagar</strong>. Quem altera e cadastra é só você (Financeiro).
+        </div>
+        <div class="pl-3 border-l-4 border-green-300">
+          <strong>Contas a Pagar</strong> — Lista de boletos e compromissos a vencer. Vem das <strong>Contas</strong> (cada boleto cadastrado) ou de lançamento avulso (Nova conta a pagar). Em cada item você clica em <strong>Pagar</strong>: informa a data do pagamento e anexa o comprovante. O sistema <strong>gera a Saída automaticamente</strong>. Você não cria a saída à mão nesse caso — só paga na tela Contas a Pagar. O fluxo depende de você pagar e anexar comprovante.
+        </div>
+        <div class="pl-3 border-l-4 border-green-300">
+          <strong>Centro de custo</strong> — Classificação da despesa (ex.: Água, Limpeza). Ao criar uma saída (ou ao revisar orçamento) você vincula a um centro. Relatórios e fechamento usam isso. Não bloqueia fluxo; é organização.
+        </div>
+        <div class="pl-3 border-l-4 border-green-300">
+          <strong>Comprovante</strong> — PDF do recibo ou comprovante de pagamento/recebimento. Entrada recebida e saída paga <strong>exigem comprovante anexado</strong>. É a prova do que entrou ou saiu do caixa. Sem comprovante, o fluxo não é considerado fechado.
+        </div>
+        <div class="pl-3 border-l-4 border-green-300">
+          <strong>Orçamento (seu papel)</strong> — O <strong>Administrativo</strong> cria a solicitação e as cotações. Você <strong>revisa</strong> (atribui centro de custo, notas) e <strong>libera</strong> para o Síndico aprovar. Se devolver para correção, volta ao Administrativo. Aprovado pelo Síndico, vira saída; você confere em <strong>Verificação de saídas</strong> e depois paga (comprovante).
+        </div>
+      </div>
+    </section>
+
+    <!-- Fluxos detalhados -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Fluxos completos: quem faz o quê e para quem envia</h2>
+
+      <div class="space-y-6 text-gray-700">
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">1. Fluxo de Entrada (receita)</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Você</strong> cria a entrada (Entradas → Nova entrada): descrição, valor, vencimento, apartamento se for taxa. Salva.</li>
+            <li>Quando a regra exige aprovação do Síndico, a entrada fica pendente. <strong>Síndico</strong> aprova ou rejeita em Aprovações / Entradas pendentes. Rejeitada → volta para você corrigir.</li>
+            <li>Quando o dinheiro entrar (e estiver aprovado se for o caso), <strong>você</strong> na lista clica em <strong>Receber</strong> → informa data e anexa comprovante → Salva. Fluxo fechado.</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Ninguém inicia a entrada — só você. O Síndico só intervém quando a regra exige aprovação; depois quem recebe e comprova é você.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">2. Fluxo de Saída (despesa)</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Você</strong> cria a saída (Saídas → Nova saída): valor, descrição, centro de custo, vencimento.</li>
+            <li>Conforme o valor: &lt; R$ 1.000 aprovação automática; R$ 1k–5k <strong>você</strong> aprova em Aprovações (menu Síndico ou próprio); &gt; R$ 5.000 vai para o <strong>Síndico</strong>. Ele aprova ou rejeita. Rejeitada → volta para você alterar e reenviar.</li>
+            <li>Após aprovada, <strong>você</strong> na lista de Saídas clica em <strong>Pagar</strong> → data do pagamento + comprovante (PDF) → Salva. Sem comprovante o fluxo não fecha.</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Síndico (só aprova; não paga). Quem efetiva o pagamento no sistema e anexa comprovante é sempre você.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">3. Fluxo de Contas e Contas a Pagar</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Você</strong> em Contas cadastra o fornecedor (ex.: água, luz). Dentro da conta: <strong>Adicionar novo boleto</strong> (vencimento, valor, anexo do boleto). Cada boleto vai automaticamente para Contas a Pagar.</li>
+            <li>Em <strong>Contas a Pagar</strong> você vê a lista (boletos das Contas + lançamentos avulsos). Em cada item clica em <strong>Pagar</strong> → data + comprovante. O sistema <strong>gera a Saída sozinho</strong> (e essa saída segue a regra de aprovação por valor: automática, sua ou do Síndico).</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Ninguém cadastra Contas nem paga Contas a Pagar — só o Financeiro. O Síndico só entra se a saída gerada for &gt; R$ 5.000.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">4. Fluxo de Orçamento (do seu ponto de vista)</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Administrativo</strong> cria a solicitação e as cotações. O orçamento chega para você em <strong>Orçamentos pendentes</strong>.</li>
+            <li><strong>Você</strong> revisa: atribui centro de custo, adiciona notas e <strong>libera</strong> para o Síndico aprovar (ou devolve para o Administrativo corrigir).</li>
+            <li><strong>Síndico</strong> aprova uma cotação. Aprovada, o sistema gera a saída. Você vê em <strong>Verificação de saídas</strong>, confere valores/dados e marca como verificada. Depois na lista de Saídas você <strong>Pagar</strong> (data + comprovante).</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Administrativo e Síndico. Sem você liberar, o orçamento não vai para o Síndico. Depois da aprovação, quem paga e comprova é você.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">5. Quem aprova por valor (resumo)</h3>
+          <ul class="list-disc list-inside pl-2">
+            <li>Até R$ 1.000: <strong>automático</strong> (ninguém aprova).</li>
+            <li>R$ 1.000 a R$ 5.000: <strong>você (Financeiro)</strong> aprova em Aprovações.</li>
+            <li>R$ 5.000 a R$ 10.000: <strong>Síndico</strong> (1 aprovação).</li>
+            <li>Acima de R$ 10.000: <strong>2 aprovações</strong> (Síndico).</li>
+            <li>Acima de R$ 50.000: <strong>3 aprovações</strong> (Síndico).</li>
+          </ul>
+          <p class="mt-2 text-sm text-gray-600">Enquanto não tiver todas as aprovações necessárias, você <strong>não pode</strong> marcar a saída como paga.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dependências entre setores -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Dependências entre setores (o que precisa de quem para o fluxo andar)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-gray-700 border border-gray-200 rounded-lg">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="text-left p-3 border-b">O que</th>
+              <th class="text-left p-3 border-b">Quem inicia</th>
+              <th class="text-left p-3 border-b">Quem depende de você (Financeiro)</th>
+              <th class="text-left p-3 border-b">O que você faz</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-gray-100"><td class="p-3">Entrada</td><td class="p-3">Você</td><td class="p-3">Síndico (só se regra exigir aprovação); depois você recebe e comprova</td><td class="p-3">Criar entrada; Receber (data + comprovante); corrigir se rejeitada</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Saída</td><td class="p-3">Você (ou gerada por Contas a Pagar / orçamento)</td><td class="p-3">Síndico (aprova se &gt; R$ 5k); ninguém paga por você</td><td class="p-3">Criar saída; aprovar se R$ 1k–5k; Pagar (data + comprovante) após aprovação</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Contas / Contas a Pagar</td><td class="p-3">Você</td><td class="p-3">Ninguém (só você cadastra e paga)</td><td class="p-3">Cadastrar conta, adicionar boleto; em Contas a Pagar: Pagar (data + comprovante)</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Orçamento</td><td class="p-3">Administrativo (cotações)</td><td class="p-3">Você revisa e libera; Síndico aprova; você verifica e paga</td><td class="p-3">Revisar (centro de custo), liberar ou devolver; após aprovação: verificar saída e Pagar</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Onde fazer -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Onde fazer cada coisa (suas telas)</h2>
+      <ul class="space-y-2 text-gray-700">
+        <li><strong>Dashboard</strong> — Totais, alertas de vencidos e a vencer hoje; atalhos para Entradas, Saídas, Contas a Pagar.</li>
+        <li><strong>Entradas</strong> — Listar, Nova entrada, Receber (data + comprovante). Entradas rejeitadas pelo Síndico você corrige aqui.</li>
+        <li><strong>Saídas</strong> — Nova saída; na lista, Pagar (data + comprovante) após aprovação. Aprovações no seu limite em menu Aprovações.</li>
+        <li><strong>Contas</strong> — Cadastrar fornecedor; em cada conta: Adicionar novo boleto. <strong>Contas a Pagar</strong> — Lista de boletos; em cada um: Pagar (data + comprovante) → gera Saída.</li>
+        <li><strong>Orçamentos pendentes</strong> — Revisar orçamentos do Administrativo; liberar para Síndico ou devolver. <strong>Verificação de saídas</strong> — Saídas geradas por orçamento aprovado; conferir e seguir para pagamento.</li>
+        <li><strong>Taxas, Centros de custo, Fechamento, Relatórios, Fundo de reserva</strong> — Configuração e relatórios.</li>
+      </ul>
+    </section>
+
+    <p class="text-gray-500 text-sm text-center">Para aprender onde clicar em cada tela, use o botão <strong>Em dúvida? Tutorial</strong> no menu.</p>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

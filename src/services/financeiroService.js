@@ -979,6 +979,18 @@ const getDashboardStats = async (condominiumId) => {
     );
     const rejectedBudgets = parseInt(rejectedBudgetsResult.rows[0].total);
 
+    const todayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const payableOverdueResult = await query(
+      `SELECT COUNT(*) as total FROM payable_items WHERE condominium_id = $1 AND status = 'PENDING' AND due_date < $2`,
+      [condominiumId, todayStr]
+    );
+    const payableDueTodayResult = await query(
+      `SELECT COUNT(*) as total FROM payable_items WHERE condominium_id = $1 AND status = 'PENDING' AND due_date = $2`,
+      [condominiumId, todayStr]
+    );
+    const payableOverdueCount = parseInt(payableOverdueResult.rows[0].total);
+    const payableDueTodayCount = parseInt(payableDueTodayResult.rows[0].total);
+
     return {
       stats: {
         saldo: balance,
@@ -991,6 +1003,8 @@ const getDashboardStats = async (condominiumId) => {
         pendingBudgetFinanceiro,
         approvedBudgets,
         rejectedBudgets,
+        payableOverdueCount,
+        payableDueTodayCount,
       },
       kpis: {
         currentMonth: {
@@ -1488,9 +1502,10 @@ const restoreEntry = async (entryId, condominiumId, userId, ipAddress, userAgent
 // Função para criar conta recorrente
 // Recebe: condominiumId, userId, dados da conta
 // Retorna: conta criada
+// Novos campos opcionais (Fase 35): due_day, account_kind, recurrence, receipt_pdf_path
 const createAccount = async (condominiumId, userId, data, ipAddress, userAgent) => {
   try {
-    const { name, billType, provider, accountNumber, costCenterId } = data;
+    const { name, billType, provider, accountNumber, costCenterId, dueDay, accountKind, recurrence, receiptPdfPath } = data;
 
     // Validações obrigatórias
     if (!name || !name.trim()) {
@@ -1507,9 +1522,16 @@ const createAccount = async (condominiumId, userId, data, ipAddress, userAgent) 
       throw new Error('Usuário não pertence a este condomínio');
     }
 
+    const dueDayVal = dueDay != null && dueDay !== '' ? parseInt(dueDay, 10) : null;
+    if (dueDayVal != null && (dueDayVal < 1 || dueDayVal > 31)) {
+      throw new Error('Dia de vencimento deve ser entre 1 e 31');
+    }
+    const accountKindVal = (accountKind === 'VARIAVEL' || accountKind === 'FIXA') ? accountKind : 'FIXA';
+    const recurrenceVal = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(recurrence) ? recurrence : 'MONTHLY';
+
     const result = await query(
-      `INSERT INTO bills (condominium_id, name, bill_type, provider, account_number, cost_center_id, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO bills (condominium_id, name, bill_type, provider, account_number, cost_center_id, created_by, due_day, account_kind, recurrence, receipt_pdf_path)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         condominiumId,
@@ -1518,7 +1540,11 @@ const createAccount = async (condominiumId, userId, data, ipAddress, userAgent) 
         provider || null,
         accountNumber || null,
         costCenterId || null,
-        userId
+        userId,
+        dueDayVal,
+        accountKindVal,
+        recurrenceVal,
+        receiptPdfPath && receiptPdfPath.trim() ? receiptPdfPath.trim() : null
       ]
     );
 
@@ -1577,6 +1603,27 @@ const listAccounts = async (condominiumId, filters = {}) => {
     return result.rows;
   } catch (error) {
     console.error('Erro ao listar contas:', error);
+    throw error;
+  }
+};
+
+// Função para buscar conta por ID (Fase 35 - comprovante, edição)
+const getAccountById = async (accountId, condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT b.*, cc.name as cost_center_name, u.full_name as created_by_name
+       FROM bills b
+       LEFT JOIN cost_centers cc ON b.cost_center_id = cc.id AND cc.condominium_id = $2
+       LEFT JOIN users u ON b.created_by = u.id
+       WHERE b.id = $1 AND b.condominium_id = $2`,
+      [accountId, condominiumId]
+    );
+    if (result.rows.length === 0) {
+      throw new Error('Conta não encontrada');
+    }
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao buscar conta:', error);
     throw error;
   }
 };
@@ -2035,15 +2082,11 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
       throw new Error('Entrada já foi marcada como recebida');
     }
 
-    // Verifica se é entrada vinculada a taxa (permite comprovante opcional)
+    // Comprovante é opcional: pode ser adicionado depois pelo fluxo "Ver Comprovante" → Adicionar
     const isTaxaEntry = current.linked_to_type === 'MONTHLY_FEE';
-    
-    // Para taxas, se não tiver comprovante, usa valor padrão
-    let finalReceiptPdfPath = receiptPdfPath;
-    if (isTaxaEntry && (!receiptPdfPath || !receiptPdfPath.trim())) {
+    let finalReceiptPdfPath = receiptPdfPath && receiptPdfPath.trim() ? receiptPdfPath.trim() : null;
+    if (isTaxaEntry && !finalReceiptPdfPath) {
       finalReceiptPdfPath = 'taxa_paga_sem_comprovante.pdf';
-    } else if (!receiptPdfPath || !receiptPdfPath.trim()) {
-      throw new Error('Comprovante em PDF é obrigatório');
     }
 
     // Atualiza entrada como recebida
@@ -2061,7 +2104,7 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
        WHERE id = $5 AND condominium_id = $6 AND received = FALSE
        RETURNING *`,
       [
-        finalReceiptPdfPath.trim(),
+        finalReceiptPdfPath,
         receiptMethod.trim(),
         receiptDetails.trim(),
         receiptNotes ? receiptNotes.trim() : null,
@@ -2209,6 +2252,7 @@ module.exports = {
   addReceiptToEntry,
   createAccount,
   listAccounts,
+  getAccountById,
   createConsumption,
   listConsumption,
   createCostCenter,

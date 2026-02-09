@@ -1,0 +1,55 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="min-h-screen bg-gray-50">
+  <div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="mb-6">
+      <a href="/financeiro/contas/<%= account.id %>" class="text-sm text-blue-600 hover:underline mb-2 inline-block">← Voltar para <%= account.name %></a>
+      <h1 class="text-3xl font-bold text-gray-900">Adicionar novo boleto</h1>
+      <p class="text-gray-600 mt-1">Fornecedor: <strong><%= account.name %></strong>. Informe a data de vencimento e o valor.</p>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg"><%= error %></div>
+    <% } %>
+
+    <div class="bg-white rounded-xl shadow p-6">
+      <form method="POST" action="/financeiro/contas/<%= account.id %>/novo-boleto" enctype="multipart/form-data" class="space-y-4">
+        <div>
+          <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">Data de vencimento <span class="text-red-500">*</span></label>
+          <input type="date" id="dueDate" name="dueDate" required value="<%= item && item.dueDate ? item.dueDate : '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) <span class="text-red-500">*</span></label>
+          <input type="number" id="amount" name="amount" required step="0.01" min="0.01" value="<%= item && item.amount ? item.amount : '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="0,00" />
+        </div>
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrição ou observação (opcional)</label>
+          <input type="text" id="description" name="description" value="<%= item && item.description ? item.description : '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Ex: Boleto março/2025" />
+        </div>
+        <div>
+          <label for="boletoPdf" class="block text-sm font-medium text-gray-700 mb-1">Anexar boleto (PDF, opcional)</label>
+          <input type="file" id="boletoPdf" name="boletoPdf" accept=".pdf,application/pdf" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+          <p class="text-xs text-gray-500 mt-1">Máximo 10MB. O comprovante de pagamento será anexado quando você clicar em &quot;Pagar&quot; em Contas a pagar.</p>
+        </div>
+        <% if (costCenters && costCenters.length > 0) { %>
+        <div>
+          <label for="costCenterId" class="block text-sm font-medium text-gray-700 mb-1">Centro de custo (opcional)</label>
+          <select id="costCenterId" name="costCenterId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <option value="">Usar da conta</option>
+            <% costCenters.forEach(function(cc) { %>
+              <option value="<%= cc.id %>" <%= (item && item.costCenterId == cc.id) ? 'selected' : '' %>><%= cc.name %></option>
+            <% }); %>
+          </select>
+        </div>
+        <% } %>
+        <div class="flex gap-3 pt-4">
+          <a href="/financeiro/contas/<%= account.id %>" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</a>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Adicionar boleto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

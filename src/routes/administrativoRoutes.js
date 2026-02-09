@@ -11,6 +11,12 @@ router.use(authenticate);
 router.use(authorize('ADMINISTRATIVO'));
 
 router.get('/dashboard', administrativoController.showDashboard);
+
+// Como funciona o sistema (fluxo e conceitos do Administrativo)
+router.get('/como-funciona', (req, res) => {
+  res.render('administrativo/como-funciona', { title: 'Como funciona o sistema', user: req.user });
+});
+
 router.get('/tarefas', administrativoController.showTarefas);
 router.get('/tarefas/nova', administrativoController.showCreateTarefa);
 router.post('/tarefas', administrativoController.createTarefa);

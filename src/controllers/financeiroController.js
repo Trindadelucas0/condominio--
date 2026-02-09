@@ -1,6 +1,7 @@
 // Controller do módulo FINANCEIRO
 // Gerencia requisições do painel financeiro
 
+const path = require('path');
 const financeiroService = require('../services/financeiroService');
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 

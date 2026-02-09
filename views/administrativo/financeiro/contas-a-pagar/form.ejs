@@ -1,0 +1,56 @@
+<%- include('../../../partials/header', { title: title }) %>
+<%- include('../../../partials/navbar', { user: user }) %>
+
+<div class="min-h-screen bg-gray-50">
+  <div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-gray-900">Nova Conta a Pagar</h1>
+      <p class="text-gray-600 mt-1">Registre um vencimento (conta variável ou avulsa)</p>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg"><%= error %></div>
+    <% } %>
+
+    <div class="bg-white rounded-xl shadow p-6">
+      <form method="POST" action="/financeiro/contas-a-pagar" class="space-y-4">
+        <div>
+          <label for="billId" class="block text-sm font-medium text-gray-700 mb-1">Conta (opcional)</label>
+          <select id="billId" name="billId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <option value="">Nenhuma (avulso)</option>
+            <% (bills || []).forEach(function(b) { %>
+              <option value="<%= b.id %>" <%= (item && item.billId == b.id) ? 'selected' : '' %>><%= b.name %> (<%= b.bill_type %>)</option>
+            <% }); %>
+          </select>
+        </div>
+        <div>
+          <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">Data de vencimento <span class="text-red-500">*</span></label>
+          <input type="date" id="dueDate" name="dueDate" required value="<%= item && item.dueDate ? item.dueDate : '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) <span class="text-red-500">*</span></label>
+          <input type="number" id="amount" name="amount" required step="0.01" min="0.01" value="<%= item && item.amount ? item.amount : '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="0,00" />
+        </div>
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrição (opcional)</label>
+          <input type="text" id="description" name="description" value="<%= item && item.description ? item.description : '' %>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Ex: Conta de luz março" />
+        </div>
+        <div>
+          <label for="costCenterId" class="block text-sm font-medium text-gray-700 mb-1">Centro de custo (opcional)</label>
+          <select id="costCenterId" name="costCenterId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <option value="">Nenhum</option>
+            <% (costCenters || []).forEach(function(cc) { %>
+              <option value="<%= cc.id %>" <%= (item && item.costCenterId == cc.id) ? 'selected' : '' %>><%= cc.name %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="flex gap-3 pt-4">
+          <a href="/financeiro/contas-a-pagar" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</a>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../../../partials/footer') %>

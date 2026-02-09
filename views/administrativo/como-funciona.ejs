@@ -1,0 +1,132 @@
+<%- include('../partials/header', { title: title }) %>
+<%- include('../partials/navbar', { user: user }) %>
+<%- include('../partials/notifications') %>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-cyan-50/30">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-8">
+      <div class="flex items-center space-x-3 mb-2">
+        <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-3 shadow-lg">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Como funciona o sistema</h1>
+          <p class="text-gray-600 mt-1">Perfil Administrativo — tudo o que você faz, quem depende de você e como o fluxo anda</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Papel do Administrativo -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Seu papel no sistema</h2>
+      <p class="text-gray-700 mb-3">Como <strong>Administrativo</strong>, você <strong>organiza o dia a dia operacional</strong> e as compras/serviços que viram despesa. Você não paga contas — isso é com o <strong>Financeiro</strong>. Você <strong>cria tarefas</strong> para a equipe (Operacional/Limpeza), <strong>tria ocorrências</strong> (classifica e pode converter em tarefa), <strong>cria orçamentos</strong> (solicitação + cotações) e gerencia <strong>documentos</strong>. O fluxo de tarefas e de orçamentos <strong>começa em você</strong>; o Financeiro e o Síndico dependem do que você cadastrar para seguir.</p>
+      <ul class="text-gray-700 list-disc list-inside space-y-1">
+        <li><strong>Operacional/Limpeza</strong> dependem de você para receber tarefas e, quando você converte ocorrência em tarefa, para saber o que executar.</li>
+        <li><strong>Financeiro</strong> depende do seu orçamento (cotações) para revisar e liberar; depois o <strong>Síndico</strong> aprova. Sem sua solicitação e cotações, não há orçamento aprovado nem saída.</li>
+        <li>Você acompanha SLA, prazos e status de tarefas e ocorrências; pode reabrir tarefas se precisar.</li>
+      </ul>
+    </section>
+
+    <!-- Conceitos -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">O que é cada coisa (conceitos)</h2>
+      <div class="space-y-4 text-gray-700">
+        <div class="pl-3 border-l-4 border-blue-300">
+          <strong>Tarefa</strong> — Solicitação de serviço que <strong>você</strong> cria e atribui a um usuário <strong>Operacional</strong> ou <strong>Limpeza</strong>. Você define título, descrição, prioridade e quem vai executar. Eles veem no dashboard deles, executam e <strong>concluem com fotos e observações</strong>. Você acompanha o status e pode <strong>reabrir</strong> se precisar. O fluxo da tarefa depende de você tê-la criado e atribuído.
+        </div>
+        <div class="pl-3 border-l-4 border-blue-300">
+          <strong>Ocorrência</strong> — Registro que a equipe de campo (Operacional, Limpeza) fez: algo que viram ou fizeram (ex.: vazamento, sujeira). <strong>Eles</strong> criam. <strong>Você</strong> faz a <strong>triagem</strong>: classifica (tipo, severidade) e decide se <strong>converte em tarefa</strong>. Se converter, a tarefa é criada e atribuída ao operacional — ele recebe e executa. O fluxo da ocorrência depende de você triar; sem triagem, não vira tarefa automática.
+        </div>
+        <div class="pl-3 border-l-4 border-blue-300">
+          <strong>Triagem</strong> — Ato de você abrir a ocorrência, classificar e opcionalmente <strong>converter em tarefa</strong>. Quem altera/decide é você. O setor que depende é o <strong>Operacional</strong> (recebe a tarefa) e, quando a ocorrência precisa de aprovação do Síndico, o <strong>Síndico</strong>.
+        </div>
+        <div class="pl-3 border-l-4 border-blue-300">
+          <strong>Orçamento</strong> — Solicitação de compra ou contratação de serviço. <strong>Você</strong> cria a solicitação (descrição, anexos) e adiciona as <strong>cotações</strong> (fornecedor, valor, anexo). Depois você envia para o <strong>Financeiro</strong> revisar (centro de custo, notas). O Financeiro libera para o <strong>Síndico</strong> aprovar. O Síndico escolhe qual cotação aprovar. Aprovada, vira saída e o Financeiro paga. O fluxo do orçamento <strong>começa em você</strong>; sem sua solicitação e cotações, não há nada para o Financeiro/Síndico aprovarem.
+        </div>
+        <div class="pl-3 border-l-4 border-blue-300">
+          <strong>Documento</strong> — Contratos, categorias e acervo do condomínio. Você cadastra categorias, faz upload de PDFs e mantém organizado. Não faz parte do fluxo de aprovação; é gestão interna.
+        </div>
+      </div>
+    </section>
+
+    <!-- Fluxos detalhados -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Fluxos completos: quem faz o quê e para quem envia</h2>
+
+      <div class="space-y-6 text-gray-700">
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">1. Fluxo de Tarefa</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Você (Administrativo)</strong> cria a tarefa: título, descrição, prioridade, e <strong>atribui</strong> a um usuário Operacional ou Limpeza.</li>
+            <li>O <strong>Operacional/Limpeza</strong> vê a tarefa no dashboard dele, executa o serviço e marca como <strong>Concluída</strong>, com fotos e observações.</li>
+            <li><strong>Você</strong> acompanha o status na listagem de tarefas; pode adicionar observações ou <strong>reabrir</strong> se precisar que refaçam.</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Operacional e Limpeza. Sem tarefa criada e atribuída por você, não há nada para eles executarem nesse fluxo.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">2. Fluxo de Ocorrência e Triagem</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Operacional</strong> ou <strong>Limpeza</strong> registra a ocorrência (descrição, foto se quiser).</li>
+            <li><strong>Você</strong> em Ocorrências vê a lista, abre o item e faz a <strong>triagem</strong>: classifica (tipo, severidade). Se precisar de ação, clica em <strong>Converter em tarefa</strong> → a tarefa é criada e atribuída ao operacional (ou outro que você escolher).</li>
+            <li>O <strong>Operacional</strong> recebe a nova tarefa e executa. Quando a ocorrência exige aprovação do Síndico, o <strong>Síndico</strong> aprova ou rejeita.</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Operacional. A triagem e a conversão em tarefa são suas; sem isso, a ocorrência não vira tarefa atribuída.</p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">3. Fluxo de Orçamento</h3>
+          <ol class="list-decimal list-inside space-y-2 pl-2">
+            <li><strong>Você</strong> cria a solicitação de orçamento (Menu Orçamentos → Nova solicitação) e adiciona as <strong>cotações</strong> (fornecedor, valor, anexos). Envia para análise.</li>
+            <li><strong>Financeiro</strong> revisa (atribui centro de custo, notas), e <strong>libera</strong> para o Síndico aprovar. Se o Financeiro devolver para correção, <strong>você</strong> ajusta e reenvia.</li>
+            <li><strong>Síndico</strong> em Aprovações escolhe qual cotação aprovar. Aprovada, o sistema gera a saída; rejeitada, volta para você/Financeiro.</li>
+            <li><strong>Financeiro</strong> verifica a saída gerada e efetua o pagamento (comprovante). Você não paga — só criou o orçamento e as cotações.</li>
+          </ol>
+          <p class="mt-2 text-sm text-gray-600"><strong>Quem depende de você:</strong> Financeiro e Síndico. Sem sua solicitação e cotações, não há orçamento para revisar nem aprovar.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dependências entre setores -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Dependências entre setores (o que precisa de quem para o fluxo andar)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-gray-700 border border-gray-200 rounded-lg">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="text-left p-3 border-b">O que</th>
+              <th class="text-left p-3 border-b">Quem inicia (você)</th>
+              <th class="text-left p-3 border-b">Para quem envia / quem depende</th>
+              <th class="text-left p-3 border-b">O que você faz</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-gray-100"><td class="p-3">Tarefa</td><td class="p-3">Você (Administrativo)</td><td class="p-3">Operacional / Limpeza (recebem e executam)</td><td class="p-3">Criar tarefa, atribuir, acompanhar, reabrir</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Ocorrência → Tarefa</td><td class="p-3">Operacional/Limpeza (criam ocorrência)</td><td class="p-3">Você tria; Operacional recebe a tarefa</td><td class="p-3">Triar, classificar, converter em tarefa</td></tr>
+            <tr class="border-b border-gray-100"><td class="p-3">Orçamento</td><td class="p-3">Você (solicitação + cotações)</td><td class="p-3">Financeiro (revisa e libera) → Síndico (aprova)</td><td class="p-3">Criar solicitação, cadastrar cotações; corrigir se devolvido</td></tr>
+            <tr><td class="p-3">Documentos</td><td class="p-3">Você</td><td class="p-3">Nenhum setor no fluxo</td><td class="p-3">Cadastrar categorias, upload de PDFs</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Onde fazer -->
+    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Onde fazer cada coisa (suas telas)</h2>
+      <ul class="space-y-2 text-gray-700">
+        <li><strong>Dashboard</strong> — Resumo de tarefas, ocorrências pendentes de triagem, orçamentos e alertas de SLA; atalhos.</li>
+        <li><strong>Tarefas</strong> — Criar nova tarefa, atribuir à equipe, acompanhar status, reabrir tarefa. O operacional conclui com fotos.</li>
+        <li><strong>Ocorrências</strong> — Ver o que a equipe registrou; abrir item → triar (classificar) e <strong>Converter em tarefa</strong> quando precisar.</li>
+        <li><strong>Orçamentos</strong> — Nova solicitação, adicionar cotações. Financeiro revisa; Síndico aprova. Aprovado vira saída (Financeiro paga).</li>
+        <li><strong>Documentos</strong> — Categorias, upload de contratos (PDF), acervo.</li>
+        <li><strong>Alertas (SLA)</strong> — Acompanhar prazos e pendências.</li>
+      </ul>
+    </section>
+
+    <p class="text-gray-500 text-sm text-center">Para aprender onde clicar em cada tela, use o botão <strong>Em dúvida? Tutorial</strong> no menu.</p>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

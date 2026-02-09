@@ -985,6 +985,43 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar colunas da FASE 34:', error);
     }
 
+    // FASE 35: Contas a pagar - bills (due_day, account_kind, recurrence, receipt_pdf_path) + payable_items
+    console.log('🔍 Verificando tabela/colunas da FASE 35 (contas a pagar)...');
+    try {
+      const tableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'payable_items'
+        )
+      `);
+      if (!tableExists.rows[0].exists) {
+        console.log('⚠️  Tabela payable_items não encontrada. Criando FASE 35...');
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase35.sql'));
+        console.log('✅ FASE 35 (contas a pagar) criada com sucesso');
+      } else {
+        console.log('✅ FASE 35 já aplicada (payable_items existe)');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar FASE 35:', error);
+    }
+
+    // FASE 36: Anexo do boleto em payable_items (boleto_pdf_path)
+    console.log('🔍 Verificando coluna boleto_pdf_path (FASE 36)...');
+    try {
+      const colExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'payable_items' AND column_name = 'boleto_pdf_path'
+        )
+      `);
+      if (!colExists.rows[0].exists) {
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase36.sql'));
+        console.log('✅ FASE 36 aplicada (boleto_pdf_path)');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar FASE 36:', error);
+    }
+
     // Criação do usuário master inicial (se não existir)
     console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
     try {

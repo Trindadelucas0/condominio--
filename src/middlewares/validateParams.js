@@ -3,7 +3,7 @@
 // Nota: usa req.path porque com router.use() o Express ainda não preencheu req.params
 
 // Segmentos que não são IDs (rotas como /entradas/nova, /centros-custo/novo, listagem /taxas)
-const SEGMENT_WHITELIST = new Set(['nova', 'novo', 'relatorio', 'relatorios', 'visualizar', 'download', 'excluir', 'mensal', 'gerar', 'taxas']);
+const SEGMENT_WHITELIST = new Set(['nova', 'novo', 'relatorio', 'relatorios', 'visualizar', 'download', 'excluir', 'mensal', 'gerar', 'taxas', 'gerar-vencimentos']);
 
 /**
  * Valida que, quando o path contém um segundo segmento que deve ser :id (ex.: /saidas/123/pagar),

@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const financeiroController = require('../controllers/financeiroController');
 const { authenticate, authorize } = require('../middlewares/auth');
-const { uploadPayment, uploadReceipt } = require('../middlewares/upload');
+const { uploadPayment, uploadReceipt, uploadBillReceipt } = require('../middlewares/upload');
 const { validateNumericIdParam } = require('../middlewares/validateParams');
 const { requireCondominium } = require('../middlewares/requireCondominium');
 
@@ -26,6 +26,11 @@ router.use(validateNumericIdParam('id'));
 
 // Dashboard
 router.get('/dashboard', financeiroController.showDashboard);
+
+// Como funciona o sistema (fluxo e conceitos do Financeiro)
+router.get('/como-funciona', (req, res) => {
+  res.render('financeiro/como-funciona', { title: 'Como funciona o sistema', user: req.user });
+});
 
 // Entradas
 router.get('/entradas/nova', financeiroController.showCreateEntry);
@@ -185,20 +190,10 @@ router.post('/entradas/:id/receber', async (req, res) => {
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('user-agent');
 
-      if (!req.file) {
-        const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId);
-        return res.render('administrativo/financeiro/entradas/receber', {
-          title: 'Marcar Entrada como Recebida',
-          user: req.user,
-          entry: entry,
-          req: req,
-          error: 'Comprovante em PDF é obrigatório',
-          formData: req.body,
-        });
-      }
-
-      // Caminho relativo para acessar via /uploads/receipts/
-      const receiptPdfPath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+      // Comprovante é opcional; pode ser adicionado depois em "Ver Comprovante" → Adicionar
+      const receiptPdfPath = req.file
+        ? path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/')
+        : null;
 
       await financeiroService.markEntryAsReceived(
         req.params.id,
@@ -345,7 +340,269 @@ router.get('/saidas', financeiroController.listExits);
 // Contas
 router.get('/contas/nova', financeiroController.showCreateAccount);
 router.post('/contas', financeiroController.createAccount);
+router.get('/contas/:id/comprovante', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const account = await financeiroService.getAccountById(req.params.id, req.user.condominiumId).catch(() => null);
+    if (!account) return res.status(404).send('Conta não encontrada');
+    const pathValue = account.receipt_pdf_path && account.receipt_pdf_path.trim();
+    if (!pathValue) return res.status(404).send('Comprovante não cadastrado');
+    const baseDir = path.join(__dirname, '../../');
+    const absolutePath = path.resolve(baseDir, pathValue.replace(/^\//, ''));
+    if (!fs.existsSync(absolutePath)) return res.status(404).send('Arquivo não encontrado');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.sendFile(absolutePath, (err) => {
+      if (err && !res.headersSent) res.status(500).send('Erro ao enviar arquivo');
+    });
+  } catch (e) {
+    console.error('Erro comprovante conta:', e);
+    res.status(500).send('Erro ao obter comprovante');
+  }
+});
+router.get('/contas/:id/novo-boleto', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const account = await financeiroService.getAccountById(req.params.id, req.user.condominiumId);
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+    res.render('administrativo/financeiro/contas/novo-boleto', {
+      title: 'Adicionar novo boleto',
+      user: req.user,
+      account,
+      costCenters: costCenters || [],
+      item: null,
+      req: req,
+    });
+  } catch (e) {
+    console.error('Erro ao exibir novo boleto:', e);
+    res.status(404).send('Conta não encontrada');
+  }
+});
+router.post('/contas/:id/novo-boleto', (req, res, next) => {
+  const { uploadBoleto } = require('../middlewares/upload');
+  uploadBoleto(req, res, async (err) => {
+    try {
+      const financeiroService = require('../services/financeiroService');
+      const payableService = require('../services/payableService');
+      const account = await financeiroService.getAccountById(req.params.id, req.user.condominiumId).catch(() => null);
+      if (!account) return res.status(404).send('Conta não encontrada');
+      if (err) {
+        const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+        return res.render('administrativo/financeiro/contas/novo-boleto', {
+          title: 'Adicionar novo boleto',
+          user: req.user,
+          account,
+          costCenters: costCenters || [],
+          item: req.body,
+          error: err.message || 'Erro no upload',
+          req: req,
+        });
+      }
+      let boletoPdfPath = null;
+      if (req.file && req.file.path) {
+        boletoPdfPath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+      }
+      await payableService.createPayableItem(
+        req.user.condominiumId,
+        req.user.id,
+        {
+          billId: req.params.id,
+          dueDate: req.body.dueDate,
+          amount: req.body.amount,
+          description: req.body.description || null,
+          costCenterId: req.body.costCenterId || account.cost_center_id || null,
+          boletoPdfPath,
+        },
+        req.ip || req.connection.remoteAddress,
+        req.get('user-agent')
+      );
+      res.redirect('/financeiro/contas/' + req.params.id + '?success=boleto_added');
+    } catch (e) {
+      console.error('Erro ao criar boleto:', e);
+      const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+      res.render('administrativo/financeiro/contas/novo-boleto', {
+        title: 'Adicionar novo boleto',
+        user: req.user,
+        account: { id: req.params.id },
+        costCenters: costCenters || [],
+        item: req.body,
+        error: e.message,
+        req: req,
+      });
+    }
+  });
+});
+router.get('/contas/:id', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const payableService = require('../services/payableService');
+    const account = await financeiroService.getAccountById(req.params.id, req.user.condominiumId);
+    const items = await payableService.listPayableItems(req.user.condominiumId, { billId: parseInt(req.params.id, 10), limit: 100 });
+    res.render('administrativo/financeiro/contas/detail', {
+      title: account.name + ' - Vencimentos',
+      user: req.user,
+      account,
+      items: items || [],
+      query: req.query,
+      req: req,
+    });
+  } catch (e) {
+    console.error('Erro ao carregar conta:', e);
+    res.status(404).send('Conta não encontrada');
+  }
+});
 router.get('/contas', financeiroController.listAccounts);
+
+// Contas a pagar (itens com vencimento)
+const payableService = require('../services/payableService');
+router.get('/contas-a-pagar/novo', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+    res.render('administrativo/financeiro/contas-a-pagar/form', {
+      title: 'Nova Conta a Pagar',
+      user: req.user,
+      item: null,
+      bills: bills || [],
+      costCenters: costCenters || [],
+      req: req,
+    });
+  } catch (e) {
+    console.error('Erro ao exibir formulário contas a pagar:', e);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+});
+router.post('/contas-a-pagar', async (req, res) => {
+  try {
+    const ip = req.ip || req.connection.remoteAddress;
+    const ua = req.get('user-agent');
+    await payableService.createPayableItem(
+      req.user.condominiumId,
+      req.user.id,
+      {
+        billId: req.body.billId || null,
+        dueDate: req.body.dueDate,
+        amount: req.body.amount,
+        description: req.body.description || null,
+        costCenterId: req.body.costCenterId || null,
+      },
+      ip,
+      ua
+    );
+    res.redirect('/financeiro/contas-a-pagar?success=created');
+  } catch (e) {
+    console.error('Erro ao criar conta a pagar:', e);
+    const financeiroService = require('../services/financeiroService');
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+    res.render('administrativo/financeiro/contas-a-pagar/form', {
+      title: 'Nova Conta a Pagar',
+      user: req.user,
+      item: req.body,
+      bills,
+      costCenters,
+      error: e.message,
+      req: req,
+    });
+  }
+});
+router.get('/contas-a-pagar/:id/pagar', async (req, res) => {
+  try {
+    const item = await payableService.getPayableItemById(req.params.id, req.user.condominiumId);
+    if (item.status === 'PAID') return res.redirect('/financeiro/contas-a-pagar?error=already_paid');
+    res.render('administrativo/financeiro/contas-a-pagar/pagar', {
+      title: 'Pagar Conta',
+      user: req.user,
+      item,
+      req: req,
+    });
+  } catch (e) {
+    console.error('Erro ao carregar pagar:', e);
+    res.status(404).send('Item não encontrado');
+  }
+});
+router.post('/contas-a-pagar/:id/pagar', (req, res, next) => {
+  uploadPayment(req, res, async (err) => {
+    try {
+      if (err) {
+        const item = await payableService.getPayableItemById(req.params.id, req.user.condominiumId).catch(() => null);
+        return res.render('administrativo/financeiro/contas-a-pagar/pagar', {
+          title: 'Pagar Conta',
+          user: req.user,
+          item: item || {},
+          error: err.message || 'Erro no upload',
+          formData: req.body,
+          req: req,
+        });
+      }
+      if (!req.file) {
+        const item = await payableService.getPayableItemById(req.params.id, req.user.condominiumId);
+        return res.render('administrativo/financeiro/contas-a-pagar/pagar', {
+          title: 'Pagar Conta',
+          user: req.user,
+          item,
+          error: 'Comprovante em PDF é obrigatório',
+          formData: req.body,
+          req: req,
+        });
+      }
+      const receiptPath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+      await payableService.payPayableItem(
+        req.params.id,
+        req.user.condominiumId,
+        req.user.id,
+        {
+          receiptPdfPath: receiptPath,
+          paymentDetails: req.body.paymentDetails,
+          paymentMethod: req.body.paymentMethod,
+          paymentNotes: req.body.paymentNotes,
+        },
+        req.ip || req.connection.remoteAddress,
+        req.get('user-agent')
+      );
+      res.redirect('/financeiro/contas-a-pagar?success=paid');
+    } catch (e) {
+      console.error('Erro ao pagar item:', e);
+      const item = await payableService.getPayableItemById(req.params.id, req.user.condominiumId).catch(() => null);
+      res.render('administrativo/financeiro/contas-a-pagar/pagar', {
+        title: 'Pagar Conta',
+        user: req.user,
+        item: item || {},
+        error: e.message,
+        formData: req.body,
+        req: req,
+      });
+    }
+  });
+});
+router.post('/contas-a-pagar/gerar-vencimentos', async (req, res) => {
+  try {
+    const result = await payableService.generatePayableItemsForRecurringBills(req.user.condominiumId, { monthsAhead: 3 });
+    res.redirect('/financeiro/contas-a-pagar?success=generated&count=' + (result.created || 0));
+  } catch (e) {
+    console.error('Erro ao gerar vencimentos:', e);
+    res.redirect('/financeiro/contas-a-pagar?error=' + encodeURIComponent(e.message));
+  }
+});
+router.get('/contas-a-pagar', async (req, res) => {
+  try {
+    const filters = {
+      status: req.query.status || undefined,
+      limit: 200,
+    };
+    const items = await payableService.listPayableItems(req.user.condominiumId, filters);
+    res.render('administrativo/financeiro/contas-a-pagar/list', {
+      title: 'Contas a Pagar',
+      user: req.user,
+      items,
+      query: req.query,
+      req: req,
+    });
+  } catch (e) {
+    console.error('Erro ao listar contas a pagar:', e);
+    res.status(500).send('Erro ao carregar contas a pagar');
+  }
+});
 
 // Consumo
 router.get('/consumo/novo', financeiroController.showCreateConsumption);
