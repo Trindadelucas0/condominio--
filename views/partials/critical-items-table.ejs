@@ -1,44 +1,95 @@
 <% if (typeof criticalItems !== 'undefined' && Array.isArray(criticalItems) && criticalItems.length > 0) { %>
-<div class="bg-white rounded-2xl shadow-xl p-4 mb-6 overflow-hidden critical-items-section">
-  <div class="flex items-center justify-between mb-3">
-    <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
-      <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-      </svg>
-      Itens que precisam de atenção
-    </h3>
+<style>
+  .critical-items-section { animation: criticalFadeIn 0.5s ease-out; }
+  @keyframes criticalFadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .critical-item-row { animation: rowSlideIn 0.4s ease-out backwards; }
+  .critical-item-row:nth-child(1) { animation-delay: 0.05s; }
+  .critical-item-row:nth-child(2) { animation-delay: 0.1s; }
+  .critical-item-row:nth-child(3) { animation-delay: 0.15s; }
+  .critical-item-row:nth-child(4) { animation-delay: 0.2s; }
+  .critical-item-row:nth-child(5) { animation-delay: 0.25s; }
+  .critical-item-row:nth-child(6) { animation-delay: 0.3s; }
+  @keyframes rowSlideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .critical-item-row.removing {
+    animation: rowSlideOut 0.35s ease-in forwards;
+  }
+  @keyframes rowSlideOut {
+    to { opacity: 0; transform: translateX(24px); }
+  }
+  .critical-ok-btn { transition: transform 0.2s, box-shadow 0.2s; }
+  .critical-ok-btn:hover { transform: scale(1.03); }
+  .critical-ok-btn:active { transform: scale(0.98); }
+  .critical-ok-btn.checking {
+    pointer-events: none;
+    background: rgb(34 197 94) !important;
+    color: white !important;
+  }
+  .critical-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+</style>
+<div class="critical-items-section bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-6">
+  <div class="px-5 py-4 bg-gradient-to-r from-amber-50 to-orange-50/50 border-b border-amber-100/80">
+    <div class="flex items-center gap-3">
+      <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-gray-900">Itens que precisam de atenção</h3>
+        <p class="text-xs text-gray-600 mt-0.5">Marque como visualizado após resolver cada item</p>
+      </div>
+    </div>
   </div>
   <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <table class="min-w-full" role="table">
       <thead>
-        <tr class="bg-gray-50">
-          <th class="px-4 py-2 text-left font-semibold text-gray-700">Item</th>
-          <th class="px-4 py-2 text-left font-semibold text-gray-700">Link</th>
-          <th class="px-4 py-2 text-right font-semibold text-gray-700 w-32">Ação</th>
+        <tr class="bg-gray-50/80 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <th class="px-5 py-3.5">Item</th>
+          <th class="px-5 py-3.5 hidden sm:table-cell">Ação</th>
+          <th class="px-5 py-3.5 w-28 text-right"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100" id="critical-items-tbody">
         <% criticalItems.forEach(function(item) { %>
-        <tr class="critical-item-row hover:bg-gray-50 transition-colors" data-key="<%= item.key %>">
-          <td class="px-4 py-3">
-            <span class="inline-flex items-center gap-1.5">
-              <% if (item.type === 'critical') { %>
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-              <% } else { %>
-                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-              <% } %>
-              <span><%= item.label %></span>
-            </span>
+        <tr class="critical-item-row group bg-white hover:bg-gray-50/80 transition-colors" data-key="<%= item.key %>">
+          <td class="px-5 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <span class="inline-flex items-center gap-2.5 min-w-0">
+                <% if (item.type === 'critical') { %>
+                  <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-100" aria-hidden="true"></span>
+                <% } else { %>
+                  <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100" aria-hidden="true"></span>
+                <% } %>
+                <span class="text-sm font-medium text-gray-800 truncate"><%= item.label %></span>
+              </span>
+              <a href="<%= item.link %>" class="critical-link inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 sm:hidden">
+                <span>Ver detalhes</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </a>
+            </div>
           </td>
-          <td class="px-4 py-3">
-            <a href="<%= item.link %>" class="text-blue-600 hover:text-blue-800 font-medium">Ver &rarr;</a>
-          </td>
-          <td class="px-4 py-3 text-right">
-            <button type="button" class="critical-ok-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors" data-key="<%= item.key %>" title="Marcar como visualizado">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          <td class="px-5 py-4 hidden sm:table-cell">
+            <a href="<%= item.link %>" class="critical-link inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">
+              <span>Ver detalhes</span>
+              <svg class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
               </svg>
-              OK
+            </a>
+          </td>
+          <td class="px-5 py-4 text-right">
+            <button type="button" class="critical-ok-btn inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-semibold text-sm shadow-sm hover:shadow transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1" data-key="<%= item.key %>" title="Marcar como visualizado" aria-label="Marcar como visualizado">
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>OK</span>
             </button>
           </td>
         </tr>
@@ -59,27 +110,35 @@
   function setAcknowledged(arr) {
     try { localStorage.setItem(storageKey, JSON.stringify(arr)); } catch (e) {}
   }
-  function hideRow(key) {
+  function hideRow(key, animate) {
     var row = document.querySelector('.critical-item-row[data-key="' + key + '"]');
-    if (row) row.remove();
-    var tbody = document.getElementById('critical-items-tbody');
-    if (tbody && tbody.children.length === 0) {
-      var section = document.querySelector('.critical-items-section');
-      if (section) section.remove();
+    if (!row) return;
+    function finish() {
+      if (row.parentNode) row.remove();
+      var tbody = document.getElementById('critical-items-tbody');
+      if (tbody && tbody.children.length === 0) {
+        var section = document.querySelector('.critical-items-section');
+        if (section) section.remove();
+      }
+    }
+    if (animate) {
+      row.classList.add('removing');
+      setTimeout(finish, 340);
+    } else {
+      finish();
     }
   }
-  // Ocultar linhas já visualizadas
   var ack = getAcknowledged();
-  ack.forEach(function(k) { hideRow(k); });
-  // Handler do botão OK
+  ack.forEach(function(k) { hideRow(k, false); });
   document.querySelectorAll('.critical-ok-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var key = this.getAttribute('data-key');
       if (!key) return;
+      this.classList.add('checking');
       var arr = getAcknowledged();
       if (arr.indexOf(key) === -1) arr.push(key);
       setAcknowledged(arr);
-      hideRow(key);
+      setTimeout(function() { hideRow(key, true); }, 200);
     });
   });
 })();
