@@ -1628,6 +1628,136 @@ const getAccountById = async (accountId, condominiumId) => {
   }
 };
 
+// Função para atualizar conta recorrente
+// Recebe: accountId, condominiumId, userId, dados atualizados
+// Retorna: conta atualizada
+const updateAccount = async (accountId, condominiumId, userId, data, ipAddress, userAgent) => {
+  try {
+    // Busca conta atual e valida ownership
+    const currentResult = await query(
+      `SELECT * FROM bills WHERE id = $1 AND condominium_id = $2`,
+      [accountId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Conta não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    const updateFields = [];
+    const updateValues = [];
+    let paramCount = 1;
+
+    if (data.name !== undefined) {
+      if (!data.name || !data.name.trim()) {
+        throw new Error('Nome da conta é obrigatório');
+      }
+      updateFields.push(`name = $${paramCount++}`);
+      updateValues.push(data.name.trim());
+    }
+
+    if (data.billType !== undefined) {
+      if (!data.billType) {
+        throw new Error('Tipo da conta é obrigatório');
+      }
+      updateFields.push(`bill_type = $${paramCount++}`);
+      updateValues.push(data.billType);
+    }
+
+    if (data.provider !== undefined) {
+      updateFields.push(`provider = $${paramCount++}`);
+      updateValues.push(data.provider || null);
+    }
+
+    if (data.accountNumber !== undefined) {
+      updateFields.push(`account_number = $${paramCount++}`);
+      updateValues.push(data.accountNumber || null);
+    }
+
+    if (data.costCenterId !== undefined) {
+      updateFields.push(`cost_center_id = $${paramCount++}`);
+      updateValues.push(data.costCenterId || null);
+    }
+
+    if (data.dueDay !== undefined) {
+      const dueDayVal = data.dueDay != null && data.dueDay !== '' ? parseInt(data.dueDay, 10) : null;
+      if (dueDayVal != null && (dueDayVal < 1 || dueDayVal > 31)) {
+        throw new Error('Dia de vencimento deve ser entre 1 e 31');
+      }
+      updateFields.push(`due_day = $${paramCount++}`);
+      updateValues.push(dueDayVal);
+    }
+
+    if (data.accountKind !== undefined) {
+      const accountKindVal = (data.accountKind === 'VARIAVEL' || data.accountKind === 'FIXA') ? data.accountKind : 'FIXA';
+      updateFields.push(`account_kind = $${paramCount++}`);
+      updateValues.push(accountKindVal);
+    }
+
+    if (data.recurrence !== undefined) {
+      const recurrenceVal = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(data.recurrence) ? data.recurrence : 'MONTHLY';
+      updateFields.push(`recurrence = $${paramCount++}`);
+      updateValues.push(recurrenceVal);
+    }
+
+    if (data.receiptPdfPath !== undefined) {
+      updateFields.push(`receipt_pdf_path = $${paramCount++}`);
+      updateValues.push(data.receiptPdfPath && data.receiptPdfPath.trim() ? data.receiptPdfPath.trim() : null);
+    }
+
+    if (data.active !== undefined) {
+      updateFields.push(`active = $${paramCount++}`);
+      updateValues.push(data.active);
+    }
+
+    if (updateFields.length === 0) {
+      throw new Error('Nenhum campo para atualizar');
+    }
+
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateValues.push(accountId, condominiumId);
+
+    const updateResult = await query(
+      `UPDATE bills
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramCount++} AND condominium_id = $${paramCount++}
+       RETURNING *`,
+      updateValues
+    );
+
+    if (updateResult.rows.length === 0) {
+      throw new Error('Conta não encontrada ou não pertence a este condomínio');
+    }
+
+    const updated = updateResult.rows[0];
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'UPDATE',
+      module: 'FINANCIAL',
+      entityType: 'bills',
+      entityId: accountId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress,
+      userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao atualizar conta:', error);
+    throw error;
+  }
+};
+
 // Função para criar consumo mensal
 // Recebe: condominiumId, userId, dados do consumo
 // Retorna: consumo criado
@@ -2253,6 +2383,7 @@ module.exports = {
   createAccount,
   listAccounts,
   getAccountById,
+   updateAccount,
   createConsumption,
   listConsumption,
   createCostCenter,

@@ -1279,7 +1279,7 @@ Para problemas ou dúvidas:
 4. Entre em contato com o desenvolvedor
 
 ---
-
+               
 ## 📚 GLOSSÁRIO
 
 - **Entrada**: Receita do condomínio (ex: taxas pagas)

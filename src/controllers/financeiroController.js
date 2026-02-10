@@ -263,10 +263,98 @@ const listAccounts = async (req, res) => {
       title: 'Contas Recorrentes',
       user: req.user,
       accounts,
+      query: req.query,
     });
   } catch (error) {
     console.error('Erro ao listar contas:', error);
     renderError(res, 500, 'Erro ao carregar contas', error);
+  }
+};
+
+// Função para exibir formulário de edição de conta
+// GET /financeiro/contas/:id/editar
+const showEditAccount = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const account = await financeiroService.getAccountById(req.params.id, req.user.condominiumId);
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+
+    // Adapta campos para o formato esperado pela view (camelCase)
+    const contaView = {
+      id: account.id,
+      name: account.name,
+      billType: account.bill_type,
+      provider: account.provider,
+      accountNumber: account.account_number,
+      costCenterId: account.cost_center_id,
+      dueDay: account.due_day,
+      accountKind: account.account_kind,
+      recurrence: account.recurrence,
+      active: account.active,
+    };
+
+    res.render('administrativo/financeiro/contas/form', {
+      title: 'Editar Conta',
+      user: req.user,
+      conta: contaView,
+      costCenters,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de edição de conta:', error);
+    renderError(res, 500, 'Erro ao carregar formulário de conta', error);
+  }
+};
+
+// Função para atualizar conta recorrente
+// POST /financeiro/contas/:id
+const updateAccount = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      name: req.body.name,
+      billType: req.body.billType,
+      provider: req.body.provider || null,
+      accountNumber: req.body.accountNumber || null,
+      costCenterId: req.body.costCenterId || null,
+    };
+
+    await financeiroService.updateAccount(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      data,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/contas?success=updated');
+  } catch (error) {
+    console.error('Erro ao atualizar conta:', error);
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+    const conta = {
+      id: req.params.id,
+      name: req.body.name,
+      billType: req.body.billType,
+      provider: req.body.provider,
+      accountNumber: req.body.accountNumber,
+      costCenterId: req.body.costCenterId,
+    };
+    res.render('administrativo/financeiro/contas/form', {
+      title: 'Editar Conta',
+      user: req.user,
+      conta,
+      costCenters,
+      error: error.message,
+    });
   }
 };
 
@@ -487,6 +575,8 @@ module.exports = {
   showCreateAccount,
   createAccount,
   listAccounts,
+  showEditAccount,
+  updateAccount,
   showCreateConsumption,
   createConsumption,
 };

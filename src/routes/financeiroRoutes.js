@@ -431,6 +431,8 @@ router.post('/contas/:id/novo-boleto', (req, res, next) => {
     }
   });
 });
+router.get('/contas/:id/editar', financeiroController.showEditAccount);
+router.post('/contas/:id', financeiroController.updateAccount);
 router.get('/contas/:id', async (req, res) => {
   try {
     const financeiroService = require('../services/financeiroService');

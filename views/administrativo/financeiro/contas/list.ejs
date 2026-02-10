@@ -123,6 +123,21 @@
           </div>
         </div>
       <% } %>
+      <% if (typeof query !== 'undefined' && query.success === 'updated') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-blue-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-blue-800">Conta atualizada com sucesso!</p>
+              <p class="text-sm text-blue-600">As alterações foram salvas e já estão em uso.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
 
       <!-- Estatísticas Rápidas -->
       <% 
@@ -216,6 +231,7 @@
                   <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Número</th>
                   <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Centro de Custo</th>
                   <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -284,6 +300,22 @@
                           Inativa
                         </span>
                       <% } %>
+                    </td>
+                    <td class="px-6 py-5 whitespace-nowrap text-right">
+                      <div class="inline-flex items-center space-x-2">
+                        <a
+                          href="/financeiro/contas/<%= bill.id %>"
+                          class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-100 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        >
+                          Visualizar
+                        </a>
+                        <a
+                          href="/financeiro/contas/<%= bill.id %>/editar"
+                          class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-amber-100 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                        >
+                          Editar
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 <% }); %>

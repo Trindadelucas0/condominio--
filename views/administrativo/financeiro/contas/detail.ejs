@@ -9,10 +9,21 @@
         <h1 class="text-3xl font-bold text-gray-900"><%= account.name %></h1>
         <% if (account.provider) { %><p class="text-gray-600 mt-1"><%= account.provider %></p><% } %>
       </div>
-      <a href="/financeiro/contas/<%= account.id %>/novo-boleto" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Adicionar novo boleto
-      </a>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <a
+          href="/financeiro/contas/<%= account.id %>/editar"
+          class="inline-flex items-center px-5 py-3 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg font-semibold hover:bg-amber-100 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M4 20h4l9.268-9.268a2 2 0 000-2.828l-1.172-1.172a2 2 0 00-2.828 0L4 16v4z"/>
+          </svg>
+          Editar conta
+        </a>
+        <a href="/financeiro/contas/<%= account.id %>/novo-boleto" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Adicionar novo boleto
+        </a>
+      </div>
     </div>
 
     <% if (query.success === 'boleto_added') { %>
