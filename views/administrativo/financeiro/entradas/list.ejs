@@ -173,6 +173,21 @@
           </div>
         </div>
       <% } %>
+      <% if (typeof query !== 'undefined' && query.success === 'unreceived') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-amber-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m2 5H8a2 2 0 01-2-2V5a2 2 0 012-2h5.586A2 2 0 0115 3.586L19.414 8A2 2 0 0120 9.414V18a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-amber-800">Recebimento desfeito com sucesso!</p>
+              <p class="text-sm text-amber-600">O saldo foi atualizado considerando a reversão.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
 
       <!-- Estatísticas Rápidas -->
       <% 
@@ -333,12 +348,17 @@
                     </td>
                     <td class="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
                       <% if (!entry.received) { %>
-                        <a href="/financeiro/entradas/<%= entry.id %>/receber" class="group inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-                          <svg class="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                          </svg>
-                          Marcar como Recebido
-                        </a>
+                        <div class="flex flex-col items-end space-y-1">
+                          <a href="/financeiro/entradas/<%= entry.id %>/editar" class="inline-flex items-center px-3 py-1.5 mb-1 rounded-lg border border-emerald-100 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold transition-colors">
+                            Editar
+                          </a>
+                          <a href="/financeiro/entradas/<%= entry.id %>/receber" class="group inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                            <svg class="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Marcar como Recebido
+                          </a>
+                        </div>
                       <% } else {
                         const hasRealReceipt = entry.receipt_pdf_path && entry.receipt_pdf_path.trim() && entry.receipt_pdf_path.trim() !== 'taxa_paga_sem_comprovante.pdf';
                       %>
@@ -346,6 +366,9 @@
                           <span class="text-xs text-gray-500">
                             Recebido em <%= new Date(entry.received_at).toLocaleDateString('pt-BR') %>
                           </span>
+                          <a href="/financeiro/entradas/<%= entry.id %>/desfazer-recebimento" class="inline-flex items-center text-xs text-amber-700 hover:text-amber-900 font-semibold">
+                            Desfazer recebimento
+                          </a>
                           <% if (hasRealReceipt) { %>
                             <a href="/financeiro/entradas/<%= entry.id %>/comprovante" target="_blank" class="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium group">
                               <svg class="w-4 h-4 mr-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

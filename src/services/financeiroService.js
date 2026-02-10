@@ -720,6 +720,181 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
   }
 };
 
+// Função para desfazer pagamento de saída financeira
+// Recebe: exitId, condominiumId, userId, motivo, ipAddress, userAgent
+// Retorna: saída atualizada
+const unmarkExitAsPaid = async (exitId, condominiumId, userId, reason, ipAddress, userAgent) => {
+  try {
+    if (!reason || !reason.trim()) {
+      throw new Error('Motivo para desfazer pagamento é obrigatório');
+    }
+
+    const currentResult = await query(
+      `SELECT * FROM financial_exits WHERE id = $1 AND condominium_id = $2`,
+      [exitId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Saída não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida ownership
+    const owns = await validateCondominiumOwnership('financial_exits', exitId, condominiumId);
+    if (!owns) {
+      throw new Error('Saída não pertence a este condomínio');
+    }
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    if (current.payment_status !== 'PAID') {
+      throw new Error('Somente saídas pagas podem ter o pagamento desfeito');
+    }
+
+    // Verifica fechamento mensal na data de pagamento (ou data da saída)
+    const monthlyClosureService = require('./monthlyClosureService');
+    const referenceDate = current.paid_at || current.exit_date;
+    const isClosed = await monthlyClosureService.isMonthClosed(condominiumId, referenceDate);
+    if (isClosed) {
+      const d = new Date(referenceDate);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      throw new Error(`Não é possível desfazer o pagamento. O mês ${m}/${y} está fechado.`);
+    }
+
+    // Ao desfazer pagamento, voltamos o status para PENDING,
+    // assim a saída deixa de impactar o saldo como saída concluída/aprovada.
+    const updateResult = await query(
+      `UPDATE financial_exits
+       SET payment_status = 'PENDING',
+           paid_at = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND condominium_id = $2
+       RETURNING *`,
+      [exitId, condominiumId]
+    );
+
+    if (updateResult.rows.length === 0) {
+      throw new Error('Saída não encontrada ou não pertence a este condomínio');
+    }
+
+    const updated = updateResult.rows[0];
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'UNPAY',
+      module: 'FINANCIAL',
+      entityType: 'financial_exits',
+      entityId: exitId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress,
+      userAgent,
+      notes: `Motivo desfazer pagamento: ${reason.trim()}`,
+    });
+
+    // Atualiza cache do dashboard para refletir saldo
+    const cacheService = require('./cacheService');
+    cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao desfazer pagamento da saída:', error);
+    throw error;
+  }
+};
+
+// Função para solicitar desfazer pagamento de saída (cria aprovação para o síndico)
+// Recebe: exitId, condominiumId, userId, motivo, ipAddress, userAgent
+// Não altera o status da saída; apenas registra solicitação na tabela approvals
+const requestUnpayExit = async (exitId, condominiumId, userId, reason, ipAddress, userAgent) => {
+  try {
+    if (!reason || !reason.trim()) {
+      throw new Error('Motivo para solicitar desfazer pagamento é obrigatório');
+    }
+
+    // Busca saída atual
+    const exitResult = await query(
+      `SELECT * FROM financial_exits WHERE id = $1 AND condominium_id = $2`,
+      [exitId, condominiumId]
+    );
+
+    if (exitResult.rows.length === 0) {
+      throw new Error('Saída não encontrada');
+    }
+
+    const exit = exitResult.rows[0];
+
+    if (exit.payment_status !== 'PAID') {
+      throw new Error('Somente saídas pagas podem ter o pagamento solicitado para desfazer');
+    }
+
+    // Verifica se já existe solicitação pendente para esta saída
+    const existingApproval = await query(
+      `SELECT id FROM approvals 
+       WHERE condominium_id = $1 
+         AND entity_type = 'financial_exits' 
+         AND entity_id = $2 
+         AND approval_type = 'FINANCIAL_EXIT_UNPAY'
+         AND status = 'PENDING'`,
+      [condominiumId, exitId]
+    );
+
+    if (existingApproval.rows.length > 0) {
+      throw new Error('Já existe uma solicitação pendente para desfazer o pagamento desta saída');
+    }
+
+    // Cria registro na tabela approvals para o síndico aprovar
+    await query(
+      `INSERT INTO approvals (
+         condominium_id,
+         approval_type,
+         entity_type,
+         entity_id,
+         requested_by,
+         requested_amount,
+         description,
+         status
+       )
+       VALUES ($1, 'FINANCIAL_EXIT_UNPAY', 'financial_exits', $2, $3, $4, $5, 'PENDING')`,
+      [
+        condominiumId,
+        exitId,
+        userId,
+        exit.amount,
+        `Solicitação para desfazer pagamento da saída "${exit.description}". Motivo: ${reason.trim()}`,
+      ]
+    );
+
+    // Registra no log de auditoria
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'REQUEST_UNPAY',
+      module: 'FINANCIAL',
+      entityType: 'financial_exits',
+      entityId: exitId,
+      beforeData: exit,
+      afterData: exit,
+      ipAddress,
+      userAgent,
+      notes: `Motivo solicitação desfazer pagamento: ${reason.trim()}`,
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Erro ao solicitar desfazer pagamento da saída:', error);
+    throw error;
+  }
+};
+
 // Função para listar saídas financeiras
 // Recebe: condominiumId, filtros
 // Retorna: lista de saídas
@@ -2275,6 +2450,89 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
   }
 };
 
+// Função para desfazer recebimento de entrada financeira
+// Recebe: entryId, condominiumId, userId, motivo, ipAddress, userAgent
+// Retorna: entrada atualizada
+const unmarkEntryAsReceived = async (entryId, condominiumId, userId, reason, ipAddress, userAgent) => {
+  try {
+    if (!reason || !reason.trim()) {
+      throw new Error('Motivo para desfazer recebimento é obrigatório');
+    }
+
+    const currentResult = await query(
+      `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
+      [entryId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    if (!current.received) {
+      throw new Error('Entrada não está marcada como recebida');
+    }
+
+    // Verifica fechamento mensal na data do recebimento (ou da entrada, se não houver)
+    const monthlyClosureService = require('./monthlyClosureService');
+    const referenceDate = current.received_at || current.entry_date;
+    const isClosed = await monthlyClosureService.isMonthClosed(condominiumId, referenceDate);
+    if (isClosed) {
+      const d = new Date(referenceDate);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      throw new Error(`Não é possível desfazer o recebimento. O mês ${m}/${y} está fechado.`);
+    }
+
+    const updateResult = await query(
+      `UPDATE financial_entries
+       SET received = FALSE,
+           received_at = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND condominium_id = $2
+       RETURNING *`,
+      [entryId, condominiumId]
+    );
+
+    if (updateResult.rows.length === 0) {
+      throw new Error('Entrada não encontrada ou não pertence a este condomínio');
+    }
+
+    const updated = updateResult.rows[0];
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'UNMARK_RECEIVED',
+      module: 'FINANCIAL',
+      entityType: 'financial_entries',
+      entityId: entryId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress,
+      userAgent,
+      notes: `Motivo desfazer recebimento: ${reason.trim()}`,
+    });
+
+    // Invalidar cache do dashboard, já que o saldo muda
+    const cacheService = require('./cacheService');
+    cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao desfazer recebimento da entrada:', error);
+    throw error;
+  }
+};
+
 // Função para adicionar/atualizar comprovante em entrada já recebida
 // Recebe: entryId, condominiumId, userId, { receiptPdfPath, receiptDetails, receiptNotes, receiptMethod }, ipAddress, userAgent
 // Retorna: entrada atualizada
@@ -2365,6 +2623,8 @@ module.exports = {
   approveExit,
   rejectExit,
   markExitAsPaid,
+  unmarkExitAsPaid,
+  requestUnpayExit,
   listExits,
   getDashboardStats,
   createEntry,
@@ -2380,6 +2640,7 @@ module.exports = {
   listRejectedEntries,
   markEntryAsReceived,
   addReceiptToEntry,
+  unmarkEntryAsReceived,
   createAccount,
   listAccounts,
   getAccountById,

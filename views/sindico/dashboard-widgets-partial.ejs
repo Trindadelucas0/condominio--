@@ -42,6 +42,7 @@
     { key: 'current_month_expenses', title: 'Gastos do Mês' },
     { key: 'delinquency_rate', title: 'Inadimplência' },
     { key: 'pending_expenses', title: 'Despesas Pendentes' },
+    { key: 'contas_a_pagar', title: 'Contas a Pagar' },
     { key: 'overdue_tasks', title: 'Tarefas Atrasadas' },
     { key: 'open_occurrences', title: 'Ocorrências Abertas' },
     { key: 'pending_budgets', title: 'Orçamentos Pendentes' },
@@ -236,6 +237,37 @@
         </div>
         <a href="/sindico/saidas-pendentes" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 group">
           Ver saídas pendentes
+          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+    <% } %>
+
+    <% if (widget.key === 'contas_a_pagar') { %>
+      <!-- Contas a Pagar (vencidas / vencem hoje) - Opção A -->
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 <%= (typeof stats.payableOverdueCount !== 'undefined' ? stats.payableOverdueCount : 0) + (typeof stats.payableDueTodayCount !== 'undefined' ? stats.payableDueTodayCount : 0) > 0 ? 'border-red-500 pulse-animation' : 'border-orange-500' %> card-elevate animate-fade-in-up" style="animation-delay: <%= index * 0.1 %>s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Contas a Pagar</p>
+            <p class="text-4xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+              <%= (typeof stats.payableOverdueCount !== 'undefined' ? stats.payableOverdueCount : 0) + (typeof stats.payableDueTodayCount !== 'undefined' ? stats.payableDueTodayCount : 0) %>
+            </p>
+            <% if (typeof stats.payableOverdueCount !== 'undefined' && stats.payableOverdueCount > 0) { %>
+              <p class="text-xs text-red-600 mt-2 font-semibold"><%= stats.payableOverdueCount %> vencida(s)</p>
+            <% } %>
+            <% if (typeof stats.payableDueTodayCount !== 'undefined' && stats.payableDueTodayCount > 0) { %>
+              <p class="text-xs text-amber-600 font-semibold"><%= stats.payableDueTodayCount %> vence(m) hoje</p>
+            <% } %>
+          </div>
+          <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-4 shadow-md">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+            </svg>
+          </div>
+        </div>
+        <a href="/financeiro/contas-a-pagar" class="inline-flex items-center text-sm font-semibold text-orange-600 hover:text-orange-700 transition-colors duration-200 group">
+          Ver contas a pagar
           <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>

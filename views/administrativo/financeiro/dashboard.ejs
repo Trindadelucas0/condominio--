@@ -346,6 +346,9 @@
       </div>
     </div>
 
+    <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
+    <%- include('../../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>
+
     <!-- Cards de KPIs principais - Saldo total, mês atual, mês passado + Média -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       <% 

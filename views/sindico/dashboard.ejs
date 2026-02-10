@@ -91,6 +91,9 @@
       </div>
     </div>
 
+    <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
+    <%- include('../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>
+
     <!-- Widgets Dinâmicos baseados na Configuração do Usuário -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6" id="dashboard-widgets">
       <%- include('dashboard-widgets-partial') %>
@@ -283,7 +286,12 @@
           <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          <span class="relative z-10">Revisar Aprovações</span>
+          <span class="relative z-10">
+            Revisar Aprovações
+            <% if (typeof stats.pendingApprovals !== 'undefined' && stats.pendingApprovals > 0) { %>
+              (<%= stats.pendingApprovals %>)
+            <% } %>
+          </span>
         </a>
         
         <a href="/sindico/alertas" class="group relative overflow-hidden bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2">
@@ -316,6 +324,19 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           <span class="relative z-10">Aprovar Saídas<% if (stats.pendingExpenses !== undefined && stats.pendingExpenses > 0) { %> (<%= stats.pendingExpenses %>)<% } %></span>
+        </a>
+
+        <a href="/sindico/aprovacoes?tipo=FINANCIAL_EXIT_UNPAY" class="group relative overflow-hidden bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2">
+          <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+          <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m2 5H8a2 2 0 01-2-2V5a2 2 0 012-2h5.586A2 2 0 0115 3.586L19.414 8A2 2 0 0120 9.414V18a2 2 0 01-2 2z"></path>
+          </svg>
+          <span class="relative z-10">
+            Desfazer Pagamentos
+            <% if (typeof stats.pendingUnpayExits !== 'undefined' && stats.pendingUnpayExits > 0) { %>
+              (<%= stats.pendingUnpayExits %>)
+            <% } %>
+          </span>
         </a>
         
         <% if (stats.pendingOccurrencesApproval !== undefined && stats.pendingOccurrencesApproval > 0) { %>

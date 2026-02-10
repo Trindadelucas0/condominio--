@@ -23,6 +23,7 @@ const getDashboardStats = async (condominiumId) => {
     console.log('🔄 Calculando dashboard stats...');
     // Conta aprovações pendentes (se a tabela existir)
     let pendingApprovals = 0;
+    let pendingUnpayExits = 0;
     try {
       const pendingApprovalsResult = await query(
         `SELECT COUNT(*) as total FROM approvals 
@@ -30,10 +31,20 @@ const getDashboardStats = async (condominiumId) => {
         [condominiumId]
       );
       pendingApprovals = parseInt(pendingApprovalsResult.rows[0].total);
+
+      const pendingUnpayResult = await query(
+        `SELECT COUNT(*) as total FROM approvals 
+         WHERE condominium_id = $1 
+           AND status = 'PENDING' 
+           AND approval_type = 'FINANCIAL_EXIT_UNPAY'`,
+        [condominiumId]
+      );
+      pendingUnpayExits = parseInt(pendingUnpayResult.rows[0].total);
     } catch (error) {
-      // Tabela approvals não existe, usar valor padrão
-      console.log('⚠️ Tabela approvals não encontrada, usando valor padrão');
+      // Tabela approvals pode não existir, usar valores padrão
+      console.log('⚠️ Tabela approvals não encontrada, usando valores padrão');
       pendingApprovals = 0;
+      pendingUnpayExits = 0;
     }
 
     // Conta alertas críticos não resolvidos (se a tabela existir)
@@ -291,7 +302,26 @@ const getDashboardStats = async (condominiumId) => {
     );
     const pendingOccurrencesApproval = parseInt(pendingOccurrencesApprovalResult.rows[0].total);
 
-    return {
+    // Contas a pagar vencidas e vencendo hoje (Opção A - widget síndico)
+    let payableOverdueCount = 0;
+    let payableDueTodayCount = 0;
+    try {
+      const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+      const payableOverdueResult = await query(
+        `SELECT COUNT(*) as total FROM payable_items WHERE condominium_id = $1 AND status = 'PENDING' AND due_date < $2`,
+        [condominiumId, todayStr]
+      );
+      payableOverdueCount = parseInt(payableOverdueResult.rows[0].total, 10);
+      const payableDueTodayResult = await query(
+        `SELECT COUNT(*) as total FROM payable_items WHERE condominium_id = $1 AND status = 'PENDING' AND due_date = $2`,
+        [condominiumId, todayStr]
+      );
+      payableDueTodayCount = parseInt(payableDueTodayResult.rows[0].total, 10);
+    } catch (err) {
+      // Tabela payable_items pode não existir em instalações antigas
+    }
+
+    const stats = {
       pendingApprovals,
       criticalAlerts,
       warningAlerts,
@@ -314,6 +344,9 @@ const getDashboardStats = async (condominiumId) => {
       delinquencyRate,
       totalOverdue,
       overdueCount,
+      payableOverdueCount,
+      payableDueTodayCount,
+      pendingUnpayExits,
     };
     
     // Salvar no cache (5 minutos)
@@ -337,7 +370,8 @@ const listPendingApprovals = async (condominiumId, filters = {}) => {
       page = 1,
       perPage = 20,
       orderBy = 'created_at',
-      orderDir = 'DESC'
+      orderDir = 'DESC',
+      approvalType = null,
     } = filters;
 
     // Construir query base
@@ -349,6 +383,12 @@ const listPendingApprovals = async (condominiumId, filters = {}) => {
     `;
     const params = [condominiumId];
     let paramIndex = 2;
+
+    // Filtro por tipo de aprovação (ex.: FINANCIAL_EXIT_UNPAY)
+    if (approvalType) {
+      sql += ` AND a.approval_type = $${paramIndex++}`;
+      params.push(approvalType);
+    }
 
     // Adicionar busca por texto
     if (search) {
@@ -385,6 +425,11 @@ const listPendingApprovals = async (condominiumId, filters = {}) => {
     `;
     const countParams = [condominiumId];
     let countParamIndex = 2;
+
+    if (approvalType) {
+      countSql += ` AND a.approval_type = $${countParamIndex++}`;
+      countParams.push(approvalType);
+    }
 
     if (search) {
       countSql += ` AND (
@@ -495,25 +540,39 @@ const processApproval = async (approvalId, action, reason, userId, condominiumId
 
     const updated = updateResult.rows[0];
 
-    // Se foi aprovada, atualiza a entidade relacionada (se for despesa financeira)
+    // Se foi aprovada, atualiza a entidade relacionada
     if (newStatus === 'APPROVED' && approval.entity_type === 'financial_exits') {
-      // Usa lock otimista com version
-      const exitResult = await query(
-        `SELECT version FROM financial_exits WHERE id = $1`,
-        [approval.entity_id]
-      );
-      
-      if (exitResult.rows.length > 0) {
-        const currentVersion = exitResult.rows[0].version;
-        await query(
-          `UPDATE financial_exits 
-           SET payment_status = 'APPROVED', 
-               approved_by = $1, 
-               approved_at = CURRENT_TIMESTAMP,
-               version = version + 1
-           WHERE id = $2 AND version = $3 AND payment_status = 'PENDING'`,
-          [userId, approval.entity_id, currentVersion]
+      const financeiroService = require('./financeiroService');
+
+      if (approval.approval_type === 'FINANCIAL_EXIT_UNPAY') {
+        // Síndico aprovou desfazer pagamento: chama fluxo de reversão
+        await financeiroService.unmarkExitAsPaid(
+          approval.entity_id,
+          condominiumId,
+          userId,
+          reason || 'Desfazer pagamento aprovado pelo síndico',
+          ipAddress,
+          userAgent
         );
+      } else {
+        // Aprovação normal de saída financeira (mantém comportamento existente)
+        const exitResult = await query(
+          `SELECT version FROM financial_exits WHERE id = $1`,
+          [approval.entity_id]
+        );
+        
+        if (exitResult.rows.length > 0) {
+          const currentVersion = exitResult.rows[0].version;
+          await query(
+            `UPDATE financial_exits 
+             SET payment_status = 'APPROVED', 
+                 approved_by = $1, 
+                 approved_at = CURRENT_TIMESTAMP,
+                 version = version + 1
+             WHERE id = $2 AND version = $3 AND payment_status = 'PENDING'`,
+            [userId, approval.entity_id, currentVersion]
+          );
+        }
       }
     }
 
@@ -532,7 +591,7 @@ const processApproval = async (approvalId, action, reason, userId, condominiumId
     });
 
     // Quando aprovação é de saída financeira, o saldo muda; invalidar cache do dashboard
-    if (approval.entity_type === 'financial_exits') {
+    if (approval.entity_type === 'financial_exits' && approval.approval_type !== 'FINANCIAL_EXIT_UNPAY') {
       cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
       cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
     }
@@ -549,6 +608,14 @@ const processApproval = async (approvalId, action, reason, userId, condominiumId
 // Retorna: lista de alertas com paginação
 const listAlerts = async (condominiumId, filters = {}) => {
   try {
+    // Verificar se a tabela alerts existe
+    const tableCheck = await query(
+      `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'alerts')`
+    );
+    if (!tableCheck.rows[0].exists) {
+      return { alerts: [], pagination: { currentPage: 1, perPage: 20, totalRecords: 0, totalPages: 0, hasNext: false, hasPrev: false } };
+    }
+
     let sql = `
       SELECT a.*, u.full_name as resolved_by_name
       FROM alerts a
@@ -620,9 +687,10 @@ const listAlerts = async (condominiumId, filters = {}) => {
     const offset = (page - 1) * perPage;
     const totalPages = Math.ceil(totalRecords / perPage);
 
-    // Ordenação
-    const orderBy = filters.orderBy || 'created_at';
-    const orderDir = filters.orderDir || 'DESC';
+    // Ordenação (colunas permitidas para evitar SQL injection)
+    const allowedOrderBy = ['created_at', 'resolved', 'severity', 'title', 'id'];
+    const orderBy = allowedOrderBy.includes(filters.orderBy) ? filters.orderBy : 'created_at';
+    const orderDir = (filters.orderDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     sql += ` ORDER BY a.${orderBy} ${orderDir} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     params.push(perPage, offset);
 

@@ -21,6 +21,8 @@
 <script>
   window.__userRoles = <%= typeof user !== 'undefined' && user && user.roles ? JSON.stringify(user.roles) : '[]' %>;
 </script>
+<!-- Script do modal de itens críticos (modal está no header) -->
+<script src="/js/critical-items-modal.js"></script>
 <!-- Driver.js - Tour guiado (local; abas por departamento) -->
 <link rel="stylesheet" href="/css/driver.css"/>
 <style id="exito-tour-tabs-css">

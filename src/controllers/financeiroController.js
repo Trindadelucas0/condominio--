@@ -3,6 +3,7 @@
 
 const path = require('path');
 const financeiroService = require('../services/financeiroService');
+const criticalItemsService = require('../services/criticalItemsService');
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 
 // Função para exibir dashboard financeiro
@@ -14,12 +15,20 @@ const showDashboard = async (req, res) => {
     }
 
     const dashboardData = await financeiroService.getDashboardStats(req.user.condominiumId);
+    const userRoles = req.user.roles || [];
+    const criticalItemsData = await criticalItemsService.getCriticalItemsList(
+      req.user.condominiumId,
+      req.user.id,
+      userRoles
+    );
 
     res.render('administrativo/financeiro/dashboard', {
       title: 'Dashboard Financeiro',
       user: req.user,
       stats: dashboardData.stats,
       kpis: dashboardData.kpis,
+      criticalItems: criticalItemsData.items || [],
+      condominiumId: req.user.condominiumId
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard financeiro:', error);
@@ -474,7 +483,7 @@ const updateEntry = async (req, res) => {
       userAgent
     );
 
-    res.redirect('/financeiro/entradas-rejeitadas?success=updated');
+    res.redirect('/financeiro/entradas?success=updated');
   } catch (error) {
     console.error('Erro ao atualizar entrada:', error);
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
@@ -486,6 +495,71 @@ const updateEntry = async (req, res) => {
       costCenters,
       error: error.message,
     });
+  }
+};
+
+// Função para exibir formulário de desfazer recebimento
+// GET /financeiro/entradas/:id/desfazer-recebimento
+const showUnmarkEntryReceived = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId);
+
+    if (!entry.received) {
+      return renderError(res, 400, 'Entrada ainda não está marcada como recebida');
+    }
+
+    res.render('administrativo/financeiro/entradas/desfazer-recebimento', {
+      title: 'Desfazer recebimento da entrada',
+      user: req.user,
+      entrada: entry,
+      error: null,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de desfazer recebimento:', error);
+    renderError(res, 500, 'Erro ao carregar formulário de desfazer recebimento', error);
+  }
+};
+
+// Função para desfazer recebimento de entrada
+// POST /financeiro/entradas/:id/desfazer-recebimento
+const unmarkEntryReceived = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const reason = req.body.reason;
+
+    await financeiroService.unmarkEntryAsReceived(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      reason,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/entradas?success=unreceived');
+  } catch (error) {
+    console.error('Erro ao desfazer recebimento da entrada:', error);
+    try {
+      const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId);
+      res.render('administrativo/financeiro/entradas/desfazer-recebimento', {
+        title: 'Desfazer recebimento da entrada',
+        user: req.user,
+        entrada: entry,
+        error: error.message,
+      });
+    } catch (innerError) {
+      console.error('Erro adicional ao carregar entrada para desfazer recebimento:', innerError);
+      renderError(res, 500, 'Erro ao desfazer recebimento da entrada', error);
+    }
   }
 };
 
@@ -558,6 +632,188 @@ const restoreEntry = async (req, res) => {
   }
 };
 
+// Função para exibir formulário de edição de saída
+// GET /financeiro/saidas/:id/editar
+const showEditExit = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
+    const exit = exits.find(e => e.id === parseInt(req.params.id, 10));
+
+    if (!exit) {
+      return renderError(res, 404, 'Saída não encontrada');
+    }
+
+    const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
+
+    const saidaView = {
+      id: exit.id,
+      description: exit.description,
+      amount: exit.amount,
+      exitDate: exit.exit_date ? new Date(exit.exit_date).toISOString().split('T')[0] : '',
+      costCenterId: exit.cost_center_id,
+      category: exit.category,
+      billId: exit.bill_id,
+      requiresApproval: exit.requires_approval,
+      approvalLimit: exit.approval_limit,
+    };
+
+    res.render('administrativo/financeiro/saidas/form', {
+      title: 'Editar Saída Financeira',
+      user: req.user,
+      saida: saidaView,
+      costCenters,
+      bills: bills || [],
+      error: null,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de edição de saída:', error);
+    renderError(res, 500, 'Erro ao carregar formulário de saída', error);
+  }
+};
+
+// Função para atualizar saída financeira
+// POST /financeiro/saidas/:id
+const updateExitController = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      description: req.body.description,
+      amount: req.body.amount,
+      exitDate: req.body.exitDate,
+      costCenterId: req.body.costCenterId || null,
+      category: req.body.category || 'OUTRA',
+      billId: req.body.billId || null,
+      approvalLimit: req.body.approvalLimit,
+    };
+
+    const userRoles = req.user.roles || [];
+
+    await financeiroService.updateExit(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      data,
+      userRoles,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/saidas?success=updated');
+  } catch (error) {
+    console.error('Erro ao atualizar saída:', error);
+    try {
+      const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+      const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
+      const saida = {
+        id: req.params.id,
+        description: req.body.description,
+        amount: req.body.amount,
+        exitDate: req.body.exitDate,
+        costCenterId: req.body.costCenterId,
+        category: req.body.category,
+        billId: req.body.billId,
+        requiresApproval: req.body.requiresApproval === 'true' || req.body.requiresApproval === 'on',
+        approvalLimit: req.body.approvalLimit,
+      };
+
+      res.render('administrativo/financeiro/saidas/form', {
+        title: 'Editar Saída Financeira',
+        user: req.user,
+        saida,
+        costCenters,
+        bills,
+        error: error.message,
+      });
+    } catch (innerError) {
+      console.error('Erro adicional ao preparar formulário de saída após erro:', innerError);
+      renderError(res, 500, 'Erro ao atualizar saída financeira', error);
+    }
+  }
+};
+
+// Função para exibir formulário de solicitação de desfazer pagamento de saída
+// GET /financeiro/saidas/:id/desfazer-pagamento
+const showUnpayExit = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
+    const exit = exits.find(e => e.id === parseInt(req.params.id, 10));
+
+    if (!exit) {
+      return renderError(res, 404, 'Saída não encontrada');
+    }
+
+    if (exit.payment_status !== 'PAID') {
+      return renderError(res, 400, 'Somente saídas pagas podem ter o pagamento solicitado para desfazer');
+    }
+
+    res.render('administrativo/financeiro/saidas/desfazer-pagamento', {
+      title: 'Solicitar desfazer pagamento da saída',
+      user: req.user,
+      saida: exit,
+      error: null,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir formulário de solicitar desfazer pagamento da saída:', error);
+    renderError(res, 500, 'Erro ao carregar formulário de solicitar desfazer pagamento da saída', error);
+  }
+};
+
+// Função para solicitar desfazer pagamento de saída
+// POST /financeiro/saidas/:id/desfazer-pagamento
+const unpayExit = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const reason = req.body.reason;
+
+    await financeiroService.requestUnpayExit(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      reason,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/saidas?success=unpay_requested');
+  } catch (error) {
+    console.error('Erro ao solicitar desfazer pagamento da saída:', error);
+    try {
+      const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 }).catch(() => []);
+      const exit = exits.find(e => e.id === parseInt(req.params.id, 10)) || null;
+
+      res.render('administrativo/financeiro/saidas/desfazer-pagamento', {
+        title: 'Solicitar desfazer pagamento da saída',
+        user: req.user,
+        saida: exit,
+        error: error.message,
+      });
+    } catch (innerError) {
+      console.error('Erro adicional ao carregar saída para solicitar desfazer pagamento:', innerError);
+      renderError(res, 500, 'Erro ao solicitar desfazer pagamento da saída', error);
+    }
+  }
+};
+
 // Exporta funções para uso nas rotas
 module.exports = {
   showDashboard,
@@ -569,9 +825,15 @@ module.exports = {
   listEntries,
   listDeletedEntries,
   restoreEntry,
+  showUnmarkEntryReceived,
+  unmarkEntryReceived,
   showCreateExit,
   createExit,
   listExits,
+  showEditExit,
+  updateExitController,
+  showUnpayExit,
+  unpayExit,
   showCreateAccount,
   createAccount,
   listAccounts,

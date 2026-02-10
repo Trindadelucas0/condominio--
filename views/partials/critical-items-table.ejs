@@ -1,0 +1,87 @@
+<% if (typeof criticalItems !== 'undefined' && Array.isArray(criticalItems) && criticalItems.length > 0) { %>
+<div class="bg-white rounded-2xl shadow-xl p-4 mb-6 overflow-hidden critical-items-section">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
+      <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+      </svg>
+      Itens que precisam de atenção
+    </h3>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead>
+        <tr class="bg-gray-50">
+          <th class="px-4 py-2 text-left font-semibold text-gray-700">Item</th>
+          <th class="px-4 py-2 text-left font-semibold text-gray-700">Link</th>
+          <th class="px-4 py-2 text-right font-semibold text-gray-700 w-32">Ação</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100" id="critical-items-tbody">
+        <% criticalItems.forEach(function(item) { %>
+        <tr class="critical-item-row hover:bg-gray-50 transition-colors" data-key="<%= item.key %>">
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center gap-1.5">
+              <% if (item.type === 'critical') { %>
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+              <% } else { %>
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              <% } %>
+              <span><%= item.label %></span>
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <a href="<%= item.link %>" class="text-blue-600 hover:text-blue-800 font-medium">Ver &rarr;</a>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <button type="button" class="critical-ok-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors" data-key="<%= item.key %>" title="Marcar como visualizado">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              OK
+            </button>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+(function() {
+  var storageKey = 'critical_items_ack_' + (typeof condominiumId !== 'undefined' ? condominiumId : 'default');
+  function getAcknowledged() {
+    try {
+      var s = localStorage.getItem(storageKey);
+      return s ? JSON.parse(s) : [];
+    } catch (e) { return []; }
+  }
+  function setAcknowledged(arr) {
+    try { localStorage.setItem(storageKey, JSON.stringify(arr)); } catch (e) {}
+  }
+  function hideRow(key) {
+    var row = document.querySelector('.critical-item-row[data-key="' + key + '"]');
+    if (row) row.remove();
+    var tbody = document.getElementById('critical-items-tbody');
+    if (tbody && tbody.children.length === 0) {
+      var section = document.querySelector('.critical-items-section');
+      if (section) section.remove();
+    }
+  }
+  // Ocultar linhas já visualizadas
+  var ack = getAcknowledged();
+  ack.forEach(function(k) { hideRow(k); });
+  // Handler do botão OK
+  document.querySelectorAll('.critical-ok-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var key = this.getAttribute('data-key');
+      if (!key) return;
+      var arr = getAcknowledged();
+      if (arr.indexOf(key) === -1) arr.push(key);
+      setAcknowledged(arr);
+      hideRow(key);
+    });
+  });
+})();
+</script>
+<% } %>

@@ -6,6 +6,7 @@ const sindicoService = require('../services/sindicoService'); // Service do mód
 const dashboardAnalyticsService = require('../services/dashboardAnalyticsService'); // Analytics avançados
 const dashboardConfigService = require('../services/dashboardConfigService'); // Configuração do dashboard
 const cacheService = require('../services/cacheService'); // Cache service
+const criticalItemsService = require('../services/criticalItemsService');
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 const { getErrorMessage } = require('../utils/errorMessages'); // Mensagens de erro amigáveis
 
@@ -62,13 +63,22 @@ const showDashboard = async (req, res) => {
       cacheService.set(analyticsCacheKey, analytics, 300);
     }
 
+    const userRoles = req.user.roles || [];
+    const criticalItemsData = await criticalItemsService.getCriticalItemsList(
+      req.user.condominiumId,
+      req.user.id,
+      userRoles
+    );
+
     res.render('sindico/dashboard', {
       title: 'Dashboard Síndico',
       user: req.user,
       stats: stats,
       analytics: analytics,
       dashboardConfig: dashboardConfig,
-      condominiumName: condominiumName
+      condominiumName: condominiumName,
+      criticalItems: criticalItemsData.items || [],
+      condominiumId: req.user.condominiumId
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard síndico:', error);
@@ -91,6 +101,7 @@ const showAprovacoes = async (req, res) => {
       perPage: parseInt(req.query.perPage) || 20,
       orderBy: req.query.orderBy || 'created_at',
       orderDir: req.query.orderDir || 'DESC',
+      approvalType: req.query.tipo || null,
     };
 
     // Buscar aprovações com filtros e paginação

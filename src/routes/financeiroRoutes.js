@@ -228,6 +228,8 @@ router.post('/entradas/:id/receber', async (req, res) => {
 // Rota de exclusão deve vir ANTES da rota genérica /:id para evitar conflito
 router.post('/entradas/:id/excluir', financeiroController.deleteEntry);
 router.post('/entradas/:id/restaurar', financeiroController.restoreEntry);
+router.get('/entradas/:id/desfazer-recebimento', financeiroController.showUnmarkEntryReceived);
+router.post('/entradas/:id/desfazer-recebimento', financeiroController.unmarkEntryReceived);
 // Rota de atualização
 router.post('/entradas/:id', financeiroController.updateEntry);
 router.post('/entradas', financeiroController.createEntry);
@@ -335,6 +337,10 @@ router.post('/saidas/:id/pagar', async (req, res) => {
     }
   });
 });
+router.get('/saidas/:id/editar', financeiroController.showEditExit);
+router.post('/saidas/:id', financeiroController.updateExitController);
+router.get('/saidas/:id/desfazer-pagamento', financeiroController.showUnpayExit);
+router.post('/saidas/:id/desfazer-pagamento', financeiroController.unpayExit);
 router.get('/saidas', financeiroController.listExits);
 
 // Contas
