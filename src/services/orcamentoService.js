@@ -616,6 +616,229 @@ const releaseOrReturnByFinanceiro = async (budgetRequestId, userId, condominiumI
   }
 };
 
+// Função para criar rascunho de solicitação de orçamento
+// Cotações são OPCIONAIS no rascunho
+const createBudgetRequestDraft = async (data, files, userId, condominiumId, ipAddress, userAgent) => {
+  try {
+    const { title, description, estimatedValue, priority, relatedOccurrenceId, relatedTaskId, quotes } = data;
+
+    if (!title || !description) {
+      throw new Error('Título e descrição são obrigatórios');
+    }
+
+    const quotesArray = quotes && Array.isArray(quotes) ? quotes : [];
+
+    const result = await query(
+      `INSERT INTO budget_requests (
+        condominium_id, requested_by, title, description, estimated_value,
+        priority, related_occurrence_id, related_task_id, status, financeiro_reviewed
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'DRAFT', FALSE)
+       RETURNING *`,
+      [
+        condominiumId,
+        userId,
+        title.trim(),
+        description.trim(),
+        estimatedValue ? parseFloat(estimatedValue) : null,
+        priority || 'NORMAL',
+        relatedOccurrenceId ? parseInt(relatedOccurrenceId) : null,
+        relatedTaskId ? parseInt(relatedTaskId) : null,
+      ]
+    );
+
+    const request = result.rows[0];
+
+    for (const quote of quotesArray) {
+      if (quote.supplierName && quote.supplierName.trim() && quote.quoteValue && !isNaN(parseFloat(quote.quoteValue))) {
+        await query(
+          `INSERT INTO budget_quotes (
+            budget_request_id, supplier_name, supplier_contact, quote_value,
+            quote_description, quote_validity_date, status
+          )
+           VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')`,
+          [
+            request.id,
+            quote.supplierName.trim(),
+            quote.supplierContact ? quote.supplierContact.trim() : null,
+            parseFloat(quote.quoteValue),
+            quote.quoteDescription ? quote.quoteDescription.trim() : null,
+            quote.quoteValidityDate || null,
+          ]
+        );
+      }
+    }
+
+    if (files && files.length > 0) {
+      const path = require('path');
+      for (const file of files) {
+        const relativePath = path.relative(path.join(__dirname, '../../'), file.path).replace(/\\/g, '/');
+        await query(
+          `INSERT INTO budget_request_attachments (
+            budget_request_id, file_path, file_name, file_type, file_size, uploaded_by
+          )
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [request.id, relativePath, file.originalname, file.mimetype, file.size, userId]
+        );
+      }
+    }
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'CREATE',
+      module: 'ADMINISTRATIVO',
+      entityType: 'budget_requests',
+      entityId: request.id,
+      beforeData: null,
+      afterData: { ...request, status: 'DRAFT' },
+      ipAddress,
+      userAgent,
+    });
+
+    return request;
+  } catch (error) {
+    console.error('Erro ao criar rascunho de orçamento:', error);
+    throw error;
+  }
+};
+
+// Função para atualizar rascunho de orçamento
+// Apenas solicitações com status DRAFT podem ser atualizadas
+const updateBudgetRequestDraft = async (budgetRequestId, data, files, userId, condominiumId, ipAddress, userAgent) => {
+  try {
+    const request = await getBudgetRequestById(budgetRequestId, condominiumId);
+    if (!request) throw new Error('Solicitação de orçamento não encontrada');
+    if (request.status !== 'DRAFT') throw new Error('Apenas rascunhos podem ser editados');
+
+    const { title, description, estimatedValue, priority, relatedOccurrenceId, relatedTaskId, quotes } = data;
+    if (!title || !description) throw new Error('Título e descrição são obrigatórios');
+
+    const quotesArray = quotes && Array.isArray(quotes) ? quotes : [];
+
+    await query(
+      `UPDATE budget_requests SET
+        title = $1, description = $2, estimated_value = $3,
+        priority = $4, related_occurrence_id = $5, related_task_id = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7 AND condominium_id = $8`,
+      [
+        title.trim(),
+        description.trim(),
+        estimatedValue ? parseFloat(estimatedValue) : null,
+        priority || 'NORMAL',
+        relatedOccurrenceId ? parseInt(relatedOccurrenceId) : null,
+        relatedTaskId ? parseInt(relatedTaskId) : null,
+        budgetRequestId,
+        condominiumId,
+      ]
+    );
+
+    await query(`DELETE FROM budget_quotes WHERE budget_request_id = $1`, [budgetRequestId]);
+
+    for (const quote of quotesArray) {
+      if (quote.supplierName && quote.supplierName.trim() && quote.quoteValue && !isNaN(parseFloat(quote.quoteValue))) {
+        await query(
+          `INSERT INTO budget_quotes (
+            budget_request_id, supplier_name, supplier_contact, quote_value,
+            quote_description, quote_validity_date, status
+          )
+           VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')`,
+          [
+            budgetRequestId,
+            quote.supplierName.trim(),
+            quote.supplierContact ? quote.supplierContact.trim() : null,
+            parseFloat(quote.quoteValue),
+            quote.quoteDescription ? quote.quoteDescription.trim() : null,
+            quote.quoteValidityDate || null,
+          ]
+        );
+      }
+    }
+
+    if (files && files.length > 0) {
+      const path = require('path');
+      for (const file of files) {
+        const relativePath = path.relative(path.join(__dirname, '../../'), file.path).replace(/\\/g, '/');
+        await query(
+          `INSERT INTO budget_request_attachments (
+            budget_request_id, file_path, file_name, file_type, file_size, uploaded_by
+          )
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [budgetRequestId, relativePath, file.originalname, file.mimetype, file.size, userId]
+        );
+      }
+    }
+
+    const updated = await getBudgetRequestById(budgetRequestId, condominiumId);
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'UPDATE',
+      module: 'ADMINISTRATIVO',
+      entityType: 'budget_requests',
+      entityId: budgetRequestId,
+      beforeData: request,
+      afterData: updated,
+      ipAddress,
+      userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao atualizar rascunho de orçamento:', error);
+    throw error;
+  }
+};
+
+// Função para enviar rascunho para aprovação
+// Exige pelo menos 1 cotação; muda status para PENDING_FINANCEIRO
+const sendDraftForApproval = async (budgetRequestId, userId, condominiumId, ipAddress, userAgent) => {
+  try {
+    const request = await getBudgetRequestById(budgetRequestId, condominiumId);
+    if (!request) throw new Error('Solicitação de orçamento não encontrada');
+    if (request.status !== 'DRAFT') throw new Error('Apenas rascunhos podem ser enviados para aprovação');
+
+    const quotes = request.quotes || [];
+    const validQuotes = quotes.filter(q => q.supplier_name && q.quote_value);
+    if (validQuotes.length === 0) throw new Error('É necessário adicionar pelo menos um orçamento antes de enviar para aprovação');
+
+    await query(
+      `UPDATE budget_requests SET status = 'PENDING_FINANCEIRO', updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND condominium_id = $2`,
+      [budgetRequestId, condominiumId]
+    );
+
+    const notificationService = require('./notificationService');
+    await notificationService.createNotificationForRole(
+      'FINANCEIRO',
+      condominiumId,
+      'Nova Solicitação de Orçamento',
+      `Uma nova solicitação de orçamento foi criada e aguarda sua análise: ${request.title}`,
+      'BUDGET_PENDING_FINANCEIRO',
+      'budget_requests',
+      budgetRequestId
+    );
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'UPDATE',
+      module: 'ADMINISTRATIVO',
+      entityType: 'budget_requests',
+      entityId: budgetRequestId,
+      beforeData: { ...request, status: 'DRAFT' },
+      afterData: { ...request, status: 'PENDING_FINANCEIRO' },
+      ipAddress,
+      userAgent,
+    });
+
+    return request;
+  } catch (error) {
+    console.error('Erro ao enviar rascunho para aprovação:', error);
+    throw error;
+  }
+};
+
 // Função para listar orçamentos por status
 const listBudgetRequestsByStatus = async (condominiumId, status) => {
   try {
@@ -639,6 +862,9 @@ const listBudgetRequestsByStatus = async (condominiumId, status) => {
 
 module.exports = {
   createBudgetRequest,
+  createBudgetRequestDraft,
+  updateBudgetRequestDraft,
+  sendDraftForApproval,
   listBudgetRequests,
   getBudgetRequestAttachments,
   getBudgetQuotes,

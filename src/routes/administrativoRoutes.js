@@ -45,7 +45,10 @@ router.post('/ocorrencias/:id/triar', administrativoController.triarOcorrencia);
 router.get('/orcamentos', administrativoController.showOrcamentos);
 router.get('/orcamentos/novo', administrativoController.showCreateOrcamento);
 router.post('/orcamentos', uploadBudgetAttachments, administrativoController.createOrcamento);
-// Rota de detalhes DEVE vir DEPOIS de /novo para evitar conflito (novo não é um ID numérico)
+// Rotas com :id - /editar e /enviar devem vir antes do detail
+router.get('/orcamentos/:id/editar', administrativoController.showEditOrcamento);
+router.post('/orcamentos/:id', uploadBudgetAttachments, administrativoController.updateOrcamento);
+router.post('/orcamentos/:id/enviar', administrativoController.sendOrcamentoForApproval);
 router.get('/orcamentos/:id', administrativoController.showOrcamentoDetail);
 
 // Comunicados operacionais

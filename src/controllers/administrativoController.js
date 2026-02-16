@@ -531,6 +531,7 @@ const showOrcamentos = async (req, res) => {
       user: req.user,
       requests,
       filters,
+      success: req.query.success,
     });
   } catch (error) {
     console.error('Erro ao listar solicitações de orçamento:', error);
@@ -588,6 +589,7 @@ const showCreateOrcamento = async (req, res) => {
       request: null,
       occurrences,
       tasks,
+      isEdit: false,
     });
   } catch (error) {
     console.error('Erro ao carregar formulário:', error);
@@ -595,69 +597,17 @@ const showCreateOrcamento = async (req, res) => {
   }
 };
 
-// Função para criar solicitação de orçamento
-// POST /administrativo/orcamentos
-const createOrcamento = async (req, res) => {
-  try {
-    if (!req.user.condominiumId) {
-      return res.status(400).send('Usuário não está associado a um condomínio');
-    }
-
-    const orcamentoService = require('../services/orcamentoService');
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('user-agent');
-
-    // Processa múltiplos orçamentos do formulário
-    // O formulário pode enviar como array quotes[] ou como campos separados quotes[N][campo]
-    const quotes = [];
-    
-    // Verifica se quotes vem como array direto (formato mais comum com multipart/form-data)
-    if (req.body.quotes && Array.isArray(req.body.quotes)) {
-      console.log('📋 Processando quotes como array:', req.body.quotes.length, 'itens');
-      
-      req.body.quotes.forEach((quote, index) => {
-        // Ignora valores null ou undefined (pode acontecer se o índice começar em 1)
-        if (quote && typeof quote === 'object') {
-          const supplierName = quote.supplierName;
-          const supplierContact = quote.supplierContact;
-          const quoteValue = quote.quoteValue;
-          const quoteDescription = quote.quoteDescription;
-          const quoteValidityDate = quote.quoteValidityDate;
-
-          if (supplierName && supplierName.trim() && quoteValue && !isNaN(parseFloat(quoteValue))) {
-            quotes.push({
-              supplierName: supplierName.trim(),
-              supplierContact: supplierContact ? supplierContact.trim() : null,
-              quoteValue: parseFloat(quoteValue),
-              quoteDescription: quoteDescription ? quoteDescription.trim() : null,
-              quoteValidityDate: quoteValidityDate || null,
-            });
-          }
-        }
-      });
-      
-      console.log('✅ Orçamentos processados do array:', quotes.length);
-    } else {
-      // Fallback: processa como campos separados quotes[N][campo]
-      console.log('📋 Processando quotes como campos separados...');
-      
-      const quoteKeys = Object.keys(req.body).filter(key => key.startsWith('quotes['));
-      const quoteIndices = new Set();
-      
-      quoteKeys.forEach(key => {
-        const match = key.match(/quotes\[(\d+)\]/);
-        if (match) {
-          quoteIndices.add(match[1]);
-        }
-      });
-
-      quoteIndices.forEach(index => {
-        const supplierName = req.body[`quotes[${index}][supplierName]`];
-        const supplierContact = req.body[`quotes[${index}][supplierContact]`];
-        const quoteValue = req.body[`quotes[${index}][quoteValue]`];
-        const quoteDescription = req.body[`quotes[${index}][quoteDescription]`];
-        const quoteValidityDate = req.body[`quotes[${index}][quoteValidityDate]`];
-
+// Helper para extrair quotes do req.body
+const parseQuotesFromBody = (body) => {
+  const quotes = [];
+  if (body.quotes && Array.isArray(body.quotes)) {
+    body.quotes.forEach((quote) => {
+      if (quote && typeof quote === 'object') {
+        const supplierName = quote.supplierName;
+        const supplierContact = quote.supplierContact;
+        const quoteValue = quote.quoteValue;
+        const quoteDescription = quote.quoteDescription;
+        const quoteValidityDate = quote.quoteValidityDate;
         if (supplierName && supplierName.trim() && quoteValue && !isNaN(parseFloat(quoteValue))) {
           quotes.push({
             supplierName: supplierName.trim(),
@@ -667,10 +617,50 @@ const createOrcamento = async (req, res) => {
             quoteValidityDate: quoteValidityDate || null,
           });
         }
-      });
-      
-      console.log('✅ Orçamentos processados de campos separados:', quotes.length);
+      }
+    });
+  } else {
+    const quoteKeys = Object.keys(body).filter(key => key.startsWith('quotes['));
+    const quoteIndices = new Set();
+    quoteKeys.forEach(key => {
+      const match = key.match(/quotes\[(\d+)\]/);
+      if (match) quoteIndices.add(match[1]);
+    });
+    quoteIndices.forEach(index => {
+      const supplierName = body[`quotes[${index}][supplierName]`];
+      const supplierContact = body[`quotes[${index}][supplierContact]`];
+      const quoteValue = body[`quotes[${index}][quoteValue]`];
+      const quoteDescription = body[`quotes[${index}][quoteDescription]`];
+      const quoteValidityDate = body[`quotes[${index}][quoteValidityDate]`];
+      if (supplierName && supplierName.trim() && quoteValue && !isNaN(parseFloat(quoteValue))) {
+        quotes.push({
+          supplierName: supplierName.trim(),
+          supplierContact: supplierContact ? supplierContact.trim() : null,
+          quoteValue: parseFloat(quoteValue),
+          quoteDescription: quoteDescription ? quoteDescription.trim() : null,
+          quoteValidityDate: quoteValidityDate || null,
+        });
+      }
+    });
+  }
+  return quotes;
+};
+
+// Função para criar solicitação de orçamento
+// POST /administrativo/orcamentos
+// action=draft → salva rascunho (cotações opcionais)
+// action=submit ou ausente → envia direto para aprovação (exige >= 1 cotação)
+const createOrcamento = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
     }
+
+    const orcamentoService = require('../services/orcamentoService');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const action = req.body.action || 'submit';
+    const quotes = parseQuotesFromBody(req.body);
 
     const data = {
       title: req.body.title,
@@ -679,40 +669,161 @@ const createOrcamento = async (req, res) => {
       priority: req.body.priority || 'NORMAL',
       relatedOccurrenceId: req.body.relatedOccurrenceId || null,
       relatedTaskId: req.body.relatedTaskId || null,
-      quotes: quotes, // Array de orçamentos
+      quotes,
     };
 
-    // req.files é um array quando usa .array() no multer
     const files = req.files || [];
 
-    console.log('📤 Enviando para service:', {
-      title: data.title,
-      quotesCount: quotes.length,
-      filesCount: files.length,
-      quotes: quotes.map(q => ({ supplier: q.supplierName, value: q.quoteValue }))
-    });
-
-    await orcamentoService.createBudgetRequest(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
-
-    res.redirect('/administrativo/orcamentos?success=created');
+    if (action === 'draft') {
+      await orcamentoService.createBudgetRequestDraft(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+      res.redirect('/administrativo/orcamentos?success=draft');
+    } else {
+      if (quotes.length === 0) {
+        throw new Error('É necessário adicionar pelo menos um orçamento para enviar para aprovação');
+      }
+      await orcamentoService.createBudgetRequest(data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+      res.redirect('/administrativo/orcamentos?success=created');
+    }
   } catch (error) {
     try {
       const triagemService = require('../services/administrativoTriagemService');
       const administrativoService = require('../services/administrativoService');
       const occurrences = await triagemService.listAllOccurrences(req.user.condominiumId);
       const tasks = await administrativoService.listTasks(req.user.id, req.user.condominiumId);
-      
+
       res.render('administrativo/orcamentos/form', {
         title: 'Nova Solicitação de Orçamento',
         user: req.user,
         request: req.body,
         occurrences,
         tasks,
+        isEdit: false,
         error: error.message,
       });
     } catch (renderError) {
       res.status(500).send('Erro ao processar solicitação');
     }
+  }
+};
+
+// Função para exibir formulário de edição de rascunho
+// GET /administrativo/orcamentos/:id/editar
+const showEditOrcamento = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const orcamentoService = require('../services/orcamentoService');
+    const budgetRequestId = parseInt(req.params.id);
+    const request = await orcamentoService.getBudgetRequestById(budgetRequestId, req.user.condominiumId);
+
+    if (!request) return res.status(404).send('Solicitação de orçamento não encontrada');
+    if (request.status !== 'DRAFT') return res.status(400).send('Apenas rascunhos podem ser editados');
+
+    const triagemService = require('../services/administrativoTriagemService');
+    const administrativoService = require('../services/administrativoService');
+    const occurrences = await triagemService.listAllOccurrences(req.user.condominiumId, { status: 'ABERTA' });
+    const tasks = await administrativoService.listTasks(req.user.id, req.user.condominiumId, { status: 'PENDING' });
+
+    res.render('administrativo/orcamentos/form', {
+      title: 'Editar Rascunho de Orçamento',
+      user: req.user,
+      request: request,
+      occurrences,
+      tasks,
+      isEdit: true,
+      error: req.query.error,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar edição do orçamento:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
+};
+
+// Função para atualizar rascunho de orçamento
+// POST /administrativo/orcamentos/:id
+const updateOrcamento = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const orcamentoService = require('../services/orcamentoService');
+    const budgetRequestId = parseInt(req.params.id);
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const action = req.body.action || 'draft';
+    const quotes = parseQuotesFromBody(req.body);
+
+    const data = {
+      title: req.body.title,
+      description: req.body.description,
+      estimatedValue: req.body.estimatedValue,
+      priority: req.body.priority || 'NORMAL',
+      relatedOccurrenceId: req.body.relatedOccurrenceId || null,
+      relatedTaskId: req.body.relatedTaskId || null,
+      quotes,
+    };
+
+    const files = req.files || [];
+
+    if (action === 'submit') {
+      if (quotes.length === 0) {
+        throw new Error('É necessário adicionar pelo menos um orçamento antes de enviar para aprovação');
+      }
+      await orcamentoService.updateBudgetRequestDraft(budgetRequestId, data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+      await orcamentoService.sendDraftForApproval(budgetRequestId, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+      res.redirect('/administrativo/orcamentos?success=created');
+    } else {
+      await orcamentoService.updateBudgetRequestDraft(budgetRequestId, data, files, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+      res.redirect('/administrativo/orcamentos?success=draft_updated');
+    }
+  } catch (error) {
+    try {
+      const orcamentoService = require('../services/orcamentoService');
+      const triagemService = require('../services/administrativoTriagemService');
+      const administrativoService = require('../services/administrativoService');
+      const budgetRequestId = parseInt(req.params.id);
+      const request = await orcamentoService.getBudgetRequestById(budgetRequestId, req.user.condominiumId);
+      const occurrences = await triagemService.listAllOccurrences(req.user.condominiumId);
+      const tasks = await administrativoService.listTasks(req.user.id, req.user.condominiumId);
+
+      res.render('administrativo/orcamentos/form', {
+        title: 'Editar Rascunho de Orçamento',
+        user: req.user,
+        request: { ...req.body, id: budgetRequestId, quotes: request?.quotes },
+        occurrences,
+        tasks,
+        isEdit: true,
+        error: error.message,
+      });
+    } catch (renderError) {
+      res.status(500).send('Erro ao processar solicitação');
+    }
+  }
+};
+
+// Função para enviar rascunho para aprovação (sem alterar dados)
+// POST /administrativo/orcamentos/:id/enviar
+const sendOrcamentoForApproval = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).send('Usuário não está associado a um condomínio');
+    }
+
+    const orcamentoService = require('../services/orcamentoService');
+    const budgetRequestId = parseInt(req.params.id);
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await orcamentoService.sendDraftForApproval(budgetRequestId, req.user.id, req.user.condominiumId, ipAddress, userAgent);
+    res.redirect('/administrativo/orcamentos?success=created');
+  } catch (error) {
+    if (error.message.includes('pelo menos um orçamento')) {
+      return res.redirect(`/administrativo/orcamentos/${req.params.id}/editar?error=${encodeURIComponent(error.message)}`);
+    }
+    res.redirect(`/administrativo/orcamentos?error=${encodeURIComponent(error.message)}`);
   }
 };
 
@@ -926,7 +1037,10 @@ module.exports = {
   showOrcamentos,
   showOrcamentoDetail,
   showCreateOrcamento,
+  showEditOrcamento,
   createOrcamento,
+  updateOrcamento,
+  sendOrcamentoForApproval,
   // Comunicados operacionais
   showComunicados,
   showCreateComunicado,
