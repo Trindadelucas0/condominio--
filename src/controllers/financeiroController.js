@@ -14,6 +14,9 @@ const showDashboard = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
+    const payableService = require('../services/payableService');
+    await payableService.checkAndNotifyOverduePayables(req.user.condominiumId);
+
     const dashboardData = await financeiroService.getDashboardStats(req.user.condominiumId);
     const userRoles = req.user.roles || [];
     const criticalItemsData = await criticalItemsService.getCriticalItemsList(

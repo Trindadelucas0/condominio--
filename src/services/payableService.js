@@ -45,12 +45,18 @@ const listPayableItems = async (condominiumId, filters = {}) => {
 
   const result = await query(sql, params);
   const today = new Date().toISOString().slice(0, 10);
+  const toYyyyMmDd = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  };
   return result.rows.map(row => {
-    const due = row.due_date ? String(row.due_date).slice(0, 10) : '';
+    const due = toYyyyMmDd(row.due_date);
     let displayStatus = row.status;
     if (row.status === 'PENDING') {
-      if (due < today) displayStatus = 'OVERDUE';
-      else if (due === today) displayStatus = 'DUE_TODAY';
+      if (due && due < today) displayStatus = 'OVERDUE';
+      else if (due && due === today) displayStatus = 'DUE_TODAY';
       else displayStatus = 'UPCOMING';
     }
     return { ...row, displayStatus };
@@ -250,10 +256,58 @@ const generatePayableItemsForRecurringBills = async (condominiumId, options = {}
   return { created };
 };
 
+/**
+ * Verifica itens vencidos ainda não pagos e envia notificação para FINANCEIRO.
+ * Marca overdue_notified_at para não notificar múltiplas vezes.
+ */
+const checkAndNotifyOverduePayables = async (condominiumId) => {
+  try {
+    const result = await query(
+      `SELECT pi.id, pi.due_date, pi.amount, pi.description, b.name as bill_name
+       FROM payable_items pi
+       LEFT JOIN bills b ON pi.bill_id = b.id AND b.condominium_id = pi.condominium_id
+       WHERE pi.condominium_id = $1
+         AND pi.status = 'PENDING'
+         AND pi.due_date < CURRENT_DATE
+         AND pi.overdue_notified_at IS NULL`,
+      [condominiumId]
+    );
+
+    const notificationService = require('./notificationService');
+    for (const item of result.rows) {
+      const desc = item.description || item.bill_name || `Conta #${item.id}`;
+      const dueStr = item.due_date ? new Date(item.due_date).toLocaleDateString('pt-BR') : '-';
+      const amountStr = parseFloat(item.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      const title = 'Conta vencida';
+      const message = `${desc} - R$ ${amountStr}. Vencimento: ${dueStr}.`;
+
+      await notificationService.createNotificationForRole(
+        'FINANCEIRO',
+        condominiumId,
+        title,
+        message,
+        'PAYABLE_OVERDUE',
+        'payable_items',
+        item.id
+      );
+
+      await query(
+        `UPDATE payable_items SET overdue_notified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND condominium_id = $2`,
+        [item.id, condominiumId]
+      );
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/notificar contas vencidas:', error);
+    // Não propaga para não quebrar a listagem/dashboard
+  }
+};
+
 module.exports = {
   listPayableItems,
   getPayableItemById,
   createPayableItem,
   payPayableItem,
   generatePayableItemsForRecurringBills,
+  checkAndNotifyOverduePayables,
 };

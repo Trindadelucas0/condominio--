@@ -1022,6 +1022,23 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar FASE 36:', error);
     }
 
+    // FASE 37: Controle de notificação de contas vencidas (overdue_notified_at)
+    console.log('🔍 Verificando coluna overdue_notified_at (FASE 37)...');
+    try {
+      const colExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'payable_items' AND column_name = 'overdue_notified_at'
+        )
+      `);
+      if (!colExists.rows[0].exists) {
+        await executeSQLFile(path.join(__dirname, 'extendTablesPhase37.sql'));
+        console.log('✅ FASE 37 aplicada (overdue_notified_at)');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/criar FASE 37:', error);
+    }
+
     // Criação do usuário master inicial (se não existir)
     console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
     try {

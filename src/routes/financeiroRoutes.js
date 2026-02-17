@@ -594,6 +594,7 @@ router.post('/contas-a-pagar/gerar-vencimentos', async (req, res) => {
 });
 router.get('/contas-a-pagar', async (req, res) => {
   try {
+    await payableService.checkAndNotifyOverduePayables(req.user.condominiumId);
     const filters = {
       status: req.query.status || undefined,
       limit: 200,
