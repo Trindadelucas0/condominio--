@@ -52,22 +52,30 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-amber-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Checklist e tarefas'; %>
+    <% var resumo = ['Veja tarefas e checklists do dia; filtre por data e status.', 'Abra uma tarefa para concluir ou um checklist para executar.', 'Tarefas vêm do administrativo; checklists dos modelos do síndico.']; %>
+    <% var helpModalContent = '<p>Esta tela reúne tarefas e checklists. Use os filtros e abra o item para concluir a tarefa ou executar o checklist.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
-      <div class="flex items-center space-x-3 mb-2">
-        <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-3 shadow-lg">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-          </svg>
+      <div class="flex flex-wrap items-center gap-3 mb-2">
+        <div class="flex items-center space-x-3">
+          <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-3 shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-gray-900 bg-clip-text text-transparent">
+              Checklist
+            </h1>
+            <p class="text-gray-600 mt-1">Tarefas e checklist do dia</p>
+          </div>
         </div>
-        <div>
-          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-gray-900 bg-clip-text text-transparent">
-            Checklist
-          </h1>
-          <p class="text-gray-600 mt-1">Tarefas e checklist do dia</p>
-        </div>
+        <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Filtros e Busca -->
     <div class="mb-6 animate-slide-in">

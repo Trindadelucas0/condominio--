@@ -37,23 +37,31 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-amber-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Nova/Editar ocorrência'; %>
+    <% var resumo = ['Preencha título, descrição e local para registrar a ocorrência.', 'Anexe imagens se necessário; a ocorrência será atribuída conforme o fluxo.', 'Após salvar, acompanhe pelo detalhe ou lista.']; %>
+    <% var helpModalContent = '<p>Registre uma nova ocorrência ou edite uma existente. Informe título, descrição e local. Imagens ajudam no acompanhamento.</p>'; %>
     <div class="max-w-3xl mx-auto">
       <!-- Cabeçalho Moderno -->
       <div class="mb-8 animate-slide-in">
-        <div class="flex items-center space-x-3 mb-2">
-          <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-3 shadow-lg">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
+        <div class="flex flex-wrap items-center gap-3 mb-2">
+          <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-3 shadow-lg">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-gray-900 bg-clip-text text-transparent">
+                <%= ocorrencia ? 'Editar' : 'Nova' %> Ocorrência
+              </h1>
+              <p class="text-gray-600 mt-1">Registre um problema ou ocorrência</p>
+            </div>
           </div>
-          <div>
-            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-gray-900 bg-clip-text text-transparent">
-              <%= ocorrencia ? 'Editar' : 'Nova' %> Ocorrência
-            </h1>
-            <p class="text-gray-600 mt-1">Registre um problema ou ocorrência</p>
-          </div>
+          <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
         </div>
       </div>
+      <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
       <!-- Mensagem de Erro -->
       <% if (typeof error !== 'undefined' && error) { %>

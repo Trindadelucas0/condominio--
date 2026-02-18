@@ -29,10 +29,14 @@
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-blue-50/30">
   <div class="container mx-auto px-4 py-8">
     <div class="max-w-5xl mx-auto">
+      <% var helpModalId = 'modalComoFunciona'; %>
+      <% var helpTitle = 'Detalhe do orçamento'; %>
+      <% var resumo = ['Veja dados, cotações e status da solicitação.', 'Fluxo: Rascunho, Aguardando Financeiro, Aguardando Síndico, Aprovado/Rejeitado, Liberado.', 'Aprove ou rejeite conforme seu perfil (Financeiro ou Síndico).']; %>
+      <% var helpModalContent = '<p>Esta tela mostra todos os dados e cotações da solicitação. O status indica em que etapa está. Financeiro e Síndico podem aprovar ou rejeitar conforme configuração.</p>'; %>
       <!-- Cabeçalho -->
       <div class="mb-8 animate-slide-in">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center space-x-3">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div class="flex flex-wrap items-center gap-3">
             <a href="<%= typeof module !== 'undefined' && module === 'financeiro' ? '/financeiro/orcamentos-rejeitados' : '/administrativo/orcamentos' %>" class="text-indigo-600 hover:text-indigo-800">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -42,6 +46,7 @@
               <h1 class="text-4xl font-bold text-gray-800"><%= request.title %></h1>
               <p class="text-gray-600 mt-1">Detalhes da solicitação de orçamento</p>
             </div>
+            <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
           </div>
           <div>
             <span class="px-4 py-2 rounded-lg text-sm font-semibold <%= 
@@ -57,6 +62,7 @@
           </div>
         </div>
       </div>
+      <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
       <!-- Informações Principais -->
       <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in mb-6">

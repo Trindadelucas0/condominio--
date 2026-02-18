@@ -3,11 +3,18 @@
 <%- include('../partials/notifications') %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Alertas (Síndico)'; %>
+  <% var resumo = ['Alertas e notificações do sistema para o síndico: SLA, pendências, etc.', 'Filtre por não resolvidos ou todos. Marque como resolvido quando tratar.', 'Use busca e severidade para encontrar itens críticos.', 'Manter alertas em dia ajuda na gestão.']; %>
+  <% var helpModalContent = '<p><strong>Alertas</strong> são notificações para o síndico: SLA vencido, pendências, avisos. Filtre por resolvidos ou não. Marque como resolvido quando tratar. Busca e severidade ajudam a priorizar.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Alertas</h1>
-      <p class="text-gray-600 mt-2">Alertas e notificações do sistema</p>
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Alertas</h1>
+        <p class="text-gray-600 mt-2">Alertas e notificações do sistema</p>
+      </div>
+      <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
     <div class="flex space-x-2">
       <a href="/sindico/alertas?resolved=false" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
@@ -18,6 +25,7 @@
       </a>
     </div>
   </div>
+  <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Busca e Filtros -->
   <div class="bg-white rounded-lg shadow p-4 mb-6">

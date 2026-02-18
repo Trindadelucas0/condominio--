@@ -2,11 +2,18 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Categorias de documentos'; %>
+  <% var resumo = ['Categorias organizam documentos por tipo: Contratos, Atas, Laudos, etc.', 'Ao cadastrar documento você escolhe a categoria; filtre por ela na lista.', 'Crie as categorias que fizerem sentido para o condomínio.']; %>
+  <% var helpModalContent = '<p>Categorias servem para classificar documentos. Ao criar um documento, escolha a categoria. Na lista de documentos você pode filtrar por categoria.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Categorias de Documentos</h1>
-      <p class="text-gray-600 mt-2">Organize seus documentos por categorias</p>
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Categorias de Documentos</h1>
+        <p class="text-gray-600 mt-2">Organize seus documentos por categorias</p>
+      </div>
+      <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
     <div class="flex gap-3">
       <a href="/administrativo/documentos" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
@@ -17,6 +24,7 @@
       </a>
     </div>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Mensagens -->
   <% if (typeof query !== 'undefined' && query.success === 'created') { %>

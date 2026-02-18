@@ -3,11 +3,18 @@
 
 <div class="min-h-screen bg-gray-50">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Detalhe da conta'; %>
+    <% var resumo = ['Visão da conta (fornecedor) e dos vencimentos/boletos vinculados.', 'Use Novo boleto para adicionar vencimento; pague em Boletos a pagar.', 'Editar conta altera dados do fornecedor.']; %>
+    <% var helpModalContent = '<p>Esta tela mostra os dados da conta e os vencimentos. Adicione boletos com Novo boleto; para pagar, vá em Boletos a pagar e use Pagar na linha desejada.</p>'; %>
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <a href="/financeiro/contas" class="text-sm text-blue-600 hover:underline mb-2 inline-block">← Voltar para Contas</a>
-        <h1 class="text-3xl font-bold text-gray-900"><%= account.name %></h1>
-        <% if (account.provider) { %><p class="text-gray-600 mt-1"><%= account.provider %></p><% } %>
+      <div class="flex flex-wrap items-center gap-3">
+        <div>
+          <a href="/financeiro/contas" class="text-sm text-blue-600 hover:underline mb-2 inline-block">← Voltar para Contas</a>
+          <h1 class="text-3xl font-bold text-gray-900"><%= account.name %></h1>
+          <% if (account.provider) { %><p class="text-gray-600 mt-1"><%= account.provider %></p><% } %>
+        </div>
+        <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
       <div class="flex flex-col sm:flex-row gap-3">
         <a
@@ -25,6 +32,7 @@
         </a>
       </div>
     </div>
+    <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <% if (query.success === 'boleto_added') { %>
       <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">Boleto/vencimento adicionado. Ele aparece em <a href="/financeiro/contas-a-pagar" class="underline font-medium">Contas a pagar</a> para pagar e anexar comprovante.</div>

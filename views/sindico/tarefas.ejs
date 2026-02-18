@@ -56,22 +56,30 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Tarefas (Síndico)'; %>
+    <% var resumo = ['Visão de todas as tarefas do condomínio para o síndico.', 'Use filtros e busca. Exporte para Excel se precisar.', 'Tarefas são criadas no módulo Administrativo; aqui o síndico acompanha.', 'Clique em uma tarefa para ver detalhes e status.']; %>
+    <% var helpModalContent = '<p><strong>Tarefas (Síndico)</strong> mostra todas as tarefas. Filtros e busca; exportação para Excel. A criação e execução são no Administrativo; aqui o síndico acompanha e vê detalhes.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
-      <div class="flex items-center space-x-3 mb-2">
-        <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-          </svg>
+      <div class="flex flex-wrap items-center gap-3 mb-2">
+        <div class="flex items-center space-x-3">
+          <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent">
+              Tarefas do Condomínio
+            </h1>
+            <p class="text-gray-600 mt-1">Visualize todas as tarefas (abertas e concluídas)</p>
+          </div>
         </div>
-        <div>
-          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent">
-            Tarefas do Condomínio
-          </h1>
-          <p class="text-gray-600 mt-1">Visualize todas as tarefas (abertas e concluídas)</p>
-        </div>
+        <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Filtros e Ações -->
     <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 animate-slide-in">

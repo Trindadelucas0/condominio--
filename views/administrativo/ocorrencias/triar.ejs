@@ -2,11 +2,19 @@
 <%- include('../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Triar ocorrência'; %>
+  <% var resumo = ['Classifique a ocorrência: prioridade, status e se deve virar tarefa.', 'Pode criar uma tarefa vinculada para a equipe resolver.', 'Encerrar ou encaminhar conforme o caso.']; %>
+  <% var helpModalContent = '<p>Triar é classificar a ocorrência e decidir: encerrar, encaminhar ou criar uma tarefa para a equipe. Preencha prioridade e status; opcionalmente crie tarefa vinculada.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Triar Ocorrência</h1>
-    <p class="text-gray-600 mt-2">Classifique e organize a ocorrência para tratamento adequado</p>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Triar Ocorrência</h1>
+      <p class="text-gray-600 mt-2">Classifique e organize a ocorrência para tratamento adequado</p>
+    </div>
+    <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Informações da Ocorrência -->
   <div class="bg-white rounded-lg shadow-lg p-6 mb-6">

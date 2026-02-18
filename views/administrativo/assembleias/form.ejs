@@ -2,10 +2,18 @@
 <%- include('../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800 mb-2">Nova Assembleia</h1>
-    <p class="text-gray-600">Agende uma nova assembleia</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Nova assembleia'; %>
+  <% var resumo = ['Informe data, tipo (ordinária, extraordinária, especial) e local.', 'Após criar, gerencie participantes e pauta no detalhe da assembleia.', 'Marque como finalizada quando a reunião ocorrer.']; %>
+  <% var helpModalContent = '<p>Preencha data, tipo e local. Depois você pode gerenciar participantes e pauta na tela de detalhes. Marque como finalizada quando a assembleia ocorrer.</p>'; %>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Nova Assembleia</h1>
+      <p class="text-gray-600">Agende uma nova assembleia</p>
+    </div>
+    <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <% if (typeof req.query.error !== 'undefined') { %>
     <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">

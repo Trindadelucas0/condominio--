@@ -47,23 +47,31 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-blue-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = isEdit ? 'Editar orçamento' : 'Nova solicitação de orçamento'; %>
+    <% var resumo = ['Preencha título e descrição; anexe cotações dos fornecedores.', 'Salve como rascunho ou envie para Financeiro e Síndico aprovar.', 'Aprovado pode ser liberado para execução.']; %>
+    <% var helpModalContent = '<p>Preencha os dados e anexe as cotações. Salve como rascunho ou envie para aprovação. O fluxo passa por Financeiro e Síndico.</p>'; %>
     <div class="max-w-4xl mx-auto">
       <!-- Cabeçalho Moderno -->
       <div class="mb-8 animate-slide-in">
-        <div class="flex items-center space-x-3 mb-2">
-          <div class="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl p-3 shadow-lg">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
+        <div class="flex flex-wrap items-center gap-3 mb-2">
+          <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl p-3 shadow-lg">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-gray-900 bg-clip-text text-transparent">
+                <%= isEdit ? 'Editar Rascunho de Orçamento' : 'Nova Solicitação de Orçamento' %>
+              </h1>
+              <p class="text-gray-600 mt-1"><%= isEdit ? 'Adicione ou edite os orçamentos e envie quando estiver pronto' : 'Salve como rascunho e adicione cotações quando quiser, ou envie para aprovação quando tudo estiver pronto' %></p>
+            </div>
           </div>
-          <div>
-            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-gray-900 bg-clip-text text-transparent">
-              <%= isEdit ? 'Editar Rascunho de Orçamento' : 'Nova Solicitação de Orçamento' %>
-            </h1>
-            <p class="text-gray-600 mt-1"><%= isEdit ? 'Adicione ou edite os orçamentos e envie quando estiver pronto' : 'Salve como rascunho e adicione cotações quando quiser, ou envie para aprovação quando tudo estiver pronto' %></p>
-          </div>
+          <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
         </div>
       </div>
+      <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
       <!-- Mensagem de Erro -->
       <% if (typeof error !== 'undefined' && error) { %>

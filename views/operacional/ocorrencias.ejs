@@ -48,21 +48,28 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-amber-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Ocorrências'; %>
+    <% var resumo = ['Lista de ocorrências atribuídas a você; filtre por status e busca.', 'Abra uma ocorrência para ver detalhes e atualizar andamento.', 'Crie nova ocorrência para registrar problemas.']; %>
+    <% var helpModalContent = '<p>Veja e gerencie as ocorrências. Filtre por status, abra para detalhes e atualizações. Use Nova Ocorrência para registrar um problema.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-        <div class="flex items-center space-x-3">
-          <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-3 shadow-lg">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-3 shadow-lg">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-gray-900 bg-clip-text text-transparent">
+                Ocorrências
+              </h1>
+              <p class="text-gray-600 mt-1">Problemas e ocorrências reportadas ou atribuídas a você</p>
+            </div>
           </div>
-          <div>
-            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-gray-900 bg-clip-text text-transparent">
-              Ocorrências
-            </h1>
-            <p class="text-gray-600 mt-1">Problemas e ocorrências reportadas ou atribuídas a você</p>
-          </div>
+          <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
         </div>
         <a href="/operacional/ocorrencias/nova" class="group relative overflow-hidden bg-gradient-to-r from-orange-600 to-amber-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 inline-flex items-center space-x-2">
           <span class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
@@ -73,6 +80,7 @@
         </a>
       </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Filtros e Busca -->
     <div class="mb-6 animate-slide-in">

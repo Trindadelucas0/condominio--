@@ -2,10 +2,17 @@
 <%- include('../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
-  <div class="flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Solicitações de Orçamento</h1>
-      <p class="text-gray-600 mt-2">Gerencie solicitações de orçamento</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Como funcionam as Solicitações de Orçamento'; %>
+  <% var resumo = ['Solicitação de orçamento é o fluxo para compras/serviços: quem pede envia para Financeiro e Síndico aprovar.', 'Crie a solicitação, anexe cotações e envie; ela passa por Aguardando Financeiro e Aguardando Síndico.', 'Status: Rascunho, Aguardando aprovação, Aprovado, Rejeitado, Liberado. Filtre por status.', 'Aprovado e liberado podem ser executados; rejeitado pode ser visto em lista de rejeitados.']; %>
+  <% var helpModalContent = '<p><strong>Solicitações de Orçamento</strong> são pedidos de compra ou serviço. Crie a solicitação, anexe cotações e envie. O fluxo passa por Financeiro e Síndico. Status: Rascunho, Aguardando Financeiro/Síndico, Aprovado, Rejeitado, Liberado. Aprovado e Liberado seguem para execução.</p>'; %>
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Solicitações de Orçamento</h1>
+        <p class="text-gray-600 mt-2">Gerencie solicitações de orçamento</p>
+      </div>
+      <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
     <% if (typeof allowCreate === 'undefined' || allowCreate !== false) { %>
     <a href="/administrativo/orcamentos/novo" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
@@ -13,6 +20,7 @@
     </a>
     <% } %>
   </div>
+  <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <% if (success === 'created') { %>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">

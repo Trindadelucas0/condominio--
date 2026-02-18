@@ -2,17 +2,25 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Como funcionam as Taxas Mensais'; %>
+  <% var resumo = ['Taxas são cobranças de condomínio por unidade por mês; aqui você vê inadimplência.', 'Crie uma nova taxa; o sistema gera para apartamentos ativos. Use Pagar para marcar como pago.', 'O valor pago é lançado em Receitas. Cards mostram inadimplência e valor em aberto.', 'Cadastre apartamentos antes de gerar taxas.']; %>
+  <% var helpModalContent = '<p><strong>Taxas Mensais</strong> são as cobranças por apartamento. Crie uma taxa (valor, vencimento); o sistema gera para os ativos. Quando o condômino paga, use Pagar e o valor vira receita. Estatísticas mostram inadimplência e valor em aberto.</p>'; %>
   <div class="mb-6">
-    <div class="flex justify-between items-center mb-4">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-800">Taxas Mensais</h1>
-        <p class="text-gray-600 mt-1">Controle de inadimplência</p>
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">Taxas Mensais</h1>
+          <p class="text-gray-600 mt-1">Controle de inadimplência</p>
+        </div>
+        <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
       <a href="/financeiro/taxas/nova" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
         + Nova Taxa
       </a>
     </div>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <% if (typeof req !== 'undefined' && req.query && req.query.success === 'created') { %>
     <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">

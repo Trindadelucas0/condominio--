@@ -5,10 +5,18 @@
 <div class="container mx-auto px-4 py-8">
   <div class="max-w-4xl mx-auto">
     <!-- Cabeçalho -->
-    <div class="mb-6">
-      <a href="/sindico/ocorrencias" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">← Voltar para lista</a>
-      <h1 class="text-3xl font-bold text-gray-800">Detalhes da Ocorrência</h1>
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Detalhes da ocorrência'; %>
+    <% var resumo = ['Visão completa da ocorrência: status, prioridade, descrição.', 'A triagem é feita no módulo Administrativo.', 'Use para acompanhar e conferir.']; %>
+    <% var helpModalContent = '<p>Esta tela mostra todos os dados da ocorrência. A triagem (encerrar ou criar tarefa) é feita no módulo Administrativo. Aqui o síndico acompanha.</p>'; %>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <div>
+        <a href="/sindico/ocorrencias" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">← Voltar para lista</a>
+        <h1 class="text-3xl font-bold text-gray-800">Detalhes da Ocorrência</h1>
+      </div>
+      <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Informações Principais -->
     <div class="bg-white rounded-lg shadow p-6 mb-6">

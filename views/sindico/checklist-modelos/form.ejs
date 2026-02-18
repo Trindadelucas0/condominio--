@@ -2,12 +2,20 @@
 <%- include('../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Modelo de checklist'; %>
+  <% var resumo = ['Defina nome, descrição, departamento e dias da semana.', 'Adicione itens que compõem o checklist; o sistema gera checklists nos dias configurados.', 'Modelo ativo gera checklists; inativo para de gerar novos.']; %>
+  <% var helpModalContent = '<p>Preencha as informações e os itens do modelo. O sistema criará checklists automaticamente nos dias escolhidos para o departamento selecionado.</p>'; %>
   <div class="max-w-4xl mx-auto">
     <!-- Cabeçalho -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-800"><%= model && model.id ? 'Editar Modelo' : 'Novo Modelo de Checklist' %></h1>
-      <p class="text-gray-600 mt-2"><%= model && model.id ? 'Atualize as informações do modelo' : 'Crie uma regra que será usada para gerar checklists automaticamente' %></p>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800"><%= model && model.id ? 'Editar Modelo' : 'Novo Modelo de Checklist' %></h1>
+        <p class="text-gray-600 mt-2"><%= model && model.id ? 'Atualize as informações do modelo' : 'Crie uma regra que será usada para gerar checklists automaticamente' %></p>
+      </div>
+      <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
+    <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Mensagem de erro -->
     <% if (typeof error !== 'undefined' && error) { %>

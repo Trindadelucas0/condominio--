@@ -80,12 +80,16 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Como funcionam as Receitas'; %>
+    <% var resumo = ['Receitas são os valores que entram no caixa do condomínio: taxas, multas, aluguéis de áreas, etc.', 'Use "Nova receita" para lançar. Depois, quando o dinheiro entrar de fato, use "Receber" na linha e anexe o comprovante.', 'Receitas podem exigir aprovação do síndico; nesse caso aparecem em Aprovações até serem aprovadas.', 'Para ver o que foi excluído, use "Ver entradas excluídas".']; %>
+    <% var helpModalContent = '<p><strong>O que são Receitas?</strong> São todos os valores que entram no caixa do condomínio: taxas de condomínio pagas, multas, aluguéis de salão de festas, venda de itens, etc.</p><p><strong>Fluxo:</strong> (1) Cadastre uma receita com "Nova receita" (valor, descrição, categoria, centro de custo). (2) Se houver regra de aprovação, ela vai para Aprovações do síndico. (3) Quando o dinheiro entrar de fato, na lista use o botão "Receber" e anexe o comprovante. Só então o valor entra no saldo.</p><p><strong>Status:</strong> Pendente = ainda não recebido; Recebido = valor já entrou e consta no saldo. Receitas excluídas ficam na tela "Ver entradas excluídas".</p><p><strong>Dica:</strong> Use categorias e centros de custo para depois analisar relatórios por tipo de receita.</p>'; %>
     <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Receitas', url: '' } ] }) %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <div class="flex items-center space-x-3 mb-2">
+          <div class="flex items-center flex-wrap gap-3 mb-2">
             <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-3 shadow-lg">
               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -97,6 +101,7 @@
               </h1>
               <p class="text-gray-600 mt-1">Aqui você registra o dinheiro que entrou no condomínio (taxas, multas, etc.)</p>
             </div>
+            <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-3">
@@ -112,6 +117,7 @@
           </a>
         </div>
       </div>
+      <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
       <!-- Mensagens Modernas -->
       <% if (typeof query !== 'undefined' && query.success === 'created') { %>

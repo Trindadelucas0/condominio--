@@ -2,16 +2,24 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Ativos (patrimônio)'; %>
+  <% var resumo = ['Ativos são bens do condomínio: equipamentos, móveis, instalações.', 'Cadastre nome, tipo, valor; no detalhe registre manutenções e depreciação.', 'Use para controle do patrimônio e planejamento de manutenção.']; %>
+  <% var helpModalContent = '<p>Ativos são os bens do condomínio. Cadastre cada um com nome, tipo e valor. No detalhe do ativo você registra manutenções (preventiva/corretiva) e depreciação.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800">Ativos</h1>
-      <p class="text-gray-600 mt-2">Gestão de patrimônio do condomínio</p>
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Ativos</h1>
+        <p class="text-gray-600 mt-2">Gestão de patrimônio do condomínio</p>
+      </div>
+      <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
     <a href="/patrimonio/ativos/novo" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
       Novo Ativo
     </a>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Mensagens -->
   <% if (typeof query !== 'undefined' && query.success === 'created') { %>

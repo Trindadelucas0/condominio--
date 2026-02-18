@@ -2,8 +2,18 @@
 <%- include('../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold text-gray-800 mb-6">Orçamentos Aguardando Análise</h1>
-  <p class="text-gray-600 mb-6">Preencha os campos obrigatórios e envie para o síndico aprovar</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Orçamentos aguardando análise'; %>
+  <% var resumo = ['Orçamentos que precisam de revisão antes de enviar ao síndico.', 'Preencha campos obrigatórios e envie para o síndico aprovar.', 'Após aprovação, o síndico pode liberar a execução.']; %>
+  <% var helpModalContent = '<p>Lista de orçamentos aguardando sua análise. Complete os dados e envie para o síndico. Após aprovação, o fluxo segue para execução e pagamento.</p>'; %>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Orçamentos Aguardando Análise</h1>
+      <p class="text-gray-600 mt-1">Preencha os campos obrigatórios e envie para o síndico aprovar</p>
+    </div>
+    <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
+  </div>
+  <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <% if (typeof req !== 'undefined' && req.query.success === 'reviewed') { %>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">

@@ -2,11 +2,19 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Marcar saída como paga'; %>
+  <% var resumo = ['Informe a data e o método de pagamento; anexe o comprovante em PDF.', 'Ao salvar, o valor sai do saldo e a despesa fica com status Pago.', 'Use quando o pagamento tiver sido efetivamente realizado.']; %>
+  <% var helpModalContent = '<p>Preencha a data do pagamento e o método. Anexe o comprovante. Ao salvar, o valor é debitado do saldo e a despesa fica como Paga.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Marcar Saída como Paga</h1>
-    <p class="text-gray-600 mt-2">Preencha os detalhes do pagamento e anexe o comprovante</p>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Marcar Saída como Paga</h1>
+      <p class="text-gray-600 mt-2">Preencha os detalhes do pagamento e anexe o comprovante</p>
+    </div>
+    <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Mensagem de erro -->
   <% if (typeof error !== 'undefined' && error) { %>

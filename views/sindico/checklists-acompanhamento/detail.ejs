@@ -6,9 +6,14 @@
   const canQuestion = user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'));
 %>
 <div class="container mx-auto px-4 py-8 max-w-4xl">
-  <div class="mb-6">
-    <a href="/sindico/checklists-acompanhamento<%= typeof query !== 'undefined' && query && query.date ? '?date=' + encodeURIComponent(query.date) : '' %>" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">← Voltar para lista</a>
-    <h1 class="text-3xl font-bold text-gray-800"><%= checklist.model_name || 'Checklist' %></h1>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Detalhe do checklist'; %>
+  <% var resumo = ['Veja itens realizados ou não e evidências.', 'Como síndico, você pode questionar itens não realizados.', 'O responsável verá o questionamento e pode responder.']; %>
+  <% var helpModalContent = '<p>Nesta tela você vê o progresso do checklist. Itens não realizados podem ser questionados; o responsável será notificado e pode responder.</p>'; %>
+  <div class="mb-6 flex flex-wrap items-start gap-3">
+    <div>
+      <a href="/sindico/checklists-acompanhamento<%= typeof query !== 'undefined' && query && query.date ? '?date=' + encodeURIComponent(query.date) : '' %>" class="text-blue-600 hover:text-blue-800 mb-2 inline-block">← Voltar para lista</a>
+      <h1 class="text-3xl font-bold text-gray-800"><%= checklist.model_name || 'Checklist' %></h1>
     <p class="text-gray-600 mt-2">
       <%= new Date(checklist.scheduled_date).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %>
     </p>
@@ -16,7 +21,10 @@
     <% if (checklist.model_description) { %>
       <p class="text-sm text-gray-500 mt-1"><%= checklist.model_description %></p>
     <% } %>
+    </div>
+    <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <% if (typeof query !== 'undefined' && query.success === 'questionar') { %>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">

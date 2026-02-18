@@ -3,11 +3,19 @@
 
 <div class="container mx-auto px-4 py-8">
   <div class="max-w-2xl mx-auto">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Nova categoria de documento'; %>
+    <% var resumo = ['Dê um nome à categoria (ex.: Contratos, Atas).', 'Ela aparecerá ao cadastrar documentos e na lista para filtrar.']; %>
+    <% var helpModalContent = '<p>Informe o nome da categoria. Ela ficará disponível ao cadastrar documentos e para filtrar na lista.</p>'; %>
     <!-- Cabeçalho -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-800">Nova Categoria de Documento</h1>
-      <p class="text-gray-600 mt-2">Crie uma categoria para organizar seus documentos</p>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Nova Categoria de Documento</h1>
+        <p class="text-gray-600 mt-2">Crie uma categoria para organizar seus documentos</p>
+      </div>
+      <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
+    <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Mensagem de erro -->
     <% if (typeof error !== 'undefined' && error) { %>

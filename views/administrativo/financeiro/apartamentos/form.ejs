@@ -2,10 +2,18 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800 mb-2">Novo Apartamento</h1>
-    <p class="text-gray-600">Cadastre um novo apartamento</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Novo apartamento'; %>
+  <% var resumo = ['Cadastre número, bloco, proprietário e documento.', 'Apartamentos ativos recebem cobrança de taxas; inativos não.', 'Use para controle de inadimplência e relatórios.']; %>
+  <% var helpModalContent = '<p>Preencha número, bloco, proprietário e documento. Unidades ativas entram na geração de taxas; inativas não. Mantenha dados atualizados para cobrança.</p>'; %>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Novo Apartamento</h1>
+      <p class="text-gray-600">Cadastre um novo apartamento</p>
+    </div>
+    <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <div class="bg-white rounded-lg shadow-lg p-6 max-w-2xl">
     <form method="POST" action="/financeiro/apartamentos">

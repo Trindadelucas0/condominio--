@@ -2,10 +2,18 @@
 <%- include('../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Acompanhar Checklists</h1>
-    <p class="text-gray-600 mt-2">Acompanhe os checklists do dia, veja o que foi feito ou não e questione itens não realizados.</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Acompanhar checklists'; %>
+  <% var resumo = ['Veja os checklists do dia; filtre por data.', 'Confira itens feitos ou não; questione itens não realizados no detalhe.', 'Checklists são gerados a partir dos modelos ativos.']; %>
+  <% var helpModalContent = '<p>Esta tela lista os checklists da data escolhida. Clique em um para ver o detalhe e questionar itens não realizados. Os checklists são gerados automaticamente pelos modelos ativos.</p>'; %>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Acompanhar Checklists</h1>
+      <p class="text-gray-600 mt-2">Acompanhe os checklists do dia, veja o que foi feito ou não e questione itens não realizados.</p>
+    </div>
+    <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <div class="bg-white rounded-lg shadow p-4 mb-6">
     <form method="GET" action="/sindico/checklists-acompanhamento" class="flex items-end gap-4">

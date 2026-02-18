@@ -84,6 +84,7 @@
         </div>
       </div>
     </div>
+    <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Mensagens Modernas -->
     <% if (typeof query !== 'undefined' && query.success === 'created') { %>

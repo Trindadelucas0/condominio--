@@ -2,11 +2,19 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Registrar consumo mensal'; %>
+  <% var resumo = ['Registre valor e consumo (se aplicável) da conta no mês.', 'Serve para histórico e comparação; o pagamento é em Boletos a pagar/Despesas.', 'Selecione conta, mês, ano e preencha os valores.']; %>
+  <% var helpModalContent = '<p>Escolha a conta, mês e ano. Informe o valor e o consumo quando fizer sentido. Este registro é para histórico e análise; o pagamento em si é feito em Boletos a pagar.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Registrar Consumo Mensal</h1>
-    <p class="text-gray-600 mt-2">Registre o consumo e valor das contas (água, energia, gás, etc.)</p>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Registrar Consumo Mensal</h1>
+      <p class="text-gray-600 mt-2">Registre o consumo e valor das contas (água, energia, gás, etc.)</p>
+    </div>
+    <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Mensagem de erro -->
   <% if (typeof error !== 'undefined' && error) { %>

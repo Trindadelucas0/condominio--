@@ -93,10 +93,14 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Notificações'; %>
+    <% var resumo = ['Lista de notificações do sistema: tarefas, ocorrências, aprovações, etc.', 'Marque como lida ao abrir; use "Marcar todas como lidas" para limpar.', 'Notificações mantêm você informado sobre ações que precisam de atenção.']; %>
+    <% var helpModalContent = '<p>Central de notificações: tarefas, ocorrências, aprovações e outros avisos. Abra para marcar como lida ou use o botão para marcar todas.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div>
+        <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center space-x-3 mb-2">
             <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg relative">
               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,6 +119,7 @@
               <p class="text-gray-600 mt-1">Suas notificações do sistema</p>
             </div>
           </div>
+          <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
         </div>
         <% if (unreadCount > 0) { %>
         <form method="POST" action="/notifications/read-all" class="inline">
@@ -129,6 +134,7 @@
         <% } %>
       </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
       <!-- Mensagens Modernas -->
       <% if (typeof req !== 'undefined' && req.query.success === 'all_read') { %>

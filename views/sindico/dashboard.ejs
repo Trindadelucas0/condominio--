@@ -65,21 +65,28 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Dashboard Síndico'; %>
+    <% var resumo = ['Visão executiva: aprovações pendentes, alertas, ocorrências e orçamentos.', 'Use os widgets e atalhos para aprovar, ver alertas e pendências. Personalize os widgets se quiser.', 'Itens críticos aparecem na tabela; use OK para marcar como visualizado.', 'Aprovações acima do limite do financeiro chegam aqui para o síndico.']; %>
+    <% var helpModalContent = '<p><strong>Dashboard Síndico</strong> é a tela inicial do síndico. Mostra aprovações pendentes, alertas, ocorrências e orçamentos. Use os atalhos para aprovar e resolver. Itens críticos podem ser marcados como visualizados com OK. Você pode personalizar os widgets.</p>'; %>
     <!-- Cabeçalho Moderno (responsivo) -->
     <div class="mb-6 sm:mb-8 animate-fade-in-up">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex items-center gap-3 sm:space-x-4 min-w-0">
-          <div class="flex-shrink-0 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 sm:p-4 shadow-lg">
-            <svg class="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-            </svg>
+        <div class="flex flex-wrap items-center gap-3 min-w-0">
+          <div class="flex items-center gap-3 sm:space-x-4 min-w-0">
+            <div class="flex-shrink-0 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 sm:p-4 shadow-lg">
+              <svg class="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent truncate">
+                Dashboard Síndico
+              </h1>
+              <p class="text-gray-600 mt-1 text-sm sm:text-base">Visão executiva do condomínio</p>
+            </div>
           </div>
-          <div class="min-w-0">
-            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent truncate">
-              Dashboard Síndico
-            </h1>
-            <p class="text-gray-600 mt-1 text-sm sm:text-base">Visão executiva do condomínio</p>
-          </div>
+          <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
         </div>
         <button type="button" onclick="openDashboardConfig()" class="touch-target-min w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 sm:px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center justify-center space-x-2">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,6 +97,7 @@
         </button>
       </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
     <%- include('../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>

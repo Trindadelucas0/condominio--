@@ -41,22 +41,30 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Saídas aguardando aprovação'; %>
+    <% var resumo = ['Despesas acima do limite do financeiro que precisam da sua aprovação.', 'Aprove ou rejeite cada uma; aprovada pode ser paga em Despesas.', 'Rejeitada volta para quem criou.']; %>
+    <% var helpModalContent = '<p>Estas despesas ultrapassam o limite que o financeiro pode aprovar. Como síndico, aprove ou rejeite. Aprovada segue para pagamento; rejeitada volta para correção.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
-      <div class="flex items-center space-x-3 mb-2">
-        <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
+      <div class="flex flex-wrap items-center gap-3 mb-2">
+        <div class="flex items-center space-x-3">
+          <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-3 shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent">
+              Saídas Aguardando Aprovação
+            </h1>
+            <p class="text-gray-600 mt-1">Aprove ou rejeite saídas financeiras pendentes</p>
+          </div>
         </div>
-        <div>
-          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 bg-clip-text text-transparent">
-            Saídas Aguardando Aprovação
-          </h1>
-          <p class="text-gray-600 mt-1">Aprove ou rejeite saídas financeiras pendentes</p>
-        </div>
+        <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Mensagens -->
     <% if (typeof req !== 'undefined' && req.query.success === 'approved') { %>

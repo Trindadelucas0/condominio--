@@ -60,22 +60,30 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-cyan-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Dashboard Limpeza'; %>
+    <% var resumo = ['Visão de ocorrências de limpeza: abertas, em atendimento e resolvidas.', 'Acesse a lista de ocorrências e registre atendimentos.', 'Use os atalhos para agilizar o dia a dia.']; %>
+    <% var helpModalContent = '<p>O dashboard mostra totais de ocorrências de limpeza. Use os atalhos para ver a lista, criar ou atender ocorrências.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-fade-in-up">
-      <div class="flex items-center space-x-4 mb-4">
-        <div class="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-4 shadow-lg">
-          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-          </svg>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <div class="flex items-center space-x-4">
+          <div class="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-4 shadow-lg">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-teal-900 to-gray-900 bg-clip-text text-transparent">
+              Dashboard Limpeza
+            </h1>
+            <p class="text-gray-600 mt-1">Painel de ocorrências e atividades de limpeza</p>
+          </div>
         </div>
-        <div>
-          <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-teal-900 to-gray-900 bg-clip-text text-transparent">
-            Dashboard Limpeza
-          </h1>
-          <p class="text-gray-600 mt-1">Painel de ocorrências e atividades de limpeza</p>
-        </div>
+        <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Cards de Estatísticas Principais -->
     <% 

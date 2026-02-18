@@ -330,21 +330,29 @@
 
 <div class="min-h-screen bg-gray-50">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Dashboard Financeiro'; %>
+    <% var resumo = ['Este é o painel principal do financeiro: você vê o saldo, totais do mês e itens que precisam de atenção.', 'Os números mostram receitas (entradas) e despesas (saídas) do condomínio.', 'Use os atalhos para ir a Receitas, Despesas, Boletos a pagar e Fechamento mensal.', '"Itens que precisam de atenção" mostra pendências (ex.: boletos vencidos); resolva e marque como visualizado.']; %>
+    <% var helpModalContent = '<p><strong>O que é o Dashboard?</strong> É a tela inicial do módulo financeiro. Aqui você tem uma visão geral do dinheiro do condomínio: quanto entrou (receitas), quanto saiu (despesas) e o saldo.</p><p><strong>Os cards de números</strong> mostram o saldo total, o saldo do mês atual, do mês passado e a média. Use esses valores para acompanhar a saúde financeira.</p><p><strong>Itens que precisam de atenção:</strong> aparecem contas vencidas, documentos próximos do vencimento e alertas. Clique em "Ver detalhes" para ir à tela correta e resolver. Depois use "OK" para marcar como visualizado.</p><p><strong>Comece por aqui:</strong> se for a primeira vez, o sistema sugere cadastrar a primeira receita ou um fornecedor em Contas. O link "Como funciona" explica todo o fluxo.</p><p><strong>Em resumo:</strong> use o dashboard para monitorar; para lançar receitas e despesas, vá em Receitas ou Despesas no menu.</p>'; %>
     <!-- Cabeçalho Limpo -->
     <div class="mb-8 animate-fade-in-up">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 mb-2">
             Dashboard Financeiro
           </h1>
           <p class="text-gray-600">Visão geral e análise financeira do condomínio</p>
         </div>
-        <div class="hidden md:flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-lg">
-          <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-          <span class="text-sm text-gray-700 font-medium">Sistema Online</span>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
+          <div class="hidden md:flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-lg">
+            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span class="text-sm text-gray-700 font-medium">Sistema Online</span>
+          </div>
         </div>
       </div>
     </div>
+    <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
     <%- include('../../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>

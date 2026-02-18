@@ -3,11 +3,19 @@
 
 <div class="min-h-screen bg-gray-50">
   <div class="container mx-auto px-4 py-8 max-w-2xl">
-    <div class="mb-6">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Adicionar novo boleto'; %>
+    <% var resumo = ['Informe vencimento e valor; o boleto aparece em Boletos a pagar.', 'Pague em Boletos a pagar e anexe o comprovante lá.']; %>
+    <% var helpModalContent = '<p>Preencha vencimento e valor. O item vai para Boletos a pagar. Ao pagar lá você anexa o comprovante.</p>'; %>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <div>
       <a href="/financeiro/contas/<%= account.id %>" class="text-sm text-blue-600 hover:underline mb-2 inline-block">← Voltar para <%= account.name %></a>
       <h1 class="text-3xl font-bold text-gray-900">Adicionar novo boleto</h1>
       <p class="text-gray-600 mt-1">Fornecedor: <strong><%= account.name %></strong>. Informe a data de vencimento e o valor.</p>
+      </div>
+      <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
+    <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <% if (typeof error !== 'undefined' && error) { %>
       <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg"><%= error %></div>

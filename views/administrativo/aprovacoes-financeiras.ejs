@@ -2,12 +2,20 @@
 <%- include('../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Aprovações Financeiras'; %>
+  <% var resumo = ['Aprove despesas até o limite; acima o síndico aprova.', 'Use Aprovar ou Rejeitar. Aprovada segue para pagamento em Despesas.', 'Rejeitada volta para quem criou.']; %>
+  <% var helpModalContent = '<p>Aprovações Financeiras: despesas que precisam do OK do financeiro até certo valor. Aprove ou rejeite; aprovada pode ser paga em Despesas.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Aprovações Financeiras</h1>
-    <p class="text-gray-600 mt-2">Aprove saídas financeiras até o limite configurado (padrão: R$ 1.000,00)</p>
-    <p class="text-sm text-gray-500 mt-1">Saídas acima do limite devem ser aprovadas pelo síndico</p>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Aprovações Financeiras</h1>
+      <p class="text-gray-600 mt-2">Aprove saídas financeiras até o limite configurado (padrão: R$ 1.000,00)</p>
+      <p class="text-sm text-gray-500 mt-1">Saídas acima do limite devem ser aprovadas pelo síndico</p>
+    </div>
+    <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Mensagens -->
   <% if (typeof query !== 'undefined' && query.success === 'approved') { %>

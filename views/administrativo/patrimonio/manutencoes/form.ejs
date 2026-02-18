@@ -2,11 +2,19 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Nova manutenção'; %>
+  <% var resumo = ['Registre manutenção preventiva ou corretiva para o ativo.', 'Informe tipo, descrição, data e valor; o histórico fica no detalhe do ativo.', 'Use para controle de gastos e planejamento.']; %>
+  <% var helpModalContent = '<p>Preencha tipo (preventiva/corretiva), descrição, data e valor. O registro fica no histórico do ativo para consulta e relatórios.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Nova Manutenção</h1>
-    <p class="text-gray-600 mt-2">Registrar manutenção para: <strong><%= asset.name %></strong></p>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Nova Manutenção</h1>
+      <p class="text-gray-600 mt-2">Registrar manutenção para: <strong><%= asset.name %></strong></p>
+    </div>
+    <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Mensagem de erro -->
   <% if (typeof error !== 'undefined' && error) { %>

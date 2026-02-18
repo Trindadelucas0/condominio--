@@ -7,23 +7,31 @@
   const hasSindicoQuestions = checklist.items && checklist.items.some(i => i.sindico_question);
 %>
 <div class="container mx-auto px-4 py-8" id="checklist-page" data-checklist-id="<%= checklist.id %>">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Executar checklist'; %>
+  <% var resumo = ['Marque cada item como feito; anexe fotos se o modelo permitir.', 'Responda aos questionamentos do síndico quando houver.', 'Ao terminar todos os itens, finalize o checklist.']; %>
+  <% var helpModalContent = '<p>Execute o checklist marcando os itens realizados. Anexe evidências quando necessário. Se o síndico questionou algum item, responda antes de finalizar.</p>'; %>
   <!-- Cabeçalho -->
   <div class="mb-6">
-    <div class="flex justify-between items-start">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-800"><%= checklist.model_name || 'Checklist' %></h1>
+    <div class="flex flex-wrap justify-between items-start gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800"><%= checklist.model_name || 'Checklist' %></h1>
         <p class="text-gray-600 mt-2">
           <%= new Date(checklist.scheduled_date).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %>
         </p>
         <% if (checklist.model_description) { %>
           <p class="text-sm text-gray-500 mt-1"><%= checklist.model_description %></p>
         <% } %>
+        </div>
+        <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
       <a href="/operacional/checklists-diarios" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
         Voltar
       </a>
     </div>
   </div>
+  <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Mensagens (apenas após redirect) -->
   <% if (typeof query !== 'undefined' && query.success === 'evidence_added') { %>

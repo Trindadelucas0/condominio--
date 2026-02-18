@@ -3,15 +3,23 @@
 
 <div class="min-h-screen bg-gray-50">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Entradas excluídas'; %>
+    <% var resumo = ['Lista de receitas que foram excluídas. Aqui você pode restaurar se foi por engano.', 'Ao restaurar, a entrada volta para a lista de Receitas com status pendente.', 'Use apenas quando a exclusão tiver sido equivocada.']; %>
+    <% var helpModalContent = '<p>Esta tela mostra receitas que foram excluídas. Use <strong>Restaurar</strong> para devolver a entrada à lista de Receitas (status pendente). Use apenas se a exclusão foi por engano.</p>'; %>
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Entradas excluídas</h1>
-        <p class="text-gray-600 mt-1">Entradas que foram excluídas podem ser restauradas aqui.</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Entradas excluídas</h1>
+          <p class="text-gray-600 mt-1">Entradas que foram excluídas podem ser restauradas aqui.</p>
+        </div>
+        <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
       <a href="/financeiro/entradas" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium">
         ← Voltar para Entradas
       </a>
     </div>
+    <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <% if (typeof query !== 'undefined' && query.error) { %>
       <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded text-red-800">

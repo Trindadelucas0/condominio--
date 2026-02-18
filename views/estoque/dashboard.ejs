@@ -2,10 +2,18 @@
 <%- include('../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
-  <div class="mb-6">
-    <h1 class="page-title">Estoque e Insumos</h1>
-    <p class="page-subtitle">Gestão de estoque do condomínio</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Estoque e insumos'; %>
+  <% var resumo = ['Visão do estoque: totais e itens abaixo do mínimo.', 'Cadastre itens em Ver Todos; controle entradas e saídas.', 'Alertas mostram itens que precisam de reposição.']; %>
+  <% var helpModalContent = '<p>O dashboard mostra totais e itens abaixo do mínimo. Cadastre itens e controle entradas/saídas em Ver Todos. Use os alertas para repor estoque.</p>'; %>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="page-title">Estoque e Insumos</h1>
+      <p class="page-subtitle">Gestão de estoque do condomínio</p>
+    </div>
+    <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Alertas de estoque baixo -->
   <% if (itemsBelowMinimum && itemsBelowMinimum.length > 0) { %>

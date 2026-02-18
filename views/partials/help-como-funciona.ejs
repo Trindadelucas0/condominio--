@@ -1,0 +1,45 @@
+<%# Ajuda Como funciona: defina helpTitle, resumo, helpModalContent e inclua este partial. Opcionais. %>
+<% var _helpTitle = typeof helpTitle !== 'undefined' ? helpTitle : ''; %>
+<% var _resumo = typeof resumo !== 'undefined' && Array.isArray(resumo) ? resumo : []; %>
+<% var _helpModalContent = typeof helpModalContent !== 'undefined' ? helpModalContent : ''; %>
+<% var _modalId = typeof helpModalId !== 'undefined' ? helpModalId : 'modalComoFunciona'; %>
+
+<% if (_resumo.length > 0 || _helpTitle) { %>
+  <div class="mb-6">
+    <% if (_resumo.length > 0) { %>
+      <div class="p-5 rounded-xl bg-white border border-blue-100 shadow-sm">
+        <p class="text-sm font-semibold text-gray-800 mb-3">Resumo rápido</p>
+        <ul class="text-sm text-gray-700 space-y-2 list-none">
+          <% _resumo.forEach(function(item, i) { %>
+            <li class="flex items-start gap-2"><span class="text-blue-500 font-bold"><%= i + 1 %>.</span> <%= item %></li>
+          <% }); %>
+        </ul>
+        <% if (_helpTitle && _helpModalContent) { %>
+          <p class="text-xs text-gray-500 mt-3">Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> ao lado do título.</p>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<% if (_helpTitle && _helpModalContent) { %>
+<div id="<%= _modalId %>" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog" aria-labelledby="<%= _modalId %>Title">
+  <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-blue-50">
+      <h2 id="<%= _modalId %>Title" class="text-xl font-bold text-gray-900"><%= _helpTitle %></h2>
+      <button type="button" onclick="document.getElementById('<%= _modalId %>').classList.add('hidden')" class="p-2 rounded-lg hover:bg-gray-200 transition-colors" aria-label="Fechar">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1 text-gray-700 text-sm leading-relaxed space-y-4">
+      <%- _helpModalContent %>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <button type="button" onclick="document.getElementById('<%= _modalId %>').classList.add('hidden')" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors">Entendi</button>
+    </div>
+  </div>
+</div>
+<script>
+  (function() { var m = document.getElementById('<%= _modalId %>'); if (m) m.addEventListener('click', function(e) { if (e.target === this) this.classList.add('hidden'); }); })();
+</script>
+<% } %>

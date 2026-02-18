@@ -3,13 +3,19 @@
 <%- include('../partials/notifications') %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Alertas SLA'; %>
+  <% var resumo = ['SLA é o prazo combinado para tarefas e ocorrências. Aqui aparecem as que passaram do prazo.', 'Use esta tela para priorizar e resolver itens atrasados. Filtre por prioridade e busque por texto.', 'Resolver o item na tela de origem (Tarefas ou Ocorrências) atualiza o alerta.', 'Manter SLA em dia melhora a qualidade do atendimento.']; %>
+  <% var helpModalContent = '<p><strong>Alertas SLA</strong> mostram tarefas e ocorrências cujo prazo (SLA) já venceu. Use para priorizar o que está atrasado. Resolva na tela de Tarefas ou Ocorrências; o alerta é atualizado.</p>'; %>
   <!-- Cabeçalho -->
-  <div class="flex justify-between items-center mb-6">
+  <div class="flex flex-wrap items-center gap-3 mb-6">
     <div>
       <h1 class="text-3xl font-bold text-gray-800">Alertas SLA</h1>
       <p class="text-gray-600 mt-2">Tarefas e ocorrências com prazo de SLA vencido</p>
     </div>
+    <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Busca e Filtros -->
   <div class="bg-white rounded-lg shadow p-4 mb-6">

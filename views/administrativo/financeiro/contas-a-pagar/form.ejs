@@ -4,14 +4,22 @@
 <div class="min-h-screen bg-gray-50">
   <div class="container mx-auto px-4 py-8 max-w-2xl">
     <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Boletos a pagar', url: '/financeiro/contas-a-pagar' }, { label: 'Novo boleto', url: '' } ] }) %>
-    <div class="mb-6">
-      <a href="/financeiro/contas-a-pagar" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors mb-2 w-fit">
-        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        Voltar para Boletos a pagar
-      </a>
-      <h1 class="text-3xl font-bold text-gray-900">Nova Conta a Pagar</h1>
-      <p class="text-gray-600 mt-1">Registre um vencimento (conta variável ou avulsa)</p>
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Nova conta a pagar – como preencher'; %>
+    <% var resumo = ['Escolha a conta (fornecedor) se for boleto de uma conta cadastrada, ou deixe avulso.', 'Informe vencimento e valor. Ao salvar o item aparece em Boletos a pagar.', 'Quando pagar, use Pagar na lista e anexe o comprovante; a despesa é gerada em Despesas.']; %>
+    <% var helpModalContent = '<p>Conta opcional: vincule a um fornecedor em Contas ou deixe avulso. Preencha vencimento e valor. O item aparece em Boletos a pagar. Ao pagar, use a tela Boletos a pagar e clique em Pagar para registrar e anexar comprovante.</p>'; %>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <div>
+        <a href="/financeiro/contas-a-pagar" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors mb-2 w-fit">
+          <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Voltar para Boletos a pagar
+        </a>
+        <h1 class="text-3xl font-bold text-gray-900">Nova Conta a Pagar</h1>
+        <p class="text-gray-600 mt-1">Registre um vencimento (conta variável ou avulsa)</p>
+      </div>
+      <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
     </div>
+    <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <% if (typeof error !== 'undefined' && error) { %>
       <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg"><%= error %></div>

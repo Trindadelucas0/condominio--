@@ -69,11 +69,15 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-red-50/30 to-orange-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Como funcionam as Despesas'; %>
+    <% var resumo = ['Despesas são os pagamentos que o condomínio faz: fornecedores, manutenção, água, luz, etc.', 'Use "Nova despesa" para lançar. Se houver regra de valor, pode precisar de aprovação do síndico (Aprovações).', 'Quando pagar de fato, use "Pagar" na linha e anexe o comprovante; o status passa a Pago.', 'Para desfazer um pagamento já registrado, use a ação "Desfazer pagamento" na lista.']; %>
+    <% var helpModalContent = '<p><strong>O que são Despesas?</strong> São todos os valores que saem do caixa: pagamento a fornecedores, contas de luz/água, manutenção, etc.</p><p><strong>Fluxo:</strong> (1) Cadastre com "Nova despesa" (valor, descrição, conta/fornecedor, centro de custo). (2) Se o valor exigir aprovação, a despesa vai para Aprovações. (3) Após aprovação, quando pagar de fato use "Pagar" na lista e anexe o comprovante. O valor então sai do saldo.</p><p><strong>Status:</strong> Pendente = ainda não pago; Pago = valor já saiu e consta como despesa. "Desfazer pagamento" reverte o último pagamento (use com cuidado).</p><p><strong>Dica:</strong> Use Contas (fornecedores) e Centros de Custo para organizar e depois analisar relatórios.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <div class="flex items-center space-x-3 mb-2">
+          <div class="flex items-center flex-wrap gap-3 mb-2">
             <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 shadow-lg">
               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
@@ -85,6 +89,7 @@
               </h1>
               <p class="text-gray-600 mt-1">Aqui você registra os pagamentos e despesas do condomínio</p>
             </div>
+            <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
           </div>
         </div>
         <a href="/financeiro/saidas/nova" class="group relative overflow-hidden bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
@@ -95,6 +100,7 @@
           <span class="relative z-10">Nova despesa</span>
         </a>
       </div>
+      <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
       <!-- Mensagens Modernas -->
       <% if (typeof query !== 'undefined' && query.success === 'created') { %>

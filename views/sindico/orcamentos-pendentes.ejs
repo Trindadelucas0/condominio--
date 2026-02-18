@@ -3,8 +3,18 @@
 <%- include('../partials/notifications') %>
 
 <div class="container mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold text-gray-800 mb-6">Orçamentos Aguardando Aprovação</h1>
-  <p class="text-gray-600 mb-6">Revise e aprove ou rejeite os orçamentos enviados pelo financeiro</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Orçamentos Aguardando Aprovação'; %>
+  <% var resumo = ['Orçamentos que passaram pelo financeiro e precisam da sua aprovação.', 'Revise valor, descrição e anexos; aprove ou rejeite. Aprovado pode ser liberado para execução.', 'Rejeitado volta para o solicitante com sua justificativa.', 'Mantenha o fluxo em dia para não atrasar compras e serviços.']; %>
+  <% var helpModalContent = '<p><strong>Orçamentos Aguardando Aprovação</strong> são solicitações que o financeiro já analisou e enviou para o síndico. Revise e aprove ou rejeite. Aprovado segue para liberação; rejeitado volta com justificativa.</p>'; %>
+  <div class="flex flex-wrap items-center gap-3 mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Orçamentos Aguardando Aprovação</h1>
+      <p class="text-gray-600">Revise e aprove ou rejeite os orçamentos enviados pelo financeiro</p>
+    </div>
+    <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
+  </div>
+  <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <% if (typeof req !== 'undefined' && req.query.success === 'approved') { %>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">

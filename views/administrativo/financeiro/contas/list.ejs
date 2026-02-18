@@ -80,11 +80,15 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-cyan-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Como funcionam as Contas Recorrentes'; %>
+    <% var resumo = ['Contas são fornecedores fixos: água, luz, gás, empresa de limpeza, etc. Cada um pode ter vários boletos.', 'Cadastre a conta (nome, tipo) e depois adicione os boletos com vencimento e valor; eles aparecem em Boletos a pagar.', 'Ao pagar um boleto em "Boletos a pagar", a despesa é gerada e o boleto fica Pago.', 'Use "Novo boleto" na conta para adicionar o próximo mês.']; %>
+    <% var helpModalContent = '<p><strong>O que são Contas Recorrentes?</strong> São os fornecedores com quem o condomínio paga todo mês: concessionária de água, luz, gás, empresa de limpeza, segurança, etc.</p><p><strong>Fluxo:</strong> (1) Cadastre a conta (nome e tipo). (2) Adicione os boletos (valor, vencimento) em cada conta. (3) Os boletos aparecem na tela "Boletos a pagar". (4) Quando pagar em "Boletos a pagar", a despesa é gerada e o boleto fica Pago. (5) No mês seguinte, use "Novo boleto" na mesma conta.</p><p><strong>Tipos:</strong> Água, Luz, Gás, Outros. Isso ajuda a filtrar e a organizar. Os boletos de todas as contas são listados juntos em Boletos a pagar.</p><p><strong>Dica:</strong> Mantenha uma conta por fornecedor; assim o histórico de boletos fica organizado por empresa.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <div class="flex items-center space-x-3 mb-2">
+          <div class="flex items-center flex-wrap gap-3 mb-2">
             <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-3 shadow-lg">
               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -96,6 +100,7 @@
               </h1>
               <p class="text-gray-600 mt-1">Gerenciar contas de água, luz, gás e outras</p>
             </div>
+            <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
           </div>
         </div>
         <a href="/financeiro/contas/nova" class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
@@ -106,6 +111,7 @@
           <span class="relative z-10">Nova Conta</span>
         </a>
       </div>
+      <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
       <!-- Mensagens Modernas -->
       <% if (typeof query !== 'undefined' && query.success === 'created') { %>

@@ -2,10 +2,18 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-800 mb-2">Relatórios</h1>
-    <p class="text-gray-600">Gere e baixe relatórios em PDF</p>
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Como funcionam os Relatórios'; %>
+  <% var resumo = ['Aqui você gera o relatório mensal em PDF com receitas, despesas e saldo do mês escolhido.', 'Selecione mês e ano e clique em "Gerar PDF"; o arquivo é salvo e aparece na lista abaixo.', 'Você pode baixar ou excluir relatórios já gerados. Use para prestação de contas e arquivo.', 'O relatório reflete os lançamentos do sistema na data da geração.']; %>
+  <% var helpModalContent = '<p><strong>O que são os Relatórios?</strong> São documentos em PDF que consolidam a situação financeira do condomínio em um mês: receitas, despesas e saldo.</p><p><strong>Gerar:</strong> Escolha o mês e o ano e clique em "Gerar PDF". O sistema gera o arquivo e ele aparece na lista "Relatórios Gerados". Você pode baixar ou excluir.</p><p><strong>Uso:</strong> Use para prestação de contas em assembleia, para enviar aos condôminos ou para arquivo. O conteúdo reflete o que estava lançado no sistema no momento da geração.</p><p><strong>Dica:</strong> Gere o relatório após fechar o mês (Fechamento Mensal) para ter o resumo definitivo daquele período.</p>'; %>
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Relatórios</h1>
+      <p class="text-gray-600">Gere e baixe relatórios em PDF</p>
+    </div>
+    <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <!-- Gerar Relatório Mensal -->
   <div class="bg-white rounded-lg shadow-lg p-6 mb-6">

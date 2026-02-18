@@ -3,15 +3,23 @@
 
         <main class="flex-grow">
         <div class="container mx-auto px-4 py-8">
+            <% var helpModalId = 'modalComoFunciona'; %>
+            <% var helpTitle = 'Usuário'; %>
+            <% var resumo = ['Preencha nome, usuário, e-mail e senha; associe ao condomínio.', 'Atribua um ou mais perfis (síndico, administrativo, operacional, etc.).', 'Alterações de perfil exigem novo login para o usuário.']; %>
+            <% var helpModalContent = '<p>Cadastre ou edite o usuário: dados de acesso e condomínio. Os perfis definem o que ele pode acessar. Após salvar, o usuário pode fazer login.</p>'; %>
             <!-- Cabeçalho -->
-            <div class="mb-6">
-                <h1 class="page-title">
-                    <%= usuario ? 'Editar Usuário' : 'Novo Usuário' %>
-                </h1>
-                <p class="page-subtitle">
-                    <%= usuario ? 'Atualize as informações do usuário' : 'Preencha os dados para criar um novo usuário' %>
-                </p>
+            <div class="mb-6 flex flex-wrap items-center gap-3">
+                <div>
+                    <h1 class="page-title">
+                        <%= usuario ? 'Editar Usuário' : 'Novo Usuário' %>
+                    </h1>
+                    <p class="page-subtitle">
+                        <%= usuario ? 'Atualize as informações do usuário' : 'Preencha os dados para criar um novo usuário' %>
+                    </p>
+                </div>
+                <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
             </div>
+            <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
             <!-- Mensagem de erro -->
             <% if (typeof error !== 'undefined' && error) { %>

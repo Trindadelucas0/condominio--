@@ -2,15 +2,23 @@
 <%- include('../../../partials/navbar', { user: user }) %>
 
 <div class="container mx-auto px-4 py-8">
+  <% var helpModalId = 'modalComoFunciona'; %>
+  <% var helpTitle = 'Como funcionam os Apartamentos'; %>
+  <% var resumo = ['Cadastre cada unidade (número, bloco, proprietário) para taxas e inadimplência.', 'Taxas são geradas por apartamento; Ativo/Inativo define se recebe cobrança.', 'Use para relatórios de inadimplência e para saber quem está em dia.', 'Edite ou desative unidades vendidas ou não utilizadas.']; %>
+  <% var helpModalContent = '<p><strong>Apartamentos</strong> é o cadastro de unidades do condomínio. Ao gerar taxas mensais, o sistema usa os apartamentos ativos. Inadimplência e valores em aberto são por unidade. Ativo = recebe cobrança; Inativo = não. Mantenha proprietário e documento atualizados.</p>'; %>
   <div class="mb-6">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-3xl font-bold text-gray-800">Apartamentos</h1>
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-3xl font-bold text-gray-800">Apartamentos</h1>
+        <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
+      </div>
       <a href="/financeiro/apartamentos/novo" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
         + Novo Apartamento
       </a>
     </div>
     <p class="text-gray-600">Cadastro de apartamentos para controle de inadimplência</p>
   </div>
+  <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
   <% if (typeof req.query.success !== 'undefined') { %>
     <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
