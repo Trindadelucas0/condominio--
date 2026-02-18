@@ -534,11 +534,15 @@ router.post('/contas-a-pagar/:id/pagar', (req, res, next) => {
     try {
       if (err) {
         const item = await payableService.getPayableItemById(req.params.id, req.user.condominiumId).catch(() => null);
+        let errorMsg = err.message || 'Erro no upload';
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          errorMsg = 'O arquivo é muito grande. O limite é 50MB. Tente enviar um PDF menor ou compactado.';
+        }
         return res.render('administrativo/financeiro/contas-a-pagar/pagar', {
           title: 'Pagar Conta',
           user: req.user,
           item: item || {},
-          error: err.message || 'Erro no upload',
+          error: errorMsg,
           formData: req.body,
           req: req,
         });
@@ -1016,106 +1020,9 @@ router.post('/orcamentos/:id/:action', async (req, res) => {
 });
 
 // Fechamento Mensal
-const monthlyClosureService = require('../services/monthlyClosureService');
-router.get('/fechamento-mensal', async (req, res) => {
-  try {
-    const closures = await monthlyClosureService.listClosures(req.user.condominiumId, { limit: 12 });
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    
-    // Busca TODOS os fechamentos do mês atual (pode ter múltiplos)
-    const { query } = require('../config/database');
-    const currentMonthClosuresResult = await query(
-      `SELECT mc.*, 
-              u1.full_name as closed_by_name,
-              u2.full_name as reopened_by_name
-       FROM monthly_closures mc
-       LEFT JOIN users u1 ON mc.closed_by = u1.id
-       LEFT JOIN users u2 ON mc.reopened_by = u2.id
-       WHERE mc.condominium_id = $1 AND mc.month = $2 AND mc.year = $3
-       ORDER BY mc.created_at DESC`,
-      [req.user.condominiumId, currentMonth, currentYear]
-    );
-    const currentMonthClosures = currentMonthClosuresResult.rows;
-    
-    // Pega o fechamento mais recente (último fechado) para exibir status
-    const currentClosure = currentMonthClosures.length > 0 
-      ? currentMonthClosures.find(c => c.status === 'CLOSED') || currentMonthClosures[0]
-      : null;
-    
-    const validation = await monthlyClosureService.validateMonthClosure(req.user.condominiumId, currentMonth, currentYear);
-    const totals = await monthlyClosureService.calculateMonthTotals(req.user.condominiumId, currentMonth, currentYear);
-    
-    res.render('administrativo/financeiro/fechamento-mensal', {
-      title: 'Fechamento Mensal',
-      user: req.user,
-      closures: closures,
-      currentMonthClosures: currentMonthClosures, // Todos os fechamentos do mês atual
-      currentClosure: currentClosure, // Último fechamento (para compatibilidade)
-      currentMonth: currentMonth,
-      currentYear: currentYear,
-      validation: validation,
-      totals: totals,
-      req: req,
-    });
-  } catch (error) {
-    console.error('Erro ao carregar fechamento mensal:', error);
-    res.status(500).send('Erro ao carregar fechamento mensal');
-  }
-});
-
-router.post('/fechamento-mensal/fechar', async (req, res) => {
-  try {
-    const { month, year, notes, createNewClosure, action, reserveFundAmount } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('user-agent');
-    
-    // Se action = 'new' ou createNewClosure = 'true', cria nova comanda mesmo se já existe fechamento
-    const isNewClosure = action === 'new' || createNewClosure === 'true' || createNewClosure === true;
-    
-    await monthlyClosureService.closeMonth(
-      req.user.condominiumId,
-      parseInt(month),
-      parseInt(year),
-      req.user.id,
-      notes,
-      ipAddress,
-      userAgent,
-      isNewClosure,
-      reserveFundAmount || 0
-    );
-    
-    res.redirect('/financeiro/fechamento-mensal?success=closed');
-  } catch (error) {
-    console.error('Erro ao fechar mês:', error);
-    res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent(error.message));
-  }
-});
-
-router.post('/fechamento-mensal/:id/reabrir', async (req, res) => {
-  try {
-    const { reason } = req.body;
-    if (!reason || !reason.trim()) {
-      return res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent('Motivo da reabertura é obrigatório'));
-    }
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('user-agent');
-    
-    await monthlyClosureService.reopenMonth(
-      parseInt(req.params.id),
-      req.user.condominiumId,
-      req.user.id,
-      reason,
-      ipAddress,
-      userAgent
-    );
-    
-    res.redirect('/financeiro/fechamento-mensal?success=reopened');
-  } catch (error) {
-    console.error('Erro ao reabrir mês:', error);
-    res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent(error.message));
-  }
-});
+router.get('/fechamento-mensal', financeiroController.showFechamentoMensal);
+router.post('/fechamento-mensal/fechar', financeiroController.closeFechamentoMensal);
+router.post('/fechamento-mensal/:id/reabrir', financeiroController.reopenFechamentoMensal);
 
 // Inadimplência
 const inadimplenciaController = require('../controllers/inadimplenciaController');

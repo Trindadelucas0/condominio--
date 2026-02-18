@@ -4,7 +4,8 @@
 const path = require('path');
 const financeiroService = require('../services/financeiroService');
 const criticalItemsService = require('../services/criticalItemsService');
-const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
+const monthlyClosureService = require('../services/monthlyClosureService');
+const { renderError } = require('../utils/errorHandler');
 const { getErrorMessage } = require('../utils/errorMessages');
 
 // Função para exibir dashboard financeiro
@@ -822,6 +823,117 @@ const unpayExit = async (req, res) => {
   }
 };
 
+// --- Fechamento Mensal ---
+
+// GET /financeiro/fechamento-mensal
+const showFechamentoMensal = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    const filterYear = req.query.year ? parseInt(req.query.year, 10) : null;
+
+    const currentMonthClosures = await monthlyClosureService.getClosuresByMonth(
+      req.user.condominiumId,
+      currentMonth,
+      currentYear
+    );
+    const currentClosure = currentMonthClosures.length > 0
+      ? (currentMonthClosures.find(c => c.status === 'CLOSED') || currentMonthClosures[0])
+      : null;
+
+    let closures = await monthlyClosureService.listClosures(req.user.condominiumId, { limit: 100 });
+    const availableYears = [...new Set(closures.map(c => c.year))].sort((a, b) => b - a);
+    if (availableYears.length === 0 && currentYear) availableYears.push(currentYear);
+    if (filterYear) closures = closures.filter(c => c.year === filterYear);
+
+    const validation = await monthlyClosureService.validateMonthClosure(
+      req.user.condominiumId,
+      currentMonth,
+      currentYear
+    );
+    const totals = await monthlyClosureService.calculateMonthTotals(
+      req.user.condominiumId,
+      currentMonth,
+      currentYear
+    );
+
+    const reopenableClosures = closures.filter(c => c.status === 'CLOSED');
+
+    res.render('administrativo/financeiro/fechamento-mensal', {
+      title: 'Fechamento Mensal',
+      user: req.user,
+      closures,
+      currentMonthClosures,
+      currentClosure,
+      currentMonth,
+      currentYear,
+      validation,
+      totals,
+      reopenableClosures,
+      availableYears,
+      filterYear,
+      req: req
+    });
+  } catch (error) {
+    console.error('Erro ao carregar fechamento mensal:', error);
+    renderError(res, 500, 'Erro ao carregar fechamento mensal', error);
+  }
+};
+
+// POST /financeiro/fechamento-mensal/fechar
+const closeFechamentoMensal = async (req, res) => {
+  try {
+    const { month, year, notes, createNewClosure, action, reserveFundAmount } = req.body;
+    const isNewClosure = action === 'new' || createNewClosure === 'true' || createNewClosure === true;
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.get('user-agent') || '';
+
+    await monthlyClosureService.closeMonth(
+      req.user.condominiumId,
+      parseInt(month, 10),
+      parseInt(year, 10),
+      req.user.id,
+      notes || null,
+      ipAddress,
+      userAgent,
+      isNewClosure,
+      reserveFundAmount ? parseFloat(reserveFundAmount) : 0
+    );
+    res.redirect('/financeiro/fechamento-mensal?success=closed');
+  } catch (error) {
+    console.error('Erro ao fechar mês:', error);
+    res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent(error.message));
+  }
+};
+
+// POST /financeiro/fechamento-mensal/:id/reabrir
+const reopenFechamentoMensal = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || !String(reason).trim()) {
+      return res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent('Motivo da reabertura é obrigatório'));
+    }
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.get('user-agent') || '';
+
+    await monthlyClosureService.reopenMonth(
+      parseInt(req.params.id, 10),
+      req.user.condominiumId,
+      req.user.id,
+      String(reason).trim(),
+      ipAddress,
+      userAgent
+    );
+    res.redirect('/financeiro/fechamento-mensal?success=reopened');
+  } catch (error) {
+    console.error('Erro ao reabrir mês:', error);
+    res.redirect('/financeiro/fechamento-mensal?error=' + encodeURIComponent(error.message));
+  }
+};
+
 // Exporta funções para uso nas rotas
 module.exports = {
   showDashboard,
@@ -849,4 +961,7 @@ module.exports = {
   updateAccount,
   showCreateConsumption,
   createConsumption,
+  showFechamentoMensal,
+  closeFechamentoMensal,
+  reopenFechamentoMensal,
 };

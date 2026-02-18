@@ -1,13 +1,16 @@
 // Rotas de autenticação
 // Define endpoints HTTP relacionados a login/logout
 
-const express = require('express'); // Framework Express
-const router = express.Router(); // Cria roteador do Express
-const authController = require('../controllers/authController'); // Controller de autenticação
+const express = require('express');
+const router = express.Router();
+const authController = require('../controllers/authController');
+const { authenticate } = require('../middlewares/auth');
 
 // GET /auth/login
-// Exibe página de login
 router.get('/login', authController.showLogin);
+
+// GET /auth/sem-acesso - página elegante quando área não está vinculada ao perfil
+router.get('/sem-acesso', authenticate, authController.showSemAcesso);
 
 // POST /auth/login
 // Processa tentativa de login (recebe username e senha)

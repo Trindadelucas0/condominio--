@@ -370,10 +370,10 @@ const listClosures = async (condominiumId, filters = {}) => {
   }
 };
 
-// Função para obter fechamento por mês/ano
+// Retorna todas as comandas (fechamentos) do mês/ano com nomes de quem fechou/reabriu
 // Recebe: condominiumId, month, year
-// Retorna: fechamento ou null
-const getClosureByMonth = async (condominiumId, month, year) => {
+// Retorna: array de fechamentos ordenado por created_at DESC
+const getClosuresByMonth = async (condominiumId, month, year) => {
   try {
     const result = await query(
       `SELECT mc.*, 
@@ -382,15 +382,22 @@ const getClosureByMonth = async (condominiumId, month, year) => {
        FROM monthly_closures mc
        LEFT JOIN users u1 ON mc.closed_by = u1.id
        LEFT JOIN users u2 ON mc.reopened_by = u2.id
-       WHERE mc.condominium_id = $1 AND mc.month = $2 AND mc.year = $3`,
+       WHERE mc.condominium_id = $1 AND mc.month = $2 AND mc.year = $3
+       ORDER BY mc.created_at DESC`,
       [condominiumId, month, year]
     );
-
-    return result.rows.length > 0 ? result.rows[0] : null;
+    return result.rows;
   } catch (error) {
-    console.error('Erro ao buscar fechamento:', error);
+    console.error('Erro ao buscar comandas do mês:', error);
     throw error;
   }
+};
+
+// Retorna um fechamento por mês/ano (o primeiro da lista - uso legado)
+// Para múltiplas comandas use getClosuresByMonth
+const getClosureByMonth = async (condominiumId, month, year) => {
+  const rows = await getClosuresByMonth(condominiumId, month, year);
+  return rows.length > 0 ? rows[0] : null;
 };
 
 // Função para verificar se mês está fechado (bloqueia edição)
@@ -443,6 +450,7 @@ module.exports = {
   closeMonth,
   reopenMonth,
   listClosures,
+  getClosuresByMonth,
   getClosureByMonth,
   isMonthClosed
 };

@@ -294,9 +294,13 @@
                                 detailUrl = `/operacional/manutencoes/${notification.entity_id}`;
                               }
                             } else if (notification.entity_type === 'financial_entries') {
-                              detailUrl = `/financeiro/entradas`;
+                              if (user.roles && (user.roles.includes('FINANCEIRO') || user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) {
+                                detailUrl = `/financeiro/entradas`;
+                              }
                             } else if (notification.entity_type === 'budget_requests') {
-                              detailUrl = `/administrativo/orcamentos`;
+                              if (user.roles && user.roles.includes('ADMINISTRATIVO')) {
+                                detailUrl = `/administrativo/orcamentos`;
+                              }
                             } else if (notification.entity_type === 'occurrences') {
                               if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) {
                                 detailUrl = `/sindico/ocorrencias/${notification.entity_id}`;

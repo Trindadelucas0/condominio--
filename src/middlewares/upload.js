@@ -74,7 +74,7 @@ const uploadPayments = multer({
   storage: paymentsStorage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // Limite de 10MB
+    fileSize: 50 * 1024 * 1024 // Limite de 50MB (comprovantes podem ser PDFs escaneados grandes)
   }
 });
 

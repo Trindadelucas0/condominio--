@@ -1,8 +1,4 @@
-<%#
-  Empty state reutilizável para listas.
-  Uso: <%- include('partials/empty-state', { title, description, buttonText, buttonHref, icon }) %>
-  icon: opcional, nome do ícone SVG (document, currency, list, etc) ou omitir para ícone padrão
--%>
+<% /* Empty state reutilizável. Uso: include('partials/empty-state', { title, description, buttonText, buttonHref, icon }). icon: document, currency, list ou omitir */ %>
 <div class="p-12 text-center">
   <div class="inline-flex items-center justify-center w-24 h-24 bg-gray-100 rounded-full mb-6">
     <% if (typeof icon !== 'undefined' && icon === 'currency') { %>

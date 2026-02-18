@@ -144,11 +144,11 @@ const getCriticalItemsSummary = async (condominiumId, userId, userRoles = []) =>
       console.error('Erro ao buscar notificações (criticalItemsService):', err.message);
     }
 
-    // Links conforme perfil do usuário
+    // Links somente para perfis que têm acesso à rota
     const links = {};
-    links.contasAPagar = '/financeiro/contas-a-pagar';
-    links.documentos = '/administrativo/documentos';
-    links.alertas = '/sindico/alertas';
+    if (hasFinanceiro || hasSindico) links.contasAPagar = '/financeiro/contas-a-pagar';
+    if (hasAdministrativo) links.documentos = '/administrativo/documentos';
+    if (hasSindico || hasFinanceiro) links.alertas = '/sindico/alertas';
     links.notificacoes = '/notifications';
 
     return {

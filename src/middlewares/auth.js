@@ -173,23 +173,12 @@ const authorize = (...allowedRoles) => {
     // Verifica se o usuário tem algum dos perfis permitidos
     const hasRole = req.user.roles.some((role) => allowedRoles.includes(role));
 
-    // Se não tem permissão, retorna erro 403 (Forbidden) com informações de debug
     if (!hasRole) {
-      const errorMessage = `Acesso negado. Permissão insuficiente.
-      
-Usuário: ${req.user.username} (ID: ${req.user.id})
-Perfis do usuário: ${req.user.roles.join(', ') || 'Nenhum'}
-Perfis necessários: ${allowedRoles.join(', ')}
-
-Se você acabou de atribuir um perfil a este usuário, peça para ele fazer logout e login novamente.`;
-      
       console.error(`[AUTHORIZE] Acesso negado para ${req.user.username}:`, {
         userRoles: req.user.roles,
         requiredRoles: allowedRoles,
-        hasRole: hasRole
       });
-      
-      return res.status(403).send(errorMessage);
+      return res.redirect('/auth/sem-acesso');
     }
 
     // Log de sucesso (apenas em desenvolvimento)
@@ -222,21 +211,12 @@ const authorizeAction = (entityType, action) => {
     );
 
     if (!hasPerm) {
-      const errorMessage = `Acesso negado. Permissão insuficiente.
-      
-Usuário: ${req.user.username} (ID: ${req.user.id})
-Ação necessária: ${action} em ${entityType}
-Perfis do usuário: ${req.user.roles.join(', ') || 'Nenhum'}
-
-Esta ação requer permissão específica que não está atribuída aos seus perfis.`;
-      
       console.error(`[AUTHORIZE_ACTION] Acesso negado para ${req.user.username}:`, {
         entityType,
         action,
         userRoles: req.user.roles,
       });
-      
-      return res.status(403).send(errorMessage);
+      return res.redirect('/auth/sem-acesso');
     }
 
     // Log de sucesso (apenas em desenvolvimento)
@@ -270,23 +250,13 @@ const authorizeTransition = (entityType, fromState, toState) => {
     );
 
     if (!canTrans) {
-      const errorMessage = `Transição de estado não permitida.
-      
-Usuário: ${req.user.username} (ID: ${req.user.id})
-Entidade: ${entityType}
-Transição: ${fromState} → ${toState}
-Perfis do usuário: ${req.user.roles.join(', ') || 'Nenhum'}
-
-Esta transição de estado não é permitida ou você não tem permissão para realizá-la.`;
-      
       console.error(`[AUTHORIZE_TRANSITION] Transição negada para ${req.user.username}:`, {
         entityType,
         fromState,
         toState,
         userRoles: req.user.roles,
       });
-      
-      return res.status(403).send(errorMessage);
+      return res.redirect('/auth/sem-acesso');
     }
 
     // Log de sucesso (apenas em desenvolvimento)

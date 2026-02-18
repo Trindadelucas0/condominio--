@@ -110,6 +110,29 @@ const processLogin = async (req, res) => {
   }
 };
 
+// Retorna a URL do dashboard conforme os perfis do usuário (mesma prioridade do login)
+const getDashboardUrl = (roles = []) => {
+  if (roles.includes('SUPER_MASTER')) return '/master/dashboard';
+  if (roles.includes('SINDICO') || roles.includes('SUBSINDICO')) return '/sindico/dashboard';
+  if (roles.includes('FINANCEIRO')) return '/financeiro/dashboard';
+  if (roles.includes('PATRIMONIO')) return '/patrimonio/dashboard';
+  if (roles.includes('ADMINISTRATIVO')) return '/administrativo/dashboard';
+  if (roles.includes('OPERACIONAL')) return '/operacional/dashboard';
+  if (roles.includes('LIMPEZA')) return '/limpeza/dashboard';
+  if (roles.includes('CONSELHO')) return '/conselho/dashboard';
+  return null;
+};
+
+// Página elegante quando o usuário acessa área não vinculada ao seu perfil
+// GET /auth/sem-acesso (requer authenticate)
+const showSemAcesso = (req, res) => {
+  const dashboardUrl = getDashboardUrl(req.user?.roles || []);
+  res.render('auth/sem-acesso', {
+    user: req.user,
+    dashboardUrl,
+  });
+};
+
 // Função para processar logout
 // POST /auth/logout
 const processLogout = async (req, res) => {
@@ -127,4 +150,5 @@ module.exports = {
   showLogin, // Exibe página de login
   processLogin, // Processa tentativa de login
   processLogout, // Processa logout
+  showSemAcesso, // Página de acesso não disponível (perfil não vinculado)
 };

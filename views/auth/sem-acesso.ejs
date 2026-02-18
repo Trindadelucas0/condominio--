@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#22a329">
+  <title>Acesso não disponível - Gestão Condominial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              500: '#2CB930',
+              600: '#22a329',
+              700: '#1a8a20',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+    .animate-scale-in { animation: scaleIn 0.5s ease-out forwards; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 flex flex-col items-center justify-center p-4">
+  <div class="w-full max-w-md animate-scale-in">
+    <!-- Logo / marca do condomínio -->
+    <div class="flex justify-center mb-8">
+      <img
+        src="/logo.png"
+        alt="Logo"
+        class="h-20 w-auto object-contain"
+        onerror="this.style.display='none'; this.nextElementSibling?.classList.remove('hidden');"
+      />
+      <div class="hidden h-20 w-20 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 shadow-lg flex items-center justify-center">
+        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Card principal -->
+    <div class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-fade-in" style="animation-delay: 0.1s">
+      <div class="p-8 sm:p-10 text-center">
+        <!-- Ícone -->
+        <div class="mx-auto w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+        </div>
+
+        <h1 class="text-xl font-bold text-slate-800 mb-2">Acesso não disponível</h1>
+        <p class="text-slate-500 text-sm leading-relaxed mb-8">
+          Esta área não está vinculada ao seu perfil. Use o botão abaixo para voltar ao seu painel.
+        </p>
+
+        <% if (typeof dashboardUrl !== 'undefined' && dashboardUrl) { %>
+          <a
+            href="<%= dashboardUrl %>"
+            class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 shadow-lg hover:shadow-xl hover:from-primary-600 hover:to-primary-700 transition-all duration-200"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Ir para meu painel
+          </a>
+        <% } else { %>
+          <form method="POST" action="/auth/logout" class="inline-block">
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Voltar ao login
+            </button>
+          </form>
+        <% } %>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-400 text-xs mt-6 animate-fade-in" style="animation-delay: 0.3s">
+      Gestão Condominial
+    </p>
+  </div>
+</body>
+</html>
