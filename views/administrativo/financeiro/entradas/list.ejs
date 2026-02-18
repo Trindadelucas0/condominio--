@@ -80,6 +80,7 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30">
   <div class="container mx-auto px-4 py-8">
+    <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Receitas', url: '' } ] }) %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -92,9 +93,9 @@
             </div>
             <div>
               <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
-                Entradas Financeiras
+                Receitas
               </h1>
-              <p class="text-gray-600 mt-1">Receitas e taxas do condomínio</p>
+              <p class="text-gray-600 mt-1">Aqui você registra o dinheiro que entrou no condomínio (taxas, multas, etc.)</p>
             </div>
           </div>
         </div>
@@ -104,7 +105,7 @@
             <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
-            <span class="relative z-10">Nova Entrada</span>
+            <span class="relative z-10">Nova receita</span>
           </a>
           <a href="/financeiro/entradas-excluidas" class="inline-flex items-center px-4 py-2 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium transition-colors">
             Ver entradas excluídas
@@ -122,8 +123,8 @@
               </svg>
             </div>
             <div>
-              <p class="font-semibold text-green-800">Entrada criada com sucesso!</p>
-              <p class="text-sm text-green-600">A entrada foi enviada para análise do síndico.</p>
+              <p class="font-semibold text-green-800">Receita salva!</p>
+              <p class="text-sm text-green-600">Quando o dinheiro entrar, use <strong>Receber</strong> nesta lista e anexe o comprovante. Se precisar de aprovação do síndico, ele aparecerá em Aprovações.</p>
             </div>
           </div>
         </div>
@@ -137,8 +138,8 @@
               </svg>
             </div>
             <div>
-              <p class="font-semibold text-green-800">Entrada marcada como recebida!</p>
-              <p class="text-sm text-green-600">O registro foi atualizado com sucesso.</p>
+              <p class="font-semibold text-green-800">Receita recebida!</p>
+              <p class="text-sm text-green-600">O valor foi registrado e o comprovante está anexado. Pode seguir para a próxima receita ou para Despesas / Boletos a pagar.</p>
             </div>
           </div>
         </div>
@@ -268,21 +269,13 @@
         </div>
         
         <% if (entries.length === 0) { %>
-          <div class="p-12 text-center">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
-              <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-            </div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhuma entrada registrada</h3>
-            <p class="text-gray-500 mb-6">Comece registrando sua primeira entrada financeira.</p>
-            <a href="/financeiro/entradas/nova" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-              </svg>
-              Criar Primeira Entrada
-            </a>
-          </div>
+          <%- include('../../../partials/empty-state', {
+            title: 'Nada aqui ainda',
+            description: 'O primeiro passo é cadastrar uma receita (entrada). Ex.: taxa de condomínio, multa, outro.',
+            buttonText: 'Cadastrar primeira receita',
+            buttonHref: '/financeiro/entradas/nova',
+            icon: 'document'
+          }) %>
         <% } else { %>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">

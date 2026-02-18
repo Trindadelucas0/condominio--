@@ -70,6 +70,8 @@ const showDashboard = async (req, res) => {
       userRoles
     );
 
+    const showGettingStarted = (stats.pendingApprovals || 0) > 0;
+
     res.render('sindico/dashboard', {
       title: 'Dashboard Síndico',
       user: req.user,
@@ -78,7 +80,8 @@ const showDashboard = async (req, res) => {
       dashboardConfig: dashboardConfig,
       condominiumName: condominiumName,
       criticalItems: criticalItemsData.items || [],
-      condominiumId: req.user.condominiumId
+      condominiumId: req.user.condominiumId,
+      showGettingStarted
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard síndico:', error);
@@ -159,7 +162,7 @@ const processAprovacao = async (req, res) => {
     res.redirect('/sindico/aprovacoes?success=processed');
   } catch (error) {
     console.error('Erro ao processar aprovação:', error);
-    res.redirect('/sindico/aprovacoes?error=' + encodeURIComponent(error.message));
+    res.redirect('/sindico/aprovacoes?error=' + encodeURIComponent(getErrorMessage(error)));
   }
 };
 
@@ -214,7 +217,7 @@ const resolverAlerta = async (req, res) => {
     res.redirect('/sindico/alertas?success=resolved');
   } catch (error) {
     console.error('Erro ao resolver alerta:', error);
-    res.redirect('/sindico/alertas?error=' + encodeURIComponent(error.message));
+    res.redirect('/sindico/alertas?error=' + encodeURIComponent(getErrorMessage(error)));
   }
 };
 
@@ -352,7 +355,7 @@ const addTaskObservation = async (req, res) => {
         error: error.message,
       });
     } catch (renderError) {
-      res.redirect('/sindico/tarefas?error=' + encodeURIComponent(error.message));
+      res.redirect('/sindico/tarefas?error=' + encodeURIComponent(getErrorMessage(error)));
     }
   }
 };
@@ -448,7 +451,7 @@ const addOccurrenceObservation = async (req, res) => {
         error: error.message,
       });
     } catch (renderError) {
-      res.redirect('/sindico/ocorrencias?error=' + encodeURIComponent(error.message));
+      res.redirect('/sindico/ocorrencias?error=' + encodeURIComponent(getErrorMessage(error)));
     }
   }
 };

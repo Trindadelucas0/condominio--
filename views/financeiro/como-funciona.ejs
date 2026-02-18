@@ -18,9 +18,29 @@
       </div>
     </div>
 
+    <!-- Resumo em 5 tópicos -->
+    <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-6 mb-8">
+      <h2 class="text-lg font-bold text-gray-900 mb-3">Em resumo</h2>
+      <ul class="space-y-2 text-gray-700 list-disc list-inside">
+        <li>Você <strong>cria receitas e despesas</strong>; quando o dinheiro entra ou sai, marca como <strong>recebido</strong> ou <strong>pago</strong> e anexa o <strong>comprovante</strong>.</li>
+        <li>Despesas altas passam pela <strong>aprovação do Síndico</strong>; até R$ 5.000 você pode aprovar em Aprovações.</li>
+        <li><strong>Contas</strong> = fornecedores fixos (água, luz). Você cadastra e adiciona boletos; eles viram itens em <strong>Boletos a pagar</strong>, onde você paga e o sistema gera a despesa.</li>
+        <li>Orçamentos vêm do Administrativo; você <strong>revisa e libera</strong> para o Síndico aprovar; aprovados, você verifica e paga.</li>
+        <li>Sem comprovante anexado, recebimento e pagamento não são considerados fechados.</li>
+      </ul>
+    </div>
+
+    <!-- Detalhes em acordeão (expandir para ler mais) -->
+    <div class="space-y-3 mb-8">
+    <details class="bg-white rounded-2xl shadow-xl overflow-hidden group" open>
+      <summary class="p-6 cursor-pointer font-bold text-gray-800 border-b border-gray-100 list-none flex items-center justify-between">
+        <span>Seu papel no sistema</span>
+        <span class="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div class="p-6 pt-0">
     <!-- Papel do Financeiro -->
-    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
-      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Seu papel no sistema</h2>
+    <section class="mb-0">
+      <h2 class="text-lg font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2 sr-only">Seu papel no sistema</h2>
       <p class="text-gray-700 mb-3">Como <strong>Financeiro</strong>, você é responsável por <strong>todo o fluxo de caixa</strong>: entradas (receitas), saídas (despesas), contas fixas, contas a pagar e comprovantes. Você <strong>cria</strong> entradas e saídas, <strong>recebe</strong> entradas (data + comprovante), <strong>paga</strong> saídas (após aprovação quando for o caso) e <strong>anexa comprovante</strong> em tudo que entra ou sai. Conforme o valor, parte das saídas e eventualmente entradas precisam de <strong>aprovação do Síndico</strong> — até lá você não pode marcar como paga/recebida. Orçamentos criados pelo <strong>Administrativo</strong> passam por você para revisão (centro de custo) antes de irem ao Síndico aprovar; aprovados, você verifica e paga. O fluxo de caixa <strong>depende de você</strong> lançar, aprovar (no seu limite), pagar e comprovar.</p>
       <ul class="text-gray-700 list-disc list-inside space-y-1">
         <li><strong>Síndico</strong> depende de você: saídas acima de R$ 5.000 e entradas (quando configurado) vão para ele aprovar; orçamentos você libera para ele aprovar. Você não paga saída alta sem aprovação dele.</li>
@@ -28,9 +48,17 @@
         <li>Ninguém paga ou recebe no sistema por você: <strong>só o perfil Financeiro</strong> marca entrada como recebida e saída como paga, sempre com comprovante.</li>
       </ul>
     </section>
+      </div>
+    </details>
 
+    <details class="bg-white rounded-2xl shadow-xl overflow-hidden group">
+      <summary class="p-6 cursor-pointer font-bold text-gray-800 border-b border-gray-100 list-none flex items-center justify-between">
+        <span>O que é cada coisa (conceitos)</span>
+        <span class="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div class="p-6 pt-0">
     <!-- Conceitos -->
-    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+    <section class="mb-0">
       <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">O que é cada coisa (conceitos)</h2>
       <div class="space-y-4 text-gray-700">
         <div class="pl-3 border-l-4 border-green-300">
@@ -56,9 +84,17 @@
         </div>
       </div>
     </section>
+      </div>
+    </details>
 
+    <details class="bg-white rounded-2xl shadow-xl overflow-hidden group">
+      <summary class="p-6 cursor-pointer font-bold text-gray-800 border-b border-gray-100 list-none flex items-center justify-between">
+        <span>Fluxos completos: quem faz o quê</span>
+        <span class="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div class="p-6 pt-0">
     <!-- Fluxos detalhados -->
-    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+    <section class="mb-0">
       <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Fluxos completos: quem faz o quê e para quem envia</h2>
 
       <div class="space-y-6 text-gray-700">
@@ -114,9 +150,17 @@
         </div>
       </div>
     </section>
+      </div>
+    </details>
 
+    <details class="bg-white rounded-2xl shadow-xl overflow-hidden group">
+      <summary class="p-6 cursor-pointer font-bold text-gray-800 border-b border-gray-100 list-none flex items-center justify-between">
+        <span>Dependências entre setores</span>
+        <span class="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div class="p-6 pt-0">
     <!-- Dependências entre setores -->
-    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+    <section class="mb-0">
       <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Dependências entre setores (o que precisa de quem para o fluxo andar)</h2>
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-gray-700 border border-gray-200 rounded-lg">
@@ -137,9 +181,17 @@
         </table>
       </div>
     </section>
+      </div>
+    </details>
 
+    <details class="bg-white rounded-2xl shadow-xl overflow-hidden group">
+      <summary class="p-6 cursor-pointer font-bold text-gray-800 border-b border-gray-100 list-none flex items-center justify-between">
+        <span>Onde fazer cada coisa (suas telas)</span>
+        <span class="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div class="p-6 pt-0">
     <!-- Onde fazer -->
-    <section class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+    <section class="mb-0">
       <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Onde fazer cada coisa (suas telas)</h2>
       <ul class="space-y-2 text-gray-700">
         <li><strong>Dashboard</strong> — Totais, alertas de vencidos e a vencer hoje; atalhos para Entradas, Saídas, Contas a Pagar.</li>
@@ -150,8 +202,11 @@
         <li><strong>Taxas, Centros de custo, Fechamento, Relatórios, Fundo de reserva</strong> — Configuração e relatórios.</li>
       </ul>
     </section>
+      </div>
+    </details>
+    </div>
 
-    <p class="text-gray-500 text-sm text-center">Para aprender onde clicar em cada tela, use o botão <strong>Em dúvida? Tutorial</strong> no menu.</p>
+    <p class="text-gray-500 text-sm text-center">Para aprender onde clicar em cada tela, use o botão <strong>Primeira vez? Ver passo a passo</strong> no menu.</p>
   </div>
 </div>
 

@@ -47,8 +47,15 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-emerald-50/30">
   <div class="container mx-auto px-4 py-8">
+    <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Receitas', url: '/financeiro/entradas' }, { label: entrada && entrada.id ? 'Editar receita' : 'Nova receita', url: '' } ] }) %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <a href="/financeiro/entradas" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors w-fit">
+          <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Voltar para Receitas
+        </a>
+      </div>
       <div class="flex items-center space-x-4 mb-4">
         <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 shadow-lg">
           <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,9 +64,9 @@
         </div>
         <div>
           <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
-            <%= entrada && entrada.id ? 'Editar Entrada Financeira' : 'Nova Entrada Financeira' %>
+            <%= entrada && entrada.id ? 'Editar receita' : 'Nova receita' %>
           </h1>
-          <p class="text-gray-600 mt-1"><%= entrada && entrada.id ? 'Corrija os dados da entrada rejeitada' : 'Registre uma receita ou taxa' %></p>
+          <p class="text-gray-600 mt-1"><%= entrada && entrada.id ? 'Corrija os dados da receita rejeitada' : 'Registre o dinheiro que entrou no condomínio (taxa, multa, outro)' %></p>
         </div>
       </div>
     </div>
@@ -101,7 +108,7 @@
               required
               value="<%= entrada ? entrada.description : '' %>"
               class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-400"
-              placeholder="Ex: Taxa de condomínio - Janeiro/2024"
+              placeholder="Ex.: Taxa condomínio jan/2025"
             />
           </div>
 
@@ -161,6 +168,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                 </svg>
                 Centro de Custo
+                <%- include('../../../partials/field-help', { text: 'Tipo da receita para organizar relatórios (ex.: Taxa, Multa). Se não tiver, cadastre em Tipos de despesa no menu.' }) %>
               </label>
               <select
                 id="costCenterId"

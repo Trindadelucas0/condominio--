@@ -259,17 +259,17 @@
                         menuItems.push({ type: 'financeiro', items: [
                             { href: '/financeiro/dashboard', label: 'Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
                             { href: '/financeiro/como-funciona', label: 'Como funciona o sistema', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                            { href: '/financeiro/entradas', label: 'Entradas', icon: 'M12 4v16m8-8H4' },
-                            { href: '/financeiro/saidas', label: 'Saídas', icon: 'M20 12H4' },
+                            { href: '/financeiro/entradas', label: 'Receitas', icon: 'M12 4v16m8-8H4' },
+                            { href: '/financeiro/saidas', label: 'Despesas', icon: 'M20 12H4' },
                             { href: '/financeiro/apartamentos', label: 'Apartamentos', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
                             { href: '/financeiro/taxas', label: 'Taxas', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
                             { href: '/financeiro/fechamento-mensal', label: 'Fechamento Mensal', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
                             { href: '/financeiro/relatorios', label: 'Relatórios', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
                             { href: '/financeiro/fundo-reserva', label: 'Fundo de Reserva', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
                             { href: '/financeiro/contas', label: 'Contas', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
-                            { href: '/financeiro/contas-a-pagar', label: 'Contas a Pagar', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                            { href: '/financeiro/contas-a-pagar', label: 'Boletos a pagar', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
                             { href: '/financeiro/orcamentos-pendentes', label: 'Orçamentos', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-                            { href: '/financeiro/centros-custo', label: 'Centros de Custo', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' }
+                            { href: '/financeiro/centros-custo', label: 'Tipos de despesa', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' }
                         ]});
                         totalLinks += 13;
                     }
@@ -419,13 +419,13 @@
                 }
                 %>
 
-                <!-- Em dúvida? Tutorial do sistema -->
+                <!-- Primeira vez? Ver passo a passo / Tutorial -->
                 <% if (typeof user !== 'undefined' && user !== null) { %>
-                    <button type="button" id="tour-trigger" class="hover:bg-primary-700/50 px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center" title="Em dúvida? Clique para ver o tutorial do sistema novamente">
+                    <button type="button" id="tour-trigger" class="hover:bg-primary-700/50 px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center border border-primary-400/50" title="Como usar esta tela? Clique para ver o passo a passo">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="ml-2 hidden sm:inline text-sm font-medium">Em dúvida? Tutorial</span>
+                        <span class="ml-2 hidden sm:inline text-sm font-medium">Primeira vez? Ver passo a passo</span>
                     </button>
                 <% } %>
                 <!-- Notificações -->
@@ -501,8 +501,8 @@
                         <div class="px-3 py-2 text-xs font-semibold text-primary-200 uppercase tracking-wider mt-2">Financeiro</div>
                         <a href="/financeiro/dashboard" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Dashboard</a>
                         <a href="/financeiro/como-funciona" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Como funciona o sistema</a>
-                        <a href="/financeiro/entradas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Entradas</a>
-                        <a href="/financeiro/saidas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Saídas</a>
+                        <a href="/financeiro/entradas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Receitas</a>
+                        <a href="/financeiro/saidas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Despesas</a>
                         <a href="/financeiro/apartamentos" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Apartamentos</a>
                         <a href="/financeiro/taxas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Taxas</a>
                         <a href="/financeiro/fechamento-mensal" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Fechamento Mensal</a>
@@ -511,7 +511,7 @@
                         <a href="/financeiro/contas" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Contas</a>
                         <a href="/financeiro/contas-a-pagar" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Contas a Pagar</a>
                         <a href="/financeiro/orcamentos-pendentes" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Orçamentos</a>
-                        <a href="/financeiro/centros-custo" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Centros de Custo</a>
+                        <a href="/financeiro/centros-custo" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">Tipos de despesa</a>
                     <% }
                     
                     if (roles.includes('PATRIMONIO')) { %>
@@ -561,7 +561,7 @@
                 <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
                     <div class="border-t border-primary-500/30 my-2 pt-2">
                         <button type="button" id="tour-trigger-mobile" class="w-full text-left block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium">
-                            Em dúvida? Ver tutorial novamente
+                            Primeira vez? Ver passo a passo
                         </button>
                         <a href="/notifications" class="block px-4 py-2.5 rounded-lg hover:bg-primary-700/50 transition-all duration-200 text-sm font-medium relative">
                             Notificações

@@ -84,9 +84,13 @@
   <!-- Lista de ocorrências -->
   <div class="bg-white rounded-lg shadow overflow-hidden">
     <% if (!occurrences || occurrences.length === 0) { %>
-      <div class="p-8 text-center text-gray-500">
-        <p>Nenhuma ocorrência encontrada.</p>
-      </div>
+      <%- include('../../partials/empty-state', {
+        title: 'Nenhuma ocorrência encontrada',
+        description: 'As ocorrências são criadas pela equipe operacional (zeladoria) ou limpeza. Quando houver alguma, ela aparecerá aqui para você triar e direcionar.',
+        buttonText: 'Ir para o dashboard',
+        buttonHref: '/administrativo/dashboard',
+        icon: 'list'
+      }) %>
     <% } else { %>
       <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200">

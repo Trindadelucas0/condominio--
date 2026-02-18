@@ -94,6 +94,28 @@
     <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
     <%- include('../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>
 
+    <% if (typeof showGettingStarted !== 'undefined' && showGettingStarted) { %>
+    <!-- Comece por aqui (há aprovações pendentes ou primeiro uso) -->
+    <div class="mb-6 p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl shadow-lg animate-fade-in-up">
+      <h2 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+        <span class="text-2xl mr-2">👋</span>
+        Comece por aqui
+      </h2>
+      <p class="text-gray-700 mb-4">
+        <% if (typeof stats !== 'undefined' && stats.pendingApprovals > 0) { %>
+          Você tem <strong><%= stats.pendingApprovals %></strong> aprovação(ões) pendente(s). Resolva primeiro em Aprovações.
+        <% } else { %>
+          Não sabe por onde começar? Acesse as aprovações pendentes, configure os modelos de checklist ou leia como o sistema funciona.
+        <% } %>
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a href="/sindico/aprovacoes" class="inline-flex items-center px-5 py-2.5 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition shadow-md">Ver aprovações pendentes</a>
+        <a href="/sindico/checklist-modelos" class="inline-flex items-center px-5 py-2.5 bg-white border-2 border-purple-600 text-purple-700 rounded-xl font-semibold hover:bg-purple-50 transition">Configurar modelos de checklist</a>
+        <a href="/sindico/como-funciona" class="inline-flex items-center px-5 py-2.5 text-gray-700 hover:text-purple-700 font-medium">Como funciona o sistema →</a>
+      </div>
+    </div>
+    <% } %>
+
     <!-- Widgets Dinâmicos baseados na Configuração do Usuário -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6" id="dashboard-widgets">
       <%- include('dashboard-widgets-partial') %>

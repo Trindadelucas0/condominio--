@@ -1,0 +1,9 @@
+<%#
+  Ajuda contextual ao lado do label do campo. Mostra (?) com tooltip ao passar o mouse.
+  Uso: <%- include('partials/field-help', { text: 'Centro de custo = tipo da despesa, ex.: Água, Limpeza' }) %>
+-%>
+<% if (typeof text !== 'undefined' && text) { %>
+<span class="inline-flex items-center ml-1 flex-shrink-0" title="<%= text.replace(/"/g, '&quot;') %>">
+  <span class="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 hover:bg-primary-100 text-gray-600 hover:text-primary-700 text-xs font-bold cursor-help transition-colors" aria-label="Ajuda">?</span>
+</span>
+<% } %>

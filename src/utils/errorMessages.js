@@ -30,6 +30,11 @@ const errorMessages = {
   // Validações
   REJECTION_REASON_REQUIRED: 'O motivo da rejeição é obrigatório. Por favor, preencha o campo "Motivo da rejeição".',
   APPROVAL_NOTES_REQUIRED: 'Observações são obrigatórias para aprovações de alto valor. Por favor, preencha o campo "Observações".',
+  AMOUNT_REQUIRED: 'Preencha o valor em reais.',
+  DESCRIPTION_REQUIRED: 'Preencha a descrição.',
+  DATE_REQUIRED: 'Preencha a data.',
+  INVALID_AMOUNT: 'O valor deve ser um número maior que zero.',
+  INVALID_DATE: 'Data inválida. Use o formato dia/mês/ano.',
   
   // Permissões
   UNAUTHORIZED: 'Você não tem permissão para realizar esta ação. Verifique suas permissões ou contate o administrador.',

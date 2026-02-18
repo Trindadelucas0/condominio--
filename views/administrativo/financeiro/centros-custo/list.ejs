@@ -22,6 +22,15 @@
 
   <!-- Lista de centros de custo -->
   <div class="bg-white rounded-lg shadow overflow-hidden">
+    <% if (!costCenters || costCenters.length === 0) { %>
+      <%- include('../../../partials/empty-state', {
+        title: 'Nenhum centro de custo cadastrado',
+        description: 'Centro de custo é o tipo da despesa (ex.: Água, Limpeza, Manutenção). O primeiro passo é cadastrar um para organizar suas saídas.',
+        buttonText: 'Cadastrar primeiro centro de custo',
+        buttonHref: '/financeiro/centros-custo/novo',
+        icon: 'list'
+      }) %>
+    <% } else { %>
     <div class="overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
@@ -32,13 +41,6 @@
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
-        <% if (!costCenters || costCenters.length === 0) { %>
-          <tr>
-            <td colspan="3" class="px-6 py-4 text-center text-gray-500">
-              Nenhum centro de custo cadastrado.
-            </td>
-          </tr>
-        <% } else { %>
           <% costCenters.forEach(cc => { %>
             <tr>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -52,10 +54,10 @@
               </td>
             </tr>
           <% }); %>
-        <% } %>
       </tbody>
     </table>
     </div>
+    <% } %>
   </div>
 </div>
 

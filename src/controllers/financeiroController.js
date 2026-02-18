@@ -5,6 +5,7 @@ const path = require('path');
 const financeiroService = require('../services/financeiroService');
 const criticalItemsService = require('../services/criticalItemsService');
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
+const { getErrorMessage } = require('../utils/errorMessages');
 
 // Função para exibir dashboard financeiro
 // GET /financeiro/dashboard
@@ -25,13 +26,17 @@ const showDashboard = async (req, res) => {
       userRoles
     );
 
+    const stats = dashboardData.stats || {};
+    const showGettingStarted = (stats.totalEntradas === 0 && stats.totalSaidas === 0) || (typeof stats.totalEntradas !== 'undefined' && stats.totalEntradas === 0);
+
     res.render('administrativo/financeiro/dashboard', {
       title: 'Dashboard Financeiro',
       user: req.user,
-      stats: dashboardData.stats,
+      stats,
       kpis: dashboardData.kpis,
       criticalItems: criticalItemsData.items || [],
-      condominiumId: req.user.condominiumId
+      condominiumId: req.user.condominiumId,
+      showGettingStarted: !!showGettingStarted
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard financeiro:', error);
@@ -92,7 +97,7 @@ const createEntry = async (req, res) => {
       user: req.user,
       entrada: req.body,
       costCenters,
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -178,7 +183,7 @@ const createExit = async (req, res) => {
       saida: req.body,
       costCenters,
       bills: bills || [],
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -256,7 +261,7 @@ const createAccount = async (req, res) => {
       user: req.user,
       conta: req.body,
       costCenters,
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -365,7 +370,7 @@ const updateAccount = async (req, res) => {
       user: req.user,
       conta,
       costCenters,
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -430,7 +435,7 @@ const createConsumption = async (req, res) => {
       bills,
       currentMonth: now.getMonth() + 1,
       currentYear: now.getFullYear(),
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -496,7 +501,7 @@ const updateEntry = async (req, res) => {
       user: req.user,
       entrada: entry || req.body,
       costCenters,
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -557,7 +562,7 @@ const unmarkEntryReceived = async (req, res) => {
         title: 'Desfazer recebimento da entrada',
         user: req.user,
         entrada: entry,
-        error: error.message,
+        error: getErrorMessage(error),
       });
     } catch (innerError) {
       console.error('Erro adicional ao carregar entrada para desfazer recebimento:', innerError);
@@ -588,7 +593,7 @@ const deleteEntry = async (req, res) => {
     res.redirect('/financeiro/entradas-rejeitadas?success=deleted');
   } catch (error) {
     console.error('Erro ao excluir entrada:', error);
-    res.redirect('/financeiro/entradas-rejeitadas?error=' + encodeURIComponent(error.message));
+    res.redirect('/financeiro/entradas-rejeitadas?error=' + encodeURIComponent(getErrorMessage(error)));
   }
 };
 
@@ -631,7 +636,7 @@ const restoreEntry = async (req, res) => {
     res.redirect('/financeiro/entradas?success=restored');
   } catch (error) {
     console.error('Erro ao restaurar entrada:', error);
-    res.redirect('/financeiro/entradas-excluidas?error=' + encodeURIComponent(error.message));
+    res.redirect('/financeiro/entradas-excluidas?error=' + encodeURIComponent(getErrorMessage(error)));
   }
 };
 
@@ -736,7 +741,7 @@ const updateExitController = async (req, res) => {
         saida,
         costCenters,
         bills,
-        error: error.message,
+        error: getErrorMessage(error),
       });
     } catch (innerError) {
       console.error('Erro adicional ao preparar formulário de saída após erro:', innerError);
@@ -808,7 +813,7 @@ const unpayExit = async (req, res) => {
         title: 'Solicitar desfazer pagamento da saída',
         user: req.user,
         saida: exit,
-        error: error.message,
+        error: getErrorMessage(error),
       });
     } catch (innerError) {
       console.error('Erro adicional ao carregar saída para solicitar desfazer pagamento:', innerError);

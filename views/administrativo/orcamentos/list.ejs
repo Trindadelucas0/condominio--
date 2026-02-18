@@ -48,7 +48,15 @@
     </form>
   </div>
 
-  <% if (requests && requests.length > 0) { %>
+  <% if (!requests || requests.length === 0) { %>
+    <%- include('../../partials/empty-state', {
+      title: 'Nenhuma solicitação de orçamento',
+      description: 'Quando precisar de um serviço ou compra, crie uma solicitação de orçamento, anexe as cotações dos fornecedores e envie para o Financeiro e depois para o Síndico aprovar.',
+      buttonText: 'Nova solicitação de orçamento',
+      buttonHref: '/administrativo/orcamentos/novo',
+      icon: 'list'
+    }) %>
+  <% } else if (requests && requests.length > 0) { %>
     <div class="space-y-4">
       <% requests.forEach(request => { %>
         <div class="bg-white rounded-lg shadow p-6">
@@ -120,10 +128,6 @@
           </div>
         </div>
       <% }); %>
-    </div>
-  <% } else { %>
-    <div class="bg-white rounded-lg shadow p-12 text-center">
-      <p class="text-gray-500 text-lg">Nenhuma solicitação de orçamento encontrada</p>
     </div>
   <% } %>
 </div>
