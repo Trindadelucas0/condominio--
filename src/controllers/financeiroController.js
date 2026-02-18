@@ -54,12 +54,14 @@ const showCreateEntry = async (req, res) => {
     }
 
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+    const reopenedOldMonths = await monthlyClosureService.getReopenedMonths(req.user.condominiumId, { excludeCurrentMonth: true });
 
     res.render('administrativo/financeiro/entradas/form', {
       title: 'Nova Entrada Financeira',
       user: req.user,
       entrada: null,
       costCenters,
+      reopenedOldMonths: reopenedOldMonths || [],
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de entrada:', error);
@@ -135,6 +137,7 @@ const showCreateExit = async (req, res) => {
 
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
     const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
+    const reopenedOldMonths = await monthlyClosureService.getReopenedMonths(req.user.condominiumId, { excludeCurrentMonth: true });
 
     res.render('administrativo/financeiro/saidas/form', {
       title: 'Nova Saída Financeira',
@@ -142,6 +145,7 @@ const showCreateExit = async (req, res) => {
       saida: null,
       costCenters,
       bills: bills || [],
+      reopenedOldMonths: reopenedOldMonths || [],
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de saída:', error);
@@ -861,6 +865,7 @@ const showFechamentoMensal = async (req, res) => {
     );
 
     const reopenableClosures = closures.filter(c => c.status === 'CLOSED');
+    const reopenedOldMonths = await monthlyClosureService.getReopenedMonths(req.user.condominiumId, { excludeCurrentMonth: true });
 
     res.render('administrativo/financeiro/fechamento-mensal', {
       title: 'Fechamento Mensal',
@@ -873,6 +878,7 @@ const showFechamentoMensal = async (req, res) => {
       validation,
       totals,
       reopenableClosures,
+      reopenedOldMonths,
       availableYears,
       filterYear,
       req: req

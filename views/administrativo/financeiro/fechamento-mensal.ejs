@@ -6,9 +6,27 @@
     <% var breadcrumbItems = [{ label: 'Financeiro', url: '/financeiro/dashboard' }, { label: 'Fechamento Mensal', url: '' }]; %>
     <%- include('../../partials/breadcrumb', { items: breadcrumbItems }) %>
 
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">Fechamento Mensal</h1>
-      <p class="text-gray-600 mt-1">Registre o fechamento do mês para bloquear edições e conciliar o financeiro. Use &quot;Nova comanda&quot; quando precisar de um fechamento adicional (ex.: revisão).</p>
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Fechamento Mensal</h1>
+        <p class="text-gray-600 mt-1">Registre o fechamento do mês para bloquear edições e conciliar o financeiro.</p>
+      </div>
+      <button type="button" onclick="document.getElementById('modalComoFunciona').classList.remove('hidden')" class="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100 transition-colors" aria-label="Abrir explicação de como funciona">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Dúvidas? Como funciona
+      </button>
+    </div>
+
+    <!-- Resumo rápido para o leigo -->
+    <div class="mb-6 p-5 rounded-xl bg-white border border-blue-100 shadow-sm">
+      <p class="text-sm font-semibold text-gray-800 mb-3">Resumo rápido</p>
+      <ul class="text-sm text-gray-700 space-y-2 list-none">
+        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">1.</span> <strong>Fechar o mês</strong> = você “trava” o mês: ninguém altera mais receitas e despesas daquele mês. Use quando tiver fechado as contas no papel.</li>
+        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">2.</span> <strong>Comanda</strong> = cada registro de fechamento. O mesmo mês pode ter mais de uma comanda (ex.: fechamento normal e depois uma revisão).</li>
+        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">3.</span> <strong>Abrir mês</strong> = se fechou por engano ou precisa corrigir algo, você reabre; aí pode editar de novo. O motivo é obrigatório.</li>
+        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">4.</span> <strong>Meses reabertos (anteriores)</strong> = meses antigos que foram reabertos para correção. Quando terminar, use “Fechar novamente” neles.</li>
+      </ul>
+      <p class="text-xs text-gray-500 mt-3">Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> acima.</p>
     </div>
 
     <% if (typeof req !== 'undefined' && req.query && req.query.success) { %>
@@ -120,6 +138,32 @@
               <% } %>
             </div>
           <% }); %>
+        </div>
+      </section>
+    <% } %>
+
+    <!-- 2b. Meses reabertos (anteriores ao atual) -->
+    <% if (reopenedOldMonths && reopenedOldMonths.length > 0) { %>
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div class="px-6 py-4 bg-amber-50 border-b border-amber-100">
+          <h2 class="text-lg font-bold text-gray-800">Meses reabertos (anteriores ao atual)</h2>
+          <p class="text-sm text-gray-600 mt-0.5">Estes meses foram reabertos para correção. Quando terminar, use &quot;Fechar novamente&quot; para bloquear edições nesse mês.</p>
+        </div>
+        <div class="p-6">
+          <ul class="space-y-3">
+            <% reopenedOldMonths.forEach(function(item) { %>
+              <li class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg border border-amber-100 bg-amber-50/50">
+                <span class="font-medium text-gray-900"><%= new Date(item.year, item.month - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %></span>
+                <form method="POST" action="/financeiro/fechamento-mensal/fechar" class="inline-flex items-center gap-2">
+                  <input type="hidden" name="month" value="<%= item.month %>">
+                  <input type="hidden" name="year" value="<%= item.year %>">
+                  <input type="hidden" name="action" value="close">
+                  <input type="hidden" name="createNewClosure" value="false">
+                  <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition-colors">Fechar novamente</button>
+                </form>
+              </li>
+            <% }); %>
+          </ul>
         </div>
       </section>
     <% } %>
@@ -280,5 +324,45 @@
     });
   </script>
 <% } %>
+
+<!-- Modal: Como funciona (para leigo) -->
+<div id="modalComoFunciona" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog" aria-labelledby="modalComoFuncionaTitle">
+  <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-blue-50">
+      <h2 id="modalComoFuncionaTitle" class="text-xl font-bold text-gray-900">Como funciona o Fechamento Mensal</h2>
+      <button type="button" onclick="document.getElementById('modalComoFunciona').classList.add('hidden')" class="p-2 rounded-lg hover:bg-gray-200 transition-colors" aria-label="Fechar">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1 text-gray-700 text-sm leading-relaxed space-y-4">
+      <p><strong>O que é fechar o mês?</strong> É quando você “trava” as contas daquele mês: depois disso, ninguém pode mais alterar receitas e despesas daquele período. Use quando já tiver fechado as contas no papel ou na planilha e quiser deixar o sistema igual.</p>
+
+      <p><strong>O que é uma comanda?</strong> Cada vez que você registra um fechamento, o sistema cria uma “comanda”. O mesmo mês pode ter várias comandas: por exemplo, uma do fechamento normal e outra de uma revisão depois. Cada uma fica registrada com data e quem fechou.</p>
+
+      <p><strong>Quando uso “Fechar mês” e quando “Nova comanda”?</strong><br>
+      • <strong>Fechar mês</strong> — use para registrar o fechamento do mês atual (ou para “fechar de novo” um mês que estava reaberto). Esse botão some quando o mês já tem uma comanda fechada.<br>
+      • <strong>Nova comanda</strong> — use quando quiser criar outro fechamento para o mesmo mês (ex.: fechamento de revisão). Sempre aparece.</p>
+
+      <p><strong>O que é “Abrir mês”?</strong> Se você fechou o mês por engano ou precisa corrigir um lançamento, pode reabrir. Aí as receitas e despesas daquele mês voltam a poder ser alteradas. O sistema pede um motivo (obrigatório) e registra quem reabriu e quando.</p>
+
+      <p><strong>O que é “Meses reabertos (anteriores ao atual)”?</strong> São meses antigos que foram reabertos para correção. Eles aparecem numa lista separada para você não confundir com o mês atual. Quando terminar de corrigir, use <strong>Fechar novamente</strong> naquele mês para “travar” de novo.</p>
+
+      <p><strong>O que são as pendências?</strong> Antes de fechar, o sistema verifica se há algo em aberto (ex.: entradas pendentes de análise, despesas aguardando aprovação). Se houver, ele avisa. Alguns itens são só “aviso” e não impedem o fechamento; outros bloqueiam até você resolver.</p>
+
+      <p><strong>Resumindo em 3 passos:</strong></p>
+      <ol class="list-decimal list-inside space-y-1 ml-2">
+        <li>Confira o resumo do mês (entradas, saídas, saldo) e resolva as pendências se houver.</li>
+        <li>Clique em <strong>Fechar mês</strong> (ou em <strong>Nova comanda</strong> se for um segundo fechamento do mesmo mês).</li>
+        <li>Se precisar corrigir depois, use <strong>Abrir mês</strong> na comanda; quando terminar, feche novamente.</li>
+      </ol>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <button type="button" onclick="document.getElementById('modalComoFunciona').classList.add('hidden')" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors">Entendi</button>
+    </div>
+  </div>
+</div>
+<script>
+  document.getElementById('modalComoFunciona')?.addEventListener('click', function(e) { if (e.target === this) this.classList.add('hidden'); });
+</script>
 
 <%- include('../../partials/footer') %>

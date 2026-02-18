@@ -443,6 +443,30 @@ const isMonthClosed = async (condominiumId, date) => {
   }
 };
 
+// Lista meses que têm ao menos uma comanda REOPENED (agrupados por month/year)
+// options.excludeCurrentMonth = true remove o mês atual da lista (só "meses antigos reabertos")
+const getReopenedMonths = async (condominiumId, options = {}) => {
+  try {
+    const result = await query(
+      `SELECT DISTINCT month, year FROM monthly_closures
+       WHERE condominium_id = $1 AND status = 'REOPENED'
+       ORDER BY year DESC, month DESC`,
+      [condominiumId]
+    );
+    let months = result.rows.map(r => ({ month: r.month, year: r.year }));
+    if (options.excludeCurrentMonth === true) {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      months = months.filter(m => !(m.month === currentMonth && m.year === currentYear));
+    }
+    return months;
+  } catch (error) {
+    console.error('Erro ao listar meses reabertos:', error);
+    throw error;
+  }
+};
+
 // Exporta funções
 module.exports = {
   validateMonthClosure,
@@ -452,5 +476,6 @@ module.exports = {
   listClosures,
   getClosuresByMonth,
   getClosureByMonth,
+  getReopenedMonths,
   isMonthClosed
 };

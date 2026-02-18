@@ -156,6 +156,9 @@
                 value="<%= entrada ? (entrada.entry_date ? new Date(entrada.entry_date).toISOString().split('T')[0] : '') : '' %>"
                 class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900"
               />
+              <div id="reopenedMonthWarning" class="hidden mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm" role="alert">
+                <span id="reopenedMonthWarningText"></span>
+              </div>
             </div>
           </div>
 
@@ -256,6 +259,32 @@ document.getElementById('isVariable')?.addEventListener('change', function() {
     averageAmountField.style.display = 'none';
   }
 });
+
+// Aviso quando a data é de um mês reaberto (não atual)
+(function() {
+  var reopenedOldMonths = <%- JSON.stringify(typeof reopenedOldMonths !== 'undefined' ? reopenedOldMonths : []) %>;
+  var dateInput = document.getElementById('entryDate');
+  var warningEl = document.getElementById('reopenedMonthWarning');
+  var warningText = document.getElementById('reopenedMonthWarningText');
+  if (!dateInput || !warningEl || !reopenedOldMonths.length) return;
+  function check() {
+    var val = dateInput.value;
+    if (!val) { warningEl.classList.add('hidden'); return; }
+    var d = new Date(val + 'T12:00:00');
+    var month = d.getMonth() + 1, year = d.getFullYear();
+    var isReopened = reopenedOldMonths.some(function(m) { return m.month === month && m.year === year; });
+    if (isReopened) {
+      var monthName = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      warningText.textContent = 'Atenção: ' + monthName + ' é um mês reaberto (não é o mês atual). Confirme que o lançamento é neste mês.';
+      warningEl.classList.remove('hidden');
+    } else {
+      warningEl.classList.add('hidden');
+    }
+  }
+  dateInput.addEventListener('change', check);
+  dateInput.addEventListener('input', check);
+  check();
+})();
 </script>
 
 <%- include('../../../partials/footer') %>
