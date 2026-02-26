@@ -48,6 +48,10 @@
 
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-emerald-50/30">
   <div class="container mx-auto px-4 py-8">
+    <% var helpModalId = 'modalComoFunciona'; %>
+    <% var helpTitle = 'Documentos'; %>
+    <% var resumo = ['Lista de documentos do condomínio; filtre por categoria.', 'Clique em Novo Documento para cadastrar; organize por categorias.', 'Documentos com vencimento aparecem no dashboard para acompanhamento.']; %>
+    <% var helpModalContent = '<p>Gerencie os documentos do condomínio: contratos, atas, regulamentos, etc. Use categorias para organizar. Documentos com data de vencimento geram alertas no dashboard.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -64,6 +68,7 @@
               </h1>
               <p class="text-gray-600 mt-1">Gerenciar documentos do condomínio</p>
             </div>
+            <%- include('../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
           </div>
         </div>
         <div class="flex flex-wrap gap-3">
