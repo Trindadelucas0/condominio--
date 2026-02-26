@@ -111,12 +111,17 @@ const createUser = async (data, userId, ipAddress, userAgent) => {
       throw new Error('Email é obrigatório');
     }
 
-    if (!password || password.length < 6) {
-      throw new Error('Senha deve ter no mínimo 6 caracteres');
+    if (!password || (typeof password === 'string' && password.length < 6)) {
+      throw new Error('Senha deve ter no mínimo 6 caracteres. Ao corrigir erros no formulário, digite a senha novamente.');
     }
 
     if (!fullName || !fullName.trim()) {
       throw new Error('Nome completo é obrigatório');
+    }
+
+    // Valida se pelo menos um perfil foi atribuído (obrigatório para acesso ao sistema)
+    if (!roleIds || !Array.isArray(roleIds) || roleIds.length === 0) {
+      throw new Error('É obrigatório atribuir pelo menos um perfil ao usuário');
     }
 
     // Valida email

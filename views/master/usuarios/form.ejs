@@ -65,7 +65,7 @@
                                         Email <span class="text-red-500">*</span>
                                     </label>
                                     <input type="email" id="email" name="email" required
-                                        value="<%= usuario ? usuario.email : '' %>"
+                                        value="<%= (data.email || (usuario ? usuario.email : '')) %>"
                                         class="input-field"
                                         placeholder="Ex: joao@email.com" />
                                 </div>
@@ -109,13 +109,16 @@
                                                 class="space-y-2 border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto">
                                                 <% 
                                                     // Prepara array de roleIds selecionados
+                                                    // data = formData ou usuario (após erro: req.body com roleIds; edição: usuario com roles)
                                                     let selectedRoleIds = [];
-                                                    if (typeof formData !== 'undefined' && formData && formData.roleIds) {
-                                                        selectedRoleIds = Array.isArray(formData.roleIds) 
-                                                            ? formData.roleIds.map(id => parseInt(id)) 
-                                                            : [parseInt(formData.roleIds)];
-                                                    } else if (usuario && usuario.roles) {
-                                                        selectedRoleIds = usuario.roles.map(r => typeof r === 'object' ? r.id : r);
+                                                    const roleIdsFromForm = data.roleIds;
+                                                    const rolesFromDb = (usuario && usuario.roles) ? usuario.roles : [];
+                                                    if (roleIdsFromForm) {
+                                                        selectedRoleIds = Array.isArray(roleIdsFromForm) 
+                                                            ? roleIdsFromForm.map(id => parseInt(id, 10)) 
+                                                            : [parseInt(roleIdsFromForm, 10)];
+                                                    } else if (rolesFromDb.length > 0) {
+                                                        selectedRoleIds = rolesFromDb.map(r => typeof r === 'object' ? r.id : r);
                                                     }
                                                 %>
                                                 <% roles.forEach(role => { %>

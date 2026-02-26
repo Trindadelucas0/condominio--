@@ -335,8 +335,11 @@ const updateUsuario = async (id, data, userId, ipAddress, userAgent) => {
 
     const updated = result.rows[0];
 
-    // Atualiza perfis se fornecidos
-    if (roleIds && Array.isArray(roleIds)) {
+    // Atualiza perfis se fornecidos (exige pelo menos um perfil)
+    if (roleIds !== undefined && Array.isArray(roleIds)) {
+      if (roleIds.length === 0) {
+        throw new Error('É obrigatório atribuir pelo menos um perfil ao usuário');
+      }
       // Remove todos os perfis atuais
       await query(`DELETE FROM user_roles WHERE user_id = $1`, [id]);
 
