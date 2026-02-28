@@ -4,6 +4,7 @@
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
 const { query } = require('../config/database');
 const sindicoService = require('../services/sindicoService');
+const { ALL_CATEGORY_LABELS } = require('../constants/financialCategories');
 const dashboardAnalyticsService = require('../services/dashboardAnalyticsService');
 const patrimonioService = require('../services/patrimonioService');
 const cacheService = require('../services/cacheService');
@@ -494,6 +495,7 @@ const showDashboard = async (req, res) => {
     res.render('conselho/dashboard', {
       title: 'Dashboard Conselho - Prestação de Contas',
       user: req.user,
+      categoryLabels: ALL_CATEGORY_LABELS,
       condominiumName: condominiumName,
       filterDate: filterDateDisplay,
       period: period,

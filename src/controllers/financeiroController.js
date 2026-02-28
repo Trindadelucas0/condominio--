@@ -7,6 +7,15 @@ const criticalItemsService = require('../services/criticalItemsService');
 const monthlyClosureService = require('../services/monthlyClosureService');
 const { renderError } = require('../utils/errorHandler');
 const { getErrorMessage } = require('../utils/errorMessages');
+const {
+  RECEITA_CATEGORIES,
+  DESPESA_CATEGORIES,
+  DEFAULT_RECEITA_CATEGORY,
+  DEFAULT_DESPESA_CATEGORY,
+  ALL_CATEGORY_LABELS,
+  normalizeReceitaCategoryForForm,
+  normalizeDespesaCategoryForForm,
+} = require('../constants/financialCategories');
 
 // Função para exibir dashboard financeiro
 // GET /financeiro/dashboard
@@ -62,6 +71,7 @@ const showCreateEntry = async (req, res) => {
       entrada: null,
       costCenters,
       reopenedOldMonths: reopenedOldMonths || [],
+      receitaCategories: RECEITA_CATEGORIES,
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de entrada:', error);
@@ -85,7 +95,7 @@ const createEntry = async (req, res) => {
       amount: req.body.amount,
       entryDate: req.body.entryDate,
       costCenterId: req.body.costCenterId || null,
-      category: req.body.category || 'TAXA',
+      category: req.body.category || DEFAULT_RECEITA_CATEGORY,
       received: req.body.received === 'true' || req.body.received === true,
     };
 
@@ -99,6 +109,7 @@ const createEntry = async (req, res) => {
       title: 'Nova Entrada Financeira',
       user: req.user,
       entrada: req.body,
+      receitaCategories: RECEITA_CATEGORIES,
       costCenters,
       error: getErrorMessage(error),
     });
@@ -120,6 +131,7 @@ const listEntries = async (req, res) => {
       user: req.user,
       entries,
       query: req.query,
+      categoryLabels: ALL_CATEGORY_LABELS,
     });
   } catch (error) {
     console.error('Erro ao listar entradas:', error);
@@ -146,6 +158,7 @@ const showCreateExit = async (req, res) => {
       costCenters,
       bills: bills || [],
       reopenedOldMonths: reopenedOldMonths || [],
+      despesaCategories: DESPESA_CATEGORIES,
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de saída:', error);
@@ -169,7 +182,7 @@ const createExit = async (req, res) => {
       amount: req.body.amount,
       exitDate: req.body.exitDate,
       costCenterId: req.body.costCenterId || null,
-      category: req.body.category || 'OUTRA',
+      category: req.body.category || DEFAULT_DESPESA_CATEGORY,
       billId: req.body.billId || null,
       requiresApproval: req.body.requiresApproval === 'true' || req.body.requiresApproval === true,
       approvalLimit: req.body.approvalLimit || null,
@@ -188,6 +201,7 @@ const createExit = async (req, res) => {
       saida: req.body,
       costCenters,
       bills: bills || [],
+      despesaCategories: DESPESA_CATEGORIES,
       error: getErrorMessage(error),
     });
   }
@@ -207,6 +221,7 @@ const listExits = async (req, res) => {
       title: 'Saídas Financeiras',
       user: req.user,
       exits,
+      categoryLabels: ALL_CATEGORY_LABELS,
     });
   } catch (error) {
     console.error('Erro ao listar saídas:', error);
@@ -455,12 +470,14 @@ const showEditEntry = async (req, res) => {
 
     const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId);
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
+    const entrada = entry ? { ...entry, categoryForSelect: normalizeReceitaCategoryForForm(entry.category) } : entry;
 
     res.render('administrativo/financeiro/entradas/form', {
       title: 'Editar Entrada Financeira',
       user: req.user,
-      entrada: entry,
+      entrada,
       costCenters,
+      receitaCategories: RECEITA_CATEGORIES,
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de edição:', error);
@@ -484,7 +501,7 @@ const updateEntry = async (req, res) => {
       amount: req.body.amount,
       entryDate: req.body.entryDate,
       costCenterId: req.body.costCenterId || null,
-      category: req.body.category || 'TAXA',
+      category: req.body.category || DEFAULT_RECEITA_CATEGORY,
     };
 
     await financeiroService.updateEntry(
@@ -501,11 +518,13 @@ const updateEntry = async (req, res) => {
     console.error('Erro ao atualizar entrada:', error);
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
     const entry = await financeiroService.getEntryById(req.params.id, req.user.condominiumId).catch(() => null);
+    const entrada = entry ? { ...entry, categoryForSelect: normalizeReceitaCategoryForForm(entry.category) } : req.body;
     res.render('administrativo/financeiro/entradas/form', {
       title: 'Editar Entrada Financeira',
       user: req.user,
-      entrada: entry || req.body,
+      entrada,
       costCenters,
+      receitaCategories: RECEITA_CATEGORIES,
       error: getErrorMessage(error),
     });
   }
@@ -670,6 +689,7 @@ const showEditExit = async (req, res) => {
       exitDate: exit.exit_date ? new Date(exit.exit_date).toISOString().split('T')[0] : '',
       costCenterId: exit.cost_center_id,
       category: exit.category,
+      categoryForSelect: normalizeDespesaCategoryForForm(exit.category),
       billId: exit.bill_id,
       requiresApproval: exit.requires_approval,
       approvalLimit: exit.approval_limit,
@@ -681,6 +701,7 @@ const showEditExit = async (req, res) => {
       saida: saidaView,
       costCenters,
       bills: bills || [],
+      despesaCategories: DESPESA_CATEGORIES,
       error: null,
     });
   } catch (error) {
@@ -705,7 +726,7 @@ const updateExitController = async (req, res) => {
       amount: req.body.amount,
       exitDate: req.body.exitDate,
       costCenterId: req.body.costCenterId || null,
-      category: req.body.category || 'OUTRA',
+      category: req.body.category || DEFAULT_DESPESA_CATEGORY,
       billId: req.body.billId || null,
       approvalLimit: req.body.approvalLimit,
     };
@@ -746,6 +767,7 @@ const updateExitController = async (req, res) => {
         saida,
         costCenters,
         bills,
+        despesaCategories: DESPESA_CATEGORIES,
         error: getErrorMessage(error),
       });
     } catch (innerError) {

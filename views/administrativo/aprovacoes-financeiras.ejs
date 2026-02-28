@@ -56,7 +56,7 @@
               <td class="px-6 py-4">
                 <div class="text-sm font-medium text-gray-900"><%= exit.description %></div>
                 <% if (exit.category) { %>
-                  <div class="text-sm text-gray-500"><%= exit.category %></div>
+                  <div class="text-sm text-gray-500"><%= (typeof categoryLabels !== 'undefined' && categoryLabels[exit.category]) ? categoryLabels[exit.category] : exit.category %></div>
                 <% } %>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">

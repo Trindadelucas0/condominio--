@@ -4,6 +4,7 @@
 
 const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
+const { DEFAULT_DESPESA_CATEGORY } = require('../constants/financialCategories');
 
 // Função para reabrir ocorrência
 // REGRA: Apenas Síndico pode reabrir ocorrências
@@ -194,7 +195,7 @@ const reopenRejectedExpense = async (rejectedExitId, data, userId, condominiumId
         amountValue,
         exitDate,
         costCenterId || null,
-        category || 'OUTRA',
+        category || DEFAULT_DESPESA_CATEGORY,
         billId || null,
         requiresApproval || false,
         limitValue,

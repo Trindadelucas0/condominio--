@@ -43,7 +43,7 @@
       </div>
       <div>
         <p class="text-sm text-gray-500">Categoria</p>
-        <p class="font-semibold text-gray-800"><%= exit.category %></p>
+        <p class="font-semibold text-gray-800"><%= (typeof categoryLabels !== 'undefined' && categoryLabels[exit.category]) ? categoryLabels[exit.category] : exit.category %></p>
       </div>
       <div>
         <p class="text-sm text-gray-500">Status</p>

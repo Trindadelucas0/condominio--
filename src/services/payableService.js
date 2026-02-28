@@ -5,6 +5,7 @@ const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
 const { validateFinancialAmount, validateDate } = require('../utils/validators');
 const { validateUserBelongsToCondominium } = require('../utils/queryHelper');
+const { DEFAULT_DESPESA_CATEGORY } = require('../constants/financialCategories');
 
 /**
  * Lista itens a pagar com filtros opcionais.
@@ -166,7 +167,7 @@ const payPayableItem = async (itemId, condominiumId, userId, paymentData, ipAddr
       amount: item.amount,
       exitDate,
       costCenterId: item.cost_center_id || null,
-      category: 'OUTRA',
+      category: DEFAULT_DESPESA_CATEGORY,
       billId: item.bill_id || null,
       requiresApproval: false,
     },

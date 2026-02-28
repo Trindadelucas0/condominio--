@@ -183,10 +183,9 @@
                 name="category"
                 class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200"
               >
-                <option value="MANUTENCAO" <%= exit.category === 'MANUTENCAO' ? 'selected' : '' %>>Manutenção</option>
-                <option value="CONTA" <%= exit.category === 'CONTA' ? 'selected' : '' %>>Conta</option>
-                <option value="CONTRATO" <%= exit.category === 'CONTRATO' ? 'selected' : '' %>>Contrato</option>
-                <option value="OUTRA" <%= exit.category === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+                <% (despesaCategories || []).forEach(cat => { %>
+                  <option value="<%= cat.code %>" <%= (exit.categoryForSelect || exit.category) === cat.code ? 'selected' : '' %>><%= cat.label %></option>
+                <% }); %>
               </select>
             </div>
           </div>

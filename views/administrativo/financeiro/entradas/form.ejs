@@ -211,9 +211,9 @@
                 name="category"
                 class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
               >
-                <option value="TAXA" <%= !entrada || entrada.category === 'TAXA' ? 'selected' : '' %>>Taxa</option>
-                <option value="RECEITA" <%= entrada && entrada.category === 'RECEITA' ? 'selected' : '' %>>Receita</option>
-                <option value="OUTRA" <%= entrada && entrada.category === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+                <% (receitaCategories || []).forEach(cat => { %>
+                  <option value="<%= cat.code %>" <%= (!entrada && cat.code === 'RECEITAS_COTAS_ORDINARIA') || (entrada && (entrada.categoryForSelect || entrada.category) === cat.code) ? 'selected' : '' %>><%= cat.label %></option>
+                <% }); %>
               </select>
             </div>
           </div>

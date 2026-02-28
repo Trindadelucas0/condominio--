@@ -310,7 +310,7 @@
                           <div class="text-sm font-bold text-gray-900"><%= exit.description %></div>
                           <div class="text-xs text-gray-500 mt-0.5 flex items-center space-x-2">
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                              <%= exit.category %>
+                              <%= (typeof categoryLabels !== 'undefined' && categoryLabels[exit.category]) ? categoryLabels[exit.category] : exit.category %>
                             </span>
                             <% if (exit.bill_name) { %>
                               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">

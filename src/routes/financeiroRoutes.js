@@ -6,6 +6,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const financeiroController = require('../controllers/financeiroController');
+const { ALL_CATEGORY_LABELS, DESPESA_CATEGORIES, DEFAULT_DESPESA_CATEGORY, normalizeDespesaCategoryForForm } = require('../constants/financialCategories');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { uploadPayment, uploadReceipt, uploadBillReceipt } = require('../middlewares/upload');
 const { validateNumericIdParam } = require('../middlewares/validateParams');
@@ -159,6 +160,7 @@ router.get('/entradas/:id/receber', async (req, res) => {
       title: 'Marcar Entrada como Recebida',
       user: req.user,
       entry: entry,
+      categoryLabels: ALL_CATEGORY_LABELS,
       req: req,
     });
   } catch (error) {
@@ -180,6 +182,7 @@ router.post('/entradas/:id/receber', async (req, res) => {
           title: 'Marcar Entrada como Recebida',
           user: req.user,
           entry: entry,
+          categoryLabels: ALL_CATEGORY_LABELS,
           req: req,
           error: err.message || 'Erro ao fazer upload do arquivo',
           formData: req.body,
@@ -218,6 +221,7 @@ router.post('/entradas/:id/receber', async (req, res) => {
         title: 'Marcar Entrada como Recebida',
         user: req.user,
         entry: entry,
+        categoryLabels: ALL_CATEGORY_LABELS,
         req: req,
         error: error.message,
         formData: req.body,
@@ -258,6 +262,7 @@ router.get('/saidas/:id/pagar', async (req, res) => {
       title: 'Marcar Saída como Paga',
       user: req.user,
       exit: exit,
+      categoryLabels: ALL_CATEGORY_LABELS,
       req: req,
     });
   } catch (error) {
@@ -280,6 +285,7 @@ router.post('/saidas/:id/pagar', async (req, res) => {
           title: 'Marcar Saída como Paga',
           user: req.user,
           exit: exit || null,
+          categoryLabels: ALL_CATEGORY_LABELS,
           req: req,
           error: err.message || 'Erro ao fazer upload do arquivo',
           formData: req.body,
@@ -297,6 +303,7 @@ router.post('/saidas/:id/pagar', async (req, res) => {
           title: 'Marcar Saída como Paga',
           user: req.user,
           exit: exit,
+          categoryLabels: ALL_CATEGORY_LABELS,
           req: req,
           error: 'Comprovante em PDF é obrigatório',
           formData: req.body,
@@ -330,6 +337,7 @@ router.post('/saidas/:id/pagar', async (req, res) => {
         title: 'Marcar Saída como Paga',
         user: req.user,
         exit: exit || null,
+        categoryLabels: ALL_CATEGORY_LABELS,
         req: req,
         error: error.message,
         formData: req.body,
@@ -931,13 +939,15 @@ router.get('/saidas/:id/verificar', async (req, res) => {
     
     // Busca centros de custo
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId);
-    
+    const exitView = { ...exit, categoryForSelect: normalizeDespesaCategoryForForm(exit.category) };
+
     res.render('financeiro/saidas/verificar', {
       title: 'Verificar e Completar Saída',
       user: req.user,
-      exit: exit,
+      exit: exitView,
       budgetRequest: budgetRequest,
       costCenters: costCenters,
+      despesaCategories: DESPESA_CATEGORIES,
       req: req,
     });
   } catch (error) {
@@ -958,7 +968,7 @@ router.post('/saidas/:id/verificar', async (req, res) => {
       amount: req.body.amount,
       exitDate: req.body.exitDate,
       costCenterId: req.body.costCenterId || null,
-      category: req.body.category || 'MANUTENCAO',
+      category: req.body.category || DEFAULT_DESPESA_CATEGORY,
     };
     
     // Obtém roles do usuário (req.user.roles é array definido pelo middleware auth)

@@ -5,6 +5,7 @@ const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
+const { getReceitaLabel, getDespesaLabel } = require('../constants/financialCategories');
 
 const reportService = {
   // Gerar relatório de aprovações em PDF
@@ -1188,7 +1189,7 @@ const reportService = {
                 doc.rect(50 + g2Pad + catLabelW, catY, catBarMaxW, catBarH).fillColor('#f3f4f6').fill();
                 doc.rect(50 + g2Pad + catLabelW, catY, barW, catBarH).fillColor(c).fill();
                 doc.rect(50 + g2Pad + catLabelW, catY, barW, catBarH).strokeColor(c).lineWidth(0.5).stroke();
-                doc.fontSize(9).font('Helvetica').fillColor(colors.dark).text(cat, 50 + g2Pad, catY + 2, { width: catLabelW - 4 });
+                doc.fontSize(9).font('Helvetica').fillColor(colors.dark).text(getDespesaLabel(cat) || cat, 50 + g2Pad, catY + 2, { width: catLabelW - 4 });
                 doc.fontSize(8).font('Helvetica').fillColor(colors.dark)
                   .text(`${formatCurrency(data.total)} (${pct.toFixed(1)}%)`, 50 + g2Pad + catLabelW + catBarMaxW + 8, catY + 3);
                 catY += catSpacing;
@@ -1372,7 +1373,7 @@ const reportService = {
                 drawBox(60, catY, 475, 28, '#ecfdf5');
                 
                 doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.success)
-                  .text(cat, 70, catY + 8);
+                  .text(getReceitaLabel(cat) || cat, 70, catY + 8);
                 doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
                   .text(`Total: ${formatCurrency(data.total)} | Recebido: ${formatCurrency(data.received)} | Qtd: ${data.count}`, 70, catY + 20);
                 
@@ -1399,7 +1400,7 @@ const reportService = {
                 drawBox(60, catY, 475, 28, '#fef2f2');
                 
                 doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.danger)
-                  .text(cat, 70, catY + 8);
+                  .text(getDespesaLabel(cat) || cat, 70, catY + 8);
                 doc.font('Helvetica').fontSize(9).fillColor(colors.dark)
                   .text(`Total: ${formatCurrency(data.total)} | Pago: ${formatCurrency(data.paid)} | Qtd: ${data.count}`, 70, catY + 20);
                 
@@ -1572,7 +1573,7 @@ const reportService = {
               
               // Segunda linha
               doc.fillColor(colors.dark)
-                .text(`Categoria: ${entry.category || 'N/A'}`, 60, infoY);
+                .text(`Categoria: ${getReceitaLabel(entry.category) || entry.category || 'N/A'}`, 60, infoY);
               if (entry.cost_center_name) {
                 doc.text(`Centro de Custo: ${entry.cost_center_name}`, 300, infoY);
               }
@@ -1730,7 +1731,7 @@ const reportService = {
               
               // Segunda linha
               doc.fillColor(colors.dark)
-                .text(`Categoria: ${exit.category || 'N/A'}`, 60, infoY);
+                .text(`Categoria: ${getDespesaLabel(exit.category) || exit.category || 'N/A'}`, 60, infoY);
               if (exit.cost_center_name) {
                 doc.text(`Centro de Custo: ${exit.cost_center_name}`, 300, infoY);
               }

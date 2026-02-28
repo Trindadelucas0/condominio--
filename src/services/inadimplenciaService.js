@@ -5,6 +5,7 @@
 const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
 const { validateUserBelongsToCondominium } = require('../utils/queryHelper');
+const { DEFAULT_RECEITA_CATEGORY } = require('../constants/financialCategories');
 
 // Função para criar apartamento
 const createApartment = async (condominiumId, userId, data, ipAddress, userAgent) => {
@@ -251,7 +252,7 @@ const createMonthlyFee = async (condominiumId, userId, data, ipAddress, userAgen
           description: entryDescription,
           amount: totalAmount, // Valor total incluindo multas e juros
           entryDate: dueDate, // Usa a data de vencimento como data da entrada
-          category: 'TAXA',
+          category: DEFAULT_RECEITA_CATEGORY,
           received: false, // Não recebida ainda, será marcada quando a taxa for paga
           linkedToId: fee.id,
           linkedToType: 'MONTHLY_FEE'
@@ -494,7 +495,7 @@ const markFeeAsPaid = async (feeId, condominiumId, userId, paymentData, ipAddres
           description: entryDescription,
           amount: totalAmount,
           entryDate: entryDate,
-          category: 'TAXA',
+          category: DEFAULT_RECEITA_CATEGORY,
           received: true,
           linkedToId: fee.id,
           linkedToType: 'MONTHLY_FEE',

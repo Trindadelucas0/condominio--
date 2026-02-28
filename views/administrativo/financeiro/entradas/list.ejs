@@ -311,7 +311,7 @@
                           <div class="text-sm font-bold text-gray-900"><%= entry.description %></div>
                           <div class="text-xs text-gray-500 mt-0.5">
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                              <%= entry.category %>
+                              <%= (typeof categoryLabels !== 'undefined' && categoryLabels[entry.category]) ? categoryLabels[entry.category] : entry.category %>
                             </span>
                           </div>
                         </div>

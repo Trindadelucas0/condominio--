@@ -6,6 +6,7 @@ const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
 const { validateFinancialAmount, validateDate } = require('../utils/validators');
 const { validateCondominiumOwnership, validateUserBelongsToCondominium } = require('../utils/queryHelper');
+const { DEFAULT_RECEITA_CATEGORY, DEFAULT_DESPESA_CATEGORY } = require('../constants/financialCategories');
 
 // Função para criar saída financeira
 // Recebe: condominiumId, userId, dados da saída
@@ -90,7 +91,7 @@ const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => 
 
     // Monta campos dinamicamente para suportar campos opcionais
     const insertFields = ['condominium_id', 'description', 'amount', 'exit_date', 'cost_center_id', 'category', 'bill_id', 'requires_approval', 'approval_limit', 'payment_status', 'created_by', 'is_recurring', 'recurrence_type', 'is_variable', 'average_amount'];
-    const insertValues = [condominiumId, description.trim(), amountValue, exitDate, costCenterId || null, category || 'OUTRA', billId || null, requiresApproval || false, limitValue, paymentStatus, userId, isRecurring || false, recurrenceType || 'UNIQUE', isVariable || false, averageAmount || null];
+    const insertValues = [condominiumId, description.trim(), amountValue, exitDate, costCenterId || null, category || DEFAULT_DESPESA_CATEGORY, billId || null, requiresApproval || false, limitValue, paymentStatus, userId, isRecurring || false, recurrenceType || 'UNIQUE', isVariable || false, averageAmount || null];
     let paramCount = insertValues.length + 1;
 
     // Adiciona campos opcionais se existirem
@@ -1274,7 +1275,7 @@ const createEntry = async (condominiumId, userId, data, ipAddress, userAgent) =>
         amountValue,
         entryDate,
         costCenterId || null,
-        category || 'TAXA',
+        category || DEFAULT_RECEITA_CATEGORY,
         received || false,
         received ? new Date() : null,
         userId,
@@ -2349,14 +2350,9 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
   try {
     const { receiptMethod, receiptPdfPath, receiptDetails, receiptNotes } = receiptData;
 
-    // Validações
-    if (!receiptMethod || !receiptMethod.trim()) {
-      throw new Error('Método de recebimento é obrigatório');
-    }
-
-    if (!receiptDetails || !receiptDetails.trim()) {
-      throw new Error('Detalhes do recebimento são obrigatórios');
-    }
+    // Método e detalhes são opcionais; aceita null/empty
+    const finalReceiptMethod = receiptMethod && receiptMethod.trim() ? receiptMethod.trim() : null;
+    const finalReceiptDetails = receiptDetails && receiptDetails.trim() ? receiptDetails.trim() : null;
 
     // Busca entrada atual
     const currentResult = await query(
@@ -2410,8 +2406,8 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
        RETURNING *`,
       [
         finalReceiptPdfPath,
-        receiptMethod.trim(),
-        receiptDetails.trim(),
+        finalReceiptMethod,
+        finalReceiptDetails,
         receiptNotes ? receiptNotes.trim() : null,
         entryId,
         condominiumId

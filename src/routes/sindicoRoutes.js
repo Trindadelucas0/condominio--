@@ -153,10 +153,12 @@ const financeiroService = require('../services/financeiroService');
 router.get('/entradas-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), async (req, res) => {
   try {
     const entries = await financeiroService.listPendingEntries(req.user.condominiumId);
+    const { ALL_CATEGORY_LABELS } = require('../constants/financialCategories');
     res.render('sindico/entradas-pendentes', {
       title: 'Entradas Aguardando Análise',
       user: req.user,
       entries: entries,
+      categoryLabels: ALL_CATEGORY_LABELS,
       req: req,
     });
   } catch (error) {
@@ -172,10 +174,12 @@ router.get('/saidas-pendentes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO')
       paymentStatus: 'PENDING',
       limit: 1000 
     });
+    const { ALL_CATEGORY_LABELS } = require('../constants/financialCategories');
     res.render('sindico/saidas-pendentes', {
       title: 'Saídas Aguardando Aprovação',
       user: req.user,
       exits: exits,
+      categoryLabels: ALL_CATEGORY_LABELS,
       req: req,
     });
   } catch (error) {

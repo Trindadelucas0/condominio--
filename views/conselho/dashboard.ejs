@@ -837,7 +837,7 @@
                   <p class="font-semibold text-gray-900 text-sm"><%= entry.description %></p>
                   <p class="text-xs text-gray-500 mt-1">
                     <%= new Date(entry.entry_date).toLocaleDateString('pt-BR') %> • 
-                    <%= entry.category || 'TAXA' %>
+                    <%= (typeof categoryLabels !== 'undefined' && categoryLabels[entry.category]) ? categoryLabels[entry.category] : (entry.category || 'TAXA') %>
                   </p>
                 </div>
                 <span class="text-lg font-bold text-green-700 ml-4">
@@ -917,7 +917,7 @@
                   <p class="font-semibold text-gray-900 text-sm"><%= exit.description %></p>
                   <p class="text-xs text-gray-500 mt-1">
                     <%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %> • 
-                    <%= exit.category || 'OUTRA' %>
+                    <%= (typeof categoryLabels !== 'undefined' && categoryLabels[exit.category]) ? categoryLabels[exit.category] : (exit.category || 'OUTRA') %>
                   </p>
                 </div>
                 <span class="text-lg font-bold text-red-700 ml-4">
@@ -981,7 +981,7 @@
         <% expensesByCategory.forEach((cat, index) => { %>
         <div class="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border-l-4 border-indigo-500">
           <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold text-gray-900"><%= cat.category || 'Outras' %></span>
+            <span class="font-semibold text-gray-900"><%= (typeof categoryLabels !== 'undefined' && categoryLabels[cat.category]) ? categoryLabels[cat.category] : (cat.category || 'Outras') %></span>
             <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded-full"><%= cat.quantidade %> transações</span>
           </div>
           <p class="text-2xl font-bold text-indigo-700">
@@ -1245,6 +1245,7 @@
   const categoryCtx = document.getElementById('categoryChart');
   if (categoryCtx) {
     const categoryData = <%- JSON.stringify(analytics.categoryData.exits) %>;
+    const categoryLabelsMap = <%- JSON.stringify(typeof categoryLabels !== 'undefined' ? categoryLabels : {}) %>;
     
     const colors = [
       'rgba(239, 68, 68, 0.8)',
@@ -1260,7 +1261,7 @@
     new Chart(categoryCtx, {
       type: 'doughnut',
       data: {
-        labels: categoryData.map(d => d.category || 'Outras'),
+        labels: categoryData.map(d => categoryLabelsMap[d.category] || d.category || 'Outras'),
         datasets: [{
           label: 'Gastos por Categoria',
           data: categoryData.map(d => parseFloat(d.total || 0)),

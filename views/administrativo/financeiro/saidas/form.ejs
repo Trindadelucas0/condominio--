@@ -239,10 +239,9 @@
               name="category"
               class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
             >
-              <option value="MANUTENCAO" <%= !saida || saida.category === 'MANUTENCAO' ? 'selected' : '' %>>Manutenção</option>
-              <option value="CONTA" <%= saida && saida.category === 'CONTA' ? 'selected' : '' %>>Conta</option>
-              <option value="CONTRATO" <%= saida && saida.category === 'CONTRATO' ? 'selected' : '' %>>Contrato</option>
-              <option value="OUTRA" <%= saida && saida.category === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+              <% (despesaCategories || []).forEach(cat => { %>
+                <option value="<%= cat.code %>" <%= (!saida && cat.code === 'DESPESAS_ADMINISTRATIVAS') || (saida && (saida.categoryForSelect || saida.category) === cat.code) ? 'selected' : '' %>><%= cat.label %></option>
+              <% }); %>
             </select>
           </div>
 

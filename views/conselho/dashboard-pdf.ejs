@@ -413,7 +413,7 @@
           <tr class="table-row">
             <td class="px-4 py-3 text-sm text-gray-900"><%= new Date(entry.entry_date).toLocaleDateString('pt-BR') %></td>
             <td class="px-4 py-3 text-sm text-gray-700"><%= entry.description %></td>
-            <td class="px-4 py-3 text-sm text-gray-600"><%= entry.category || 'N/A' %></td>
+            <td class="px-4 py-3 text-sm text-gray-600"><%= (typeof categoryLabels !== 'undefined' && categoryLabels[entry.category]) ? categoryLabels[entry.category] : (entry.category || 'N/A') %></td>
             <td class="px-4 py-3 text-sm font-semibold text-green-700 text-right">R$ <%= parseFloat(entry.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></td>
             <td class="px-4 py-3">
               <span class="badge <%= entry.received ? 'badge-success' : 'badge-warning' %>">
@@ -448,7 +448,7 @@
           <tr class="table-row">
             <td class="px-4 py-3 text-sm text-gray-900"><%= new Date(exit.exit_date).toLocaleDateString('pt-BR') %></td>
             <td class="px-4 py-3 text-sm text-gray-700"><%= exit.description %></td>
-            <td class="px-4 py-3 text-sm text-gray-600"><%= exit.category || 'N/A' %></td>
+            <td class="px-4 py-3 text-sm text-gray-600"><%= (typeof categoryLabels !== 'undefined' && categoryLabels[exit.category]) ? categoryLabels[exit.category] : (exit.category || 'N/A') %></td>
             <td class="px-4 py-3 text-sm font-semibold text-red-700 text-right">R$ <%= parseFloat(exit.amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></td>
             <td class="px-4 py-3">
               <span class="badge <%= exit.payment_status === 'PAID' ? 'badge-success' : exit.payment_status === 'PENDING' ? 'badge-warning' : 'badge-danger' %>">
@@ -471,7 +471,7 @@
       <% expensesByCategory.slice(0, 9).forEach((cat) => { %>
       <div class="bg-white rounded-lg p-4 card-shadow border-l-4 border-indigo-500">
         <div class="flex justify-between items-center mb-2">
-          <span class="font-semibold text-gray-900"><%= cat.category || 'Outras' %></span>
+          <span class="font-semibold text-gray-900"><%= (typeof categoryLabels !== 'undefined' && categoryLabels[cat.category]) ? categoryLabels[cat.category] : (cat.category || 'Outras') %></span>
           <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full"><%= cat.quantidade %> transações</span>
         </div>
         <p class="text-xl font-bold text-indigo-700">R$ <%= parseFloat(cat.total).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>

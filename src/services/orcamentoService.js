@@ -383,7 +383,7 @@ const approveOrRejectBySindico = async (budgetRequestId, userId, condominiumId, 
         amount: approvedQuote.quote_value,
         exitDate: new Date().toISOString().split('T')[0], // Data atual
         costCenterId: null, // Será preenchido pelo financeiro
-        category: 'MANUTENCAO', // Categoria padrão
+        category: 'DESPESAS_MANUTENCAO', // Categoria padrão para orçamentos aprovados
         requiresApproval: false, // Já foi aprovado pelo síndico
         needsVerification: true, // Precisa verificação do financeiro
         relatedBudgetRequestId: budgetRequestId,

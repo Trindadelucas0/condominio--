@@ -936,10 +936,12 @@ const showAprovacoesFinanceiras = async (req, res) => {
     const administrativoService = require('../services/administrativoService');
     const exits = await administrativoService.listPendingFinancialExitsForApproval(req.user.condominiumId);
 
+    const { ALL_CATEGORY_LABELS } = require('../constants/financialCategories');
     res.render('administrativo/aprovacoes-financeiras', {
       title: 'Aprovações Financeiras',
       user: req.user,
       exits: exits,
+      categoryLabels: ALL_CATEGORY_LABELS,
       query: req.query,
     });
   } catch (error) {

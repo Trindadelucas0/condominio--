@@ -4,13 +4,13 @@
 <div class="container mx-auto px-4 py-8">
   <% var helpModalId = 'modalComoFunciona'; %>
   <% var helpTitle = 'Marcar entrada como recebida'; %>
-  <% var resumo = ['Informe a data e o método de recebimento; anexe o comprovante em PDF.', 'Ao salvar, o valor entra no saldo e a receita fica com status Recebido.', 'Use quando o dinheiro tiver efetivamente entrado no caixa.']; %>
-  <% var helpModalContent = '<p>Preencha a data do recebimento e o método (PIX, transferência, etc.). Anexe o comprovante. Ao salvar, o valor passa a constar no saldo e a receita fica como Recebida.</p>'; %>
+  <% var resumo = ['Clique em Confirmar para marcar como recebido. Todos os campos são opcionais.', 'Ao salvar, o valor entra no saldo e a receita fica com status Recebido.', 'Use quando o dinheiro tiver efetivamente entrado no caixa.']; %>
+  <% var helpModalContent = '<p>Os campos método, detalhes e comprovante são opcionais. Basta clicar em Confirmar Recebimento para marcar a entrada como recebida. Ao salvar, o valor passa a constar no saldo.</p>'; %>
   <!-- Cabeçalho -->
   <div class="mb-6 flex flex-wrap items-center gap-3">
     <div>
       <h1 class="text-3xl font-bold text-gray-800">Marcar Entrada como Recebida</h1>
-      <p class="text-gray-600 mt-2">Preencha os detalhes do recebimento e anexe o comprovante</p>
+      <p class="text-gray-600 mt-2">Confirme o recebimento. Todos os campos são opcionais.</p>
     </div>
     <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
   </div>
@@ -43,7 +43,7 @@
       </div>
       <div>
         <p class="text-sm text-gray-500">Categoria</p>
-        <p class="font-semibold text-gray-800"><%= entry.category %></p>
+        <p class="font-semibold text-gray-800"><%= (typeof categoryLabels !== 'undefined' && categoryLabels[entry.category]) ? categoryLabels[entry.category] : entry.category %></p>
       </div>
       <% if (entry.cost_center_name) { %>
         <div>
@@ -62,13 +62,12 @@
       <!-- Método de Recebimento -->
       <div class="mb-4">
         <label for="receiptMethod" class="block text-sm font-medium text-gray-700 mb-2">
-          Método de Recebimento <span class="text-red-500">*</span>
+          Método de Recebimento <span class="text-gray-500 font-normal">(opcional)</span>
         </label>
         <select
           id="receiptMethod"
           name="receiptMethod"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
         >
           <option value="">Selecione...</option>
           <option value="PIX" <%= (typeof formData !== 'undefined' && formData.receiptMethod === 'PIX') ? 'selected' : '' %>>PIX</option>
@@ -99,7 +98,7 @@
       <!-- Detalhes do Recebimento -->
       <div class="mb-4">
         <label for="receiptDetails" class="block text-sm font-medium text-gray-700 mb-2">
-          Detalhes do Recebimento <span class="text-red-500">*</span>
+          Detalhes do Recebimento <span class="text-gray-500 font-normal">(opcional)</span>
         </label>
         <textarea
           id="receiptDetails"
@@ -107,7 +106,6 @@
           rows="4"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Ex: Recebido via PIX, comprovante anexado. Valor confirmado na conta corrente do condomínio."
-          required
         ><%= typeof formData !== 'undefined' && formData.receiptDetails ? formData.receiptDetails : '' %></textarea>
         <p class="text-xs text-gray-500 mt-1">Descreva os detalhes do recebimento (método, conta, data, etc.)</p>
       </div>
