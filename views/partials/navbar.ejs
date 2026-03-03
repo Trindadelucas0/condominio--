@@ -62,6 +62,14 @@
     overflow-y: auto;
   }
 
+  /* Dropdown único "Módulos" com várias seções (múltiplos perfis) */
+  .nav-dropdown-menu-multi-section {
+    min-width: 320px;
+    max-width: min(900px, 95vw);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
   /* Dropdown com múltiplas colunas quando tem muitos itens */
   .nav-dropdown-menu.multi-column {
     display: flex;
@@ -331,27 +339,59 @@
 
                     // Se tiver mais de 5 links, usar dropdown, senão mostrar inline
                     const useDropdown = totalLinks > 5;
-                    
-                    if (useDropdown) {
-                        // Renderizar com dropdowns organizados por módulo
+                    // Vários perfis: um único dropdown "Módulos" para não estourar a navbar
+                    const manyModules = menuItems.length > 4;
+                    const moduleNames = {
+                        'master': 'Master',
+                        'sindico': 'Síndico',
+                        'financeiro': 'Financeiro',
+                        'patrimonio': 'Patrimônio',
+                        'administrativo': 'Administrativo',
+                        'operacional': 'Operacional',
+                        'limpeza': 'Limpeza',
+                        'conselho': 'Conselho'
+                    };
+
+                    if (manyModules) {
+                        // Um único dropdown "Módulos" com todas as seções (evita navbar sair da tela)
+                        const firstLink = menuItems[0].items[0];
+                %>
+                        <div class="nav-dropdown">
+                            <a href="<%= firstLink.href %>" class="hover:bg-primary-700/50 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium flex items-center space-x-2 group">
+                                <span>Módulos</span>
+                                <svg class="w-4 h-4 transform group-hover:rotate-180 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </a>
+                            <div class="nav-dropdown-menu nav-dropdown-menu-multi-section">
+                                <% menuItems.forEach((module) => {
+                                    const moduleName = moduleNames[module.type] || module.type;
+                                %>
+                                <div class="nav-dropdown-section">
+                                    <div class="nav-dropdown-header"><%= moduleName %></div>
+                                    <div class="nav-dropdown-items-container">
+                                        <% module.items.forEach((item) => { %>
+                                        <a href="<%= item.href %>" class="nav-dropdown-item flex items-center space-x-2">
+                                            <svg class="w-4 h-4 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= item.icon %>"></path>
+                                            </svg>
+                                            <span><%= item.label %></span>
+                                        </a>
+                                        <% }); %>
+                                    </div>
+                                </div>
+                                <% }); %>
+                            </div>
+                        </div>
+                <%
+                    } else if (useDropdown) {
+                        // Renderizar com dropdowns organizados por módulo (um por perfil)
                         menuItems.forEach((module, idx) => {
-                            const moduleNames = {
-                                'master': 'Master',
-                                'sindico': 'Síndico',
-                                'financeiro': 'Financeiro',
-                                'patrimonio': 'Patrimônio',
-                                'administrativo': 'Administrativo',
-                                'operacional': 'Operacional',
-                                'limpeza': 'Limpeza',
-                                'conselho': 'Conselho'
-                            };
-                            
                             const moduleName = moduleNames[module.type] || module.type;
                             const mainLink = module.items[0]; // Primeiro item é o dashboard
                             const itemCount = module.items.length;
                             // Se tiver mais de 6 itens, usar múltiplas colunas
                             const useMultiColumn = itemCount > 6;
-                            const columnsCount = useMultiColumn ? Math.ceil(itemCount / Math.ceil(itemCount / 3)) : 1;
                 %>
                             <div class="nav-dropdown">
                                 <a href="<%= mainLink.href %>" class="hover:bg-primary-700/50 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium flex items-center space-x-2 group">
