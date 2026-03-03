@@ -49,6 +49,23 @@
   .stat-card {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%);
     backdrop-filter: blur(10px);
+    min-height: 160px;
+  }
+
+  .conselho-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .conselho-section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e5e7eb;
   }
   
   .pulse-animation {
@@ -72,11 +89,16 @@
   }
 
   .refresh-btn {
-    transition: transform 0.3s ease;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
 
   .refresh-btn:hover {
-    transform: rotate(180deg);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 
   /* Estilos para impressão */
@@ -272,7 +294,7 @@
           </div>
           <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
         </div>
-        <div class="flex items-center space-x-3 flex-wrap gap-3">
+        <div class="conselho-filters">
           <!-- Filtro de Período -->
           <div class="bg-white rounded-xl shadow-lg p-3 border border-gray-200">
             <div class="flex items-center space-x-3">
@@ -282,6 +304,7 @@
                 onchange="handlePeriodChange()"
                 class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white min-w-[180px]"
               >
+                <option value="all" <%= typeof period !== 'undefined' && period === 'all' ? 'selected' : '' %>>Ver tudo (todos os meses)</option>
                 <option value="custom" <%= typeof period !== 'undefined' && period === 'custom' ? 'selected' : (typeof period === 'undefined' ? 'selected' : '') %>>Personalizado</option>
                 <option value="current" <%= typeof period !== 'undefined' && period === 'current' ? 'selected' : '' %>>Mês Atual</option>
                 <option value="last" <%= typeof period !== 'undefined' && period === 'last' ? 'selected' : '' %>>Mês Anterior</option>
@@ -301,18 +324,18 @@
           </div>
           
           <!-- Botão de Atualizar -->
-          <button onclick="refreshDashboard()" class="refresh-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center space-x-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button type="button" id="btnRefresh" onclick="refreshDashboard()" class="refresh-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 inline-flex items-center space-x-2">
+            <svg class="w-5 h-5 refresh-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
-            <span>Atualizar</span>
+            <span class="refresh-text">Atualizar</span>
           </button>
           
           <!-- Indicador de Período Selecionado -->
-          <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-            <span class="text-xs font-semibold text-blue-700">Período:</span>
-            <span class="text-sm text-blue-900 font-medium ml-2" id="selectedPeriodLabel">
-              <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %>
+          <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 shadow-sm">
+            <span class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Exibindo:</span>
+            <span class="text-sm font-semibold text-blue-900 ml-2" id="selectedPeriodLabel">
+              <%= typeof period !== 'undefined' && period === 'all' ? 'Todos os períodos' : (filterDate && filterDate !== 'Todos os períodos' ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : (filterDate ? filterDate : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }))) %>
             </span>
           </div>
         </div>
@@ -396,9 +419,9 @@
     </div>
 
     <!-- KPIs Principais -->
-    <div class="mb-6">
-      <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
-        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="mb-8">
+      <h2 class="conselho-section-title flex items-center gap-2">
+        <svg class="w-6 h-6 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
         </svg>
         <span>Indicadores de Performance (KPIs)</span>
@@ -468,7 +491,7 @@
     </div>
 
     <!-- KPIs Secundários -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
       <!-- Tempo Médio de Resolução -->
       <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border-l-4 border-orange-500 animate-fade-in-up" style="animation-delay: 0.5s">
         <div class="flex items-center justify-between mb-2">
@@ -546,18 +569,40 @@
           <%= typeof kpis !== 'undefined' && kpis.healthScore >= 70 ? '✅ Excelente' : typeof kpis !== 'undefined' && kpis.healthScore >= 50 ? '⚠️ Regular' : '❌ Atenção' %>
         </p>
       </div>
+
+      <!-- KPI Fundo de Reserva -->
+      <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border-l-4 border-amber-500 animate-fade-in-up" style="animation-delay: 1s">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-amber-700">Fundo de Reserva</span>
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <% if (typeof reserveFund !== 'undefined' && reserveFund) { %>
+          <p class="text-2xl font-bold text-amber-900">R$ <%= parseFloat(reserveFund.current_balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %></p>
+          <p class="text-xs text-amber-600 mt-1"><%= typeof reserveFund.target_percent !== 'undefined' ? reserveFund.target_percent.toFixed(1) : 0 %>% da meta</p>
+          <% if (reserveFund.target_balance > 0) { %>
+            <div class="mt-2 h-2 bg-amber-200 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-500 rounded-full transition-all" style="width: <%= Math.min(100, Math.max(0, reserveFund.target_percent || 0)) %>%"></div>
+            </div>
+          <% } %>
+        <% } else { %>
+          <p class="text-lg font-bold text-amber-800">Não configurado</p>
+          <p class="text-xs text-amber-600 mt-1">Configure em Financeiro → Fundo de Reserva</p>
+        <% } %>
+      </div>
     </div>
 
     <!-- Resumo Financeiro Detalhado -->
-    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 animate-fade-in-up" style="animation-delay: 0.4s">
-      <div class="flex items-center space-x-3 mb-6">
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-8 animate-fade-in-up" style="animation-delay: 0.4s">
+      <h2 class="conselho-section-title flex items-center gap-3 mb-6">
         <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-2">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
           </svg>
         </div>
-        <h2 class="text-2xl font-bold text-gray-900">Resumo Financeiro Completo</h2>
-      </div>
+        <span>Resumo Financeiro Completo</span>
+      </h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-l-4 border-green-500">
           <p class="text-xs font-semibold text-gray-600 mb-1">Total de Entradas</p>
@@ -1106,6 +1151,8 @@
     if (selectedPeriod === 'custom' && dateInput.value) {
       const date = new Date(dateInput.value + '-01');
       label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    } else if (selectedPeriod === 'all') {
+      label = 'Todos os períodos';
     } else {
       const now = new Date();
       switch(selectedPeriod) {

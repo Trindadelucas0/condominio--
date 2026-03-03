@@ -1039,6 +1039,15 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar FASE 37:', error);
     }
 
+    // FASE 38: Flags fundo de reserva (reserve_fund_credited / reserve_fund_debited)
+    console.log('🔍 Verificando colunas da FASE 38 (fundo de reserva como conta)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase38.sql'));
+      console.log('✅ FASE 38 aplicada (reserve_fund_credited / reserve_fund_debited)');
+    } catch (error) {
+      console.error('Erro ao verificar/criar FASE 38:', error);
+    }
+
     // Criação do usuário master inicial (se não existir)
     console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
     try {

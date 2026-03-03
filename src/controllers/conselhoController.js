@@ -8,6 +8,7 @@ const { ALL_CATEGORY_LABELS } = require('../constants/financialCategories');
 const dashboardAnalyticsService = require('../services/dashboardAnalyticsService');
 const patrimonioService = require('../services/patrimonioService');
 const cacheService = require('../services/cacheService');
+const reserveFundService = require('../services/reserveFundService');
 
 // Função para exibir dashboard do conselho
 // GET /conselho/dashboard
@@ -26,7 +27,13 @@ const showDashboard = async (req, res) => {
     let filterDateStr, filterDateEndStr, filterYear, filterMonth;
     
     // Calcular datas baseado no período selecionado
-    if (period === 'custom' && customDate) {
+    if (period === 'all') {
+      // Ver tudo (todos os meses) — sem filtro de data
+      filterDateStr = '1900-01-01';
+      filterDateEndStr = '2100-01-01';
+      filterYear = now.getFullYear();
+      filterMonth = now.getMonth() + 1;
+    } else if (period === 'custom' && customDate) {
       // Período personalizado (mês específico)
       const dateParts = customDate.split('-');
       if (dateParts.length === 2) {
@@ -104,9 +111,11 @@ const showDashboard = async (req, res) => {
     }
     
     // Formato para exibição no filtro
-    const filterDateDisplay = period === 'custom' && customDate 
-      ? customDate 
-      : `${filterYear}-${String(filterMonth || 1).padStart(2, '0')}`;
+    const filterDateDisplay = period === 'all'
+      ? 'Todos os períodos'
+      : period === 'custom' && customDate
+        ? customDate
+        : `${filterYear}-${String(filterMonth || 1).padStart(2, '0')}`;
     
     console.log(`📅 Filtro de período: ${period} - ${filterDateStr} até ${filterDateEndStr}`);
 
@@ -153,7 +162,11 @@ const showDashboard = async (req, res) => {
     // Calcular período anterior para comparação baseado no tipo de período
     let previousPeriodMonth, previousPeriodYear;
     
-    if (period === 'custom' && customDate) {
+    if (period === 'all') {
+      // Para "ver tudo", comparar com mês anterior
+      previousPeriodMonth = lastMonth;
+      previousPeriodYear = lastMonthYear;
+    } else if (period === 'custom' && customDate) {
       // Para período customizado (mês), comparar com mês anterior
       const effectiveMonth = filterMonth || now.getMonth() + 1;
       previousPeriodMonth = effectiveMonth === 1 ? 12 : effectiveMonth - 1;
@@ -490,7 +503,10 @@ const showDashboard = async (req, res) => {
     if (parseFloat(financialEfficiency) >= 100) healthScore += 40;
     else if (parseFloat(financialEfficiency) >= 80) healthScore += 30;
     else if (parseFloat(financialEfficiency) >= 60) healthScore += 20;
-    else if (parseFloat(financialEfficiency) >= 40) healthScore += 10;
+    else     if (parseFloat(financialEfficiency) >= 40) healthScore += 10;
+
+    // Fundo de Reserva (KPI)
+    const reserveFund = await reserveFundService.getReserveFund(condominiumId).catch(() => null);
 
     res.render('conselho/dashboard', {
       title: 'Dashboard Conselho - Prestação de Contas',
@@ -536,7 +552,8 @@ const showDashboard = async (req, res) => {
           concluidas: parseInt(tasksStats.concluidas),
           total: parseInt(tasksStats.total)
         }
-      }
+      },
+      reserveFund: reserveFund
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard conselho:', error);

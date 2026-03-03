@@ -7,6 +7,9 @@ const { logAction } = require('../utils/logger');
 const { validateFinancialAmount, validateDate } = require('../utils/validators');
 const { validateCondominiumOwnership, validateUserBelongsToCondominium } = require('../utils/queryHelper');
 const { DEFAULT_RECEITA_CATEGORY, DEFAULT_DESPESA_CATEGORY } = require('../constants/financialCategories');
+const RESERVA_RECEITA = 'RECEITAS_FUNDO_RESERVA';
+const RESERVA_DESPESA = 'DESPESAS_FUNDO_RESERVA';
+const reserveFundService = require('./reserveFundService');
 
 // Função para criar saída financeira
 // Recebe: condominiumId, userId, dados da saída
@@ -695,6 +698,17 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
 
     const updated = updateResult.rows[0];
 
+    // Fundo de reserva como conta: saída paga com DESPESAS_FUNDO_RESERVA debita o fundo
+    if (current.category === RESERVA_DESPESA && !current.reserve_fund_debited) {
+      try {
+        await reserveFundService.subtractFromReserveFund(condominiumId, userId, updated.amount, ipAddress, userAgent);
+        await query(`UPDATE financial_exits SET reserve_fund_debited = TRUE WHERE id = $1 AND condominium_id = $2`, [exitId, condominiumId]);
+        updated.reserve_fund_debited = true;
+      } catch (err) {
+        console.warn('Aviso: não foi possível debitar saída do fundo de reserva:', err.message);
+      }
+    }
+
     // Registra no log
     await logAction({
       userId: userId,
@@ -768,12 +782,22 @@ const unmarkExitAsPaid = async (exitId, condominiumId, userId, reason, ipAddress
       throw new Error(`Não é possível desfazer o pagamento. O mês ${m}/${y} está fechado.`);
     }
 
+    // Fundo de reserva: devolver valor ao fundo se esta saída havia debitado
+    if (current.reserve_fund_debited === true) {
+      try {
+        await reserveFundService.addContribution(condominiumId, userId, current.amount, ipAddress, userAgent);
+      } catch (err) {
+        console.warn('Aviso: não foi possível devolver valor ao fundo de reserva:', err.message);
+      }
+    }
+
     // Ao desfazer pagamento, voltamos o status para PENDING,
     // assim a saída deixa de impactar o saldo como saída concluída/aprovada.
     const updateResult = await query(
       `UPDATE financial_exits
        SET payment_status = 'PENDING',
            paid_at = NULL,
+           reserve_fund_debited = FALSE,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND condominium_id = $2
        RETURNING *`,
@@ -1311,6 +1335,17 @@ const createEntry = async (condominiumId, userId, data, ipAddress, userAgent) =>
       'financial_entries',
       entry.id
     );
+
+    // Fundo de reserva como conta: receita RECEITAS_FUNDO_RESERVA recebida credita o fundo
+    if (entry.category === RESERVA_RECEITA && entry.received === true) {
+      try {
+        await reserveFundService.addContribution(condominiumId, userId, entry.amount, ipAddress, userAgent);
+        await query(`UPDATE financial_entries SET reserve_fund_credited = TRUE WHERE id = $1 AND condominium_id = $2`, [entry.id, condominiumId]);
+        entry.reserve_fund_credited = true;
+      } catch (err) {
+        console.warn('Aviso: não foi possível creditar entrada no fundo de reserva:', err.message);
+      }
+    }
 
     return entry;
   } catch (error) {
@@ -2420,6 +2455,17 @@ const markEntryAsReceived = async (entryId, condominiumId, userId, receiptData, 
 
     const updated = updateResult.rows[0];
 
+    // Fundo de reserva como conta: ao marcar como recebida, se for RECEITAS_FUNDO_RESERVA, credita o fundo
+    if (current.category === RESERVA_RECEITA && !current.reserve_fund_credited) {
+      try {
+        await reserveFundService.addContribution(condominiumId, userId, updated.amount, ipAddress, userAgent);
+        await query(`UPDATE financial_entries SET reserve_fund_credited = TRUE WHERE id = $1 AND condominium_id = $2`, [entryId, condominiumId]);
+        updated.reserve_fund_credited = true;
+      } catch (err) {
+        console.warn('Aviso: não foi possível creditar entrada no fundo de reserva:', err.message);
+      }
+    }
+
     // Registra no log
     await logAction({
       userId: userId,
@@ -2487,10 +2533,20 @@ const unmarkEntryAsReceived = async (entryId, condominiumId, userId, reason, ipA
       throw new Error(`Não é possível desfazer o recebimento. O mês ${m}/${y} está fechado.`);
     }
 
+    // Fundo de reserva: reverter crédito se esta entrada havia creditado o fundo
+    if (current.reserve_fund_credited === true) {
+      try {
+        await reserveFundService.subtractFromReserveFund(condominiumId, userId, current.amount, ipAddress, userAgent);
+      } catch (err) {
+        console.warn('Aviso: não foi possível reverter crédito no fundo de reserva:', err.message);
+      }
+    }
+
     const updateResult = await query(
       `UPDATE financial_entries
        SET received = FALSE,
            received_at = NULL,
+           reserve_fund_credited = FALSE,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND condominium_id = $2
        RETURNING *`,

@@ -179,6 +179,54 @@ const addContribution = async (condominiumId, userId, amount, ipAddress, userAge
   }
 };
 
+// Função para debitar do fundo de reserva (ex.: despesa paga com categoria DESPESAS_FUNDO_RESERVA)
+const subtractFromReserveFund = async (condominiumId, userId, amount, ipAddress, userAgent) => {
+  try {
+    const fundResult = await query(
+      `SELECT * FROM reserve_fund WHERE condominium_id = $1`,
+      [condominiumId]
+    );
+
+    if (fundResult.rows.length === 0) {
+      throw new Error('Fundo de reserva não configurado');
+    }
+
+    const fund = fundResult.rows[0];
+    const currentBalance = parseFloat(fund.current_balance);
+    const subtractAmount = parseFloat(amount);
+    const newBalance = Math.max(0, currentBalance - subtractAmount);
+
+    const updateResult = await query(
+      `UPDATE reserve_fund 
+       SET current_balance = $1,
+           last_updated = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING *`,
+      [newBalance, fund.id]
+    );
+
+    const updated = updateResult.rows[0];
+
+    await logAction({
+      userId: userId,
+      condominiumId: condominiumId,
+      action: 'UPDATE',
+      module: 'FINANCIAL',
+      entityType: 'reserve_fund',
+      entityId: fund.id,
+      beforeData: fund,
+      afterData: updated,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao debitar do fundo de reserva:', error);
+    throw error;
+  }
+};
+
 // Função para calcular contribuição mensal automática
 const calculateMonthlyContribution = async (condominiumId, monthlyExpenses) => {
   try {
@@ -267,6 +315,7 @@ module.exports = {
   setupReserveFund,
   getReserveFund,
   addContribution,
+  subtractFromReserveFund,
   calculateMonthlyContribution,
   allocateExpense,
   getExpenseAllocations

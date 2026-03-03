@@ -5,6 +5,7 @@ const path = require('path');
 const financeiroService = require('../services/financeiroService');
 const criticalItemsService = require('../services/criticalItemsService');
 const monthlyClosureService = require('../services/monthlyClosureService');
+const reserveFundService = require('../services/reserveFundService');
 const { renderError } = require('../utils/errorHandler');
 const { getErrorMessage } = require('../utils/errorMessages');
 const {
@@ -39,6 +40,8 @@ const showDashboard = async (req, res) => {
     const stats = dashboardData.stats || {};
     const showGettingStarted = (stats.totalEntradas === 0 && stats.totalSaidas === 0) || (typeof stats.totalEntradas !== 'undefined' && stats.totalEntradas === 0);
 
+    const reserveFund = await reserveFundService.getReserveFund(req.user.condominiumId).catch(() => null);
+
     res.render('administrativo/financeiro/dashboard', {
       title: 'Dashboard Financeiro',
       user: req.user,
@@ -46,7 +49,8 @@ const showDashboard = async (req, res) => {
       kpis: dashboardData.kpis,
       criticalItems: criticalItemsData.items || [],
       condominiumId: req.user.condominiumId,
-      showGettingStarted: !!showGettingStarted
+      showGettingStarted: !!showGettingStarted,
+      reserveFund
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard financeiro:', error);
