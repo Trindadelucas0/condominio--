@@ -67,7 +67,11 @@
     min-width: 320px;
     max-width: min(900px, 95vw);
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    /* Centraliza o mega-menu abaixo do botão para não cortar em notebooks */
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -10px);
   }
 
   /* Dropdown com múltiplas colunas quando tem muitos itens */
@@ -110,6 +114,12 @@
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+  }
+
+  /* Mantém transform centrado para o mega-menu de múltiplos módulos */
+  .nav-dropdown:hover .nav-dropdown-menu.nav-dropdown-menu-multi-section,
+  .nav-dropdown-menu.nav-dropdown-menu-multi-section:hover {
+    transform: translate(-50%, 0);
   }
 
   .nav-dropdown-item {
