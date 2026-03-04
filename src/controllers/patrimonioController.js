@@ -55,12 +55,50 @@ const showAtivos = async (req, res) => {
 
 // Função para exibir formulário de criação de ativo
 // GET /patrimonio/ativos/novo
-const showCreateAtivo = (req, res) => {
-  res.render('administrativo/patrimonio/ativos/form', {
-    title: 'Novo Ativo',
-    user: req.user,
-    ativo: null,
-  });
+const showCreateAtivo = async (req, res) => {
+  try {
+    let existingAssetTypes = [];
+    if (req.user.condominiumId) {
+      existingAssetTypes = await patrimonioService.getAssetTypes(req.user.condominiumId);
+    }
+    res.render('administrativo/patrimonio/ativos/form', {
+      title: 'Novo Ativo',
+      user: req.user,
+      ativo: null,
+      existingAssetTypes: existingAssetTypes,
+    });
+  } catch (error) {
+    console.error('Erro ao carregar formulário de novo ativo:', error);
+    renderError(res, 500, 'Erro ao carregar formulário', error);
+  }
+};
+
+// Função para criar tipo de ativo (salva no banco para todos do condomínio)
+// POST /patrimonio/ativos/tipos (body JSON: { name: "Nome do tipo" })
+const createTipoAtivo = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).json({ error: 'Usuário não está associado a um condomínio' });
+    }
+    const name = (req.body.name || req.body.nome || '').trim();
+    if (!name) {
+      return res.status(400).json({ error: 'Nome do tipo é obrigatório' });
+    }
+    const typeCode = name.toUpperCase().replace(/\s+/g, ' ');
+    const typeLabel = name.replace(/\b\w/g, (c) => c.toUpperCase());
+    const row = await patrimonioService.createAssetType(
+      req.user.condominiumId,
+      typeCode,
+      typeLabel
+    );
+    return res.status(201).json({
+      typeCode: row.type_code,
+      typeLabel: row.type_label || typeLabel,
+    });
+  } catch (error) {
+    console.error('Erro ao criar tipo de ativo:', error);
+    return res.status(500).json({ error: error.message || 'Erro ao criar tipo' });
+  }
 };
 
 // Função para processar criação de ativo
@@ -93,10 +131,17 @@ const createAtivo = async (req, res) => {
 
     res.redirect('/patrimonio/ativos?success=created');
   } catch (error) {
+    let existingAssetTypes = [];
+    if (req.user.condominiumId) {
+      try {
+        existingAssetTypes = await patrimonioService.getAssetTypes(req.user.condominiumId);
+      } catch (_) {}
+    }
     res.render('administrativo/patrimonio/ativos/form', {
       title: 'Novo Ativo',
       user: req.user,
       ativo: req.body,
+      existingAssetTypes: existingAssetTypes,
       error: error.message,
     });
   }
@@ -132,12 +177,16 @@ const showEditAtivo = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const asset = await patrimonioService.getAssetById(req.params.id, req.user.condominiumId);
+    const [asset, existingAssetTypes] = await Promise.all([
+      patrimonioService.getAssetById(req.params.id, req.user.condominiumId),
+      patrimonioService.getAssetTypes(req.user.condominiumId),
+    ]);
 
     res.render('administrativo/patrimonio/ativos/form', {
       title: 'Editar Ativo',
       user: req.user,
       ativo: asset,
+      existingAssetTypes: existingAssetTypes,
     });
   } catch (error) {
     console.error('Erro ao carregar ativo:', error);
@@ -176,12 +225,16 @@ const updateAtivo = async (req, res) => {
     res.redirect('/patrimonio/ativos/' + req.params.id + '?success=updated');
   } catch (error) {
     try {
-      const asset = await patrimonioService.getAssetById(req.params.id, req.user.condominiumId);
+      const [asset, existingAssetTypes] = await Promise.all([
+        patrimonioService.getAssetById(req.params.id, req.user.condominiumId),
+        patrimonioService.getAssetTypes(req.user.condominiumId),
+      ]);
 
       res.render('administrativo/patrimonio/ativos/form', {
         title: 'Editar Ativo',
         user: req.user,
         ativo: { ...asset, ...req.body },
+        existingAssetTypes: existingAssetTypes,
         error: error.message,
       });
     } catch (renderError) {
@@ -276,6 +329,7 @@ module.exports = {
   showPatrimonioDashboard,
   showAtivos,
   showCreateAtivo,
+  createTipoAtivo,
   createAtivo,
   showAtivo,
   showEditAtivo,

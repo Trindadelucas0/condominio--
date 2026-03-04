@@ -83,6 +83,14 @@
         </div>
 
       <!-- Tipo -->
+      <% const FIXED_TYPES = ['ELEVADOR', 'BOMBA', 'GERADOR', 'PORTARIA']; %>
+      <% const existingTypes = Array.isArray(existingAssetTypes) ? existingAssetTypes : []; %>
+      <% 
+        let customTypes = existingTypes.filter(function(t) { return FIXED_TYPES.indexOf(t) === -1; });
+        if (ativo && ativo.asset_type && FIXED_TYPES.indexOf(ativo.asset_type) === -1 && customTypes.indexOf(ativo.asset_type) === -1) {
+          customTypes = customTypes.concat([ativo.asset_type]);
+        }
+      %>
       <div class="mb-4">
         <label for="assetType" class="block text-sm font-medium text-gray-700 mb-1">
           Tipo <span class="text-red-500">*</span>
@@ -97,8 +105,35 @@
           <option value="BOMBA" <%= ativo && ativo.asset_type === 'BOMBA' ? 'selected' : '' %>>Bomba</option>
           <option value="GERADOR" <%= ativo && ativo.asset_type === 'GERADOR' ? 'selected' : '' %>>Gerador</option>
           <option value="PORTARIA" <%= ativo && ativo.asset_type === 'PORTARIA' ? 'selected' : '' %>>Portaria</option>
+          <% customTypes.forEach(function(t) {
+            const parts = (t || '').split(/[\s_]+/);
+            const label = parts.map(function(p) { return p.charAt(0).toUpperCase() + (p.slice(1) || '').toLowerCase(); }).join(' ');
+          %>
+          <option value="<%= t %>" <%= ativo && ativo.asset_type === t ? 'selected' : '' %>><%= label %></option>
+          <% }); %>
           <option value="OUTRO" <%= ativo && ativo.asset_type === 'OUTRO' ? 'selected' : '' %>>Outro</option>
+          <option value="__NEW__">Criar novo tipo...</option>
         </select>
+        <!-- Modal / painel para criar novo tipo (aparece abaixo do campo) -->
+        <div id="modalNovoTipo" class="hidden mt-3 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+          <p class="text-sm font-semibold text-gray-800 mb-2">Novo tipo de ativo</p>
+          <label for="novoTipoNome" class="block text-sm text-gray-600 mb-1">Nome do tipo</label>
+          <input
+            type="text"
+            id="novoTipoNome"
+            placeholder="Ex: Ar condicionado"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 mb-3"
+          />
+          <div class="flex gap-2">
+            <button type="button" id="btnCancelarNovoTipo" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition">
+              Cancelar
+            </button>
+            <button type="button" id="btnCriarNovoTipo" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+              Criar
+            </button>
+          </div>
+          <p id="novoTipoErro" class="hidden text-sm text-red-600 mt-2"></p>
+        </div>
       </div>
 
       <!-- Descrição -->
@@ -313,5 +348,100 @@
     </div>
   </div>
 </div>
+
+<script>
+(function() {
+  var select = document.getElementById('assetType');
+  var modal = document.getElementById('modalNovoTipo');
+  var input = document.getElementById('novoTipoNome');
+  var btnCancelar = document.getElementById('btnCancelarNovoTipo');
+  var btnCriar = document.getElementById('btnCriarNovoTipo');
+  var errEl = document.getElementById('novoTipoErro');
+
+  var lastValidValue = '';
+  if (select && select.value && select.value !== '__NEW__') lastValidValue = select.value;
+
+  function formatLabel(str) {
+    if (!str) return '';
+    return str.split(/[\s_]+/).map(function(p) {
+      return p.charAt(0).toUpperCase() + (p.slice(1) || '').toLowerCase();
+    }).join(' ');
+  }
+
+  function normalizeValue(str) {
+    return (str || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  }
+
+  if (select) {
+    select.addEventListener('change', function() {
+      if (select.value === '__NEW__') {
+        if (modal) modal.classList.remove('hidden');
+        if (input) { input.value = ''; input.focus(); }
+        if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+      } else {
+        lastValidValue = select.value;
+      }
+    });
+  }
+
+  if (btnCancelar) {
+    btnCancelar.addEventListener('click', function() {
+      if (modal) modal.classList.add('hidden');
+      if (select) select.value = lastValidValue || (select.options[0] ? select.options[0].value : '');
+    });
+  }
+
+  if (btnCriar && select && modal && input) {
+    btnCriar.addEventListener('click', function() {
+      var raw = (input.value || '').trim();
+      if (!raw) {
+        if (errEl) { errEl.textContent = 'Digite o nome do tipo.'; errEl.classList.remove('hidden'); }
+        return;
+      }
+      if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+      btnCriar.disabled = true;
+      btnCriar.textContent = 'Salvando...';
+
+      fetch('/patrimonio/ativos/tipos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ name: raw }),
+        credentials: 'same-origin'
+      })
+        .then(function(r) {
+          if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Erro ao salvar tipo'); });
+          return r.json();
+        })
+        .then(function(data) {
+          var value = data.typeCode;
+          var label = data.typeLabel || formatLabel(value);
+          var opts = select.options;
+          var existing = false;
+          for (var i = 0; i < opts.length; i++) {
+            if (opts[i].value === value) { existing = true; break; }
+          }
+          if (!existing) {
+            var newOpt = document.createElement('option');
+            newOpt.value = value;
+            newOpt.textContent = label;
+            var lastOpt = opts[opts.length - 1];
+            select.insertBefore(newOpt, lastOpt);
+          }
+          select.value = value;
+          lastValidValue = value;
+          modal.classList.add('hidden');
+          input.value = '';
+        })
+        .catch(function(e) {
+          if (errEl) { errEl.textContent = e.message || 'Erro ao salvar tipo. Tente de novo.'; errEl.classList.remove('hidden'); }
+        })
+        .finally(function() {
+          btnCriar.disabled = false;
+          btnCriar.textContent = 'Criar';
+        });
+    });
+  }
+})();
+</script>
 
 <%- include('../../../partials/footer') %>

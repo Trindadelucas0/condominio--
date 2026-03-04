@@ -1048,6 +1048,15 @@ const initializeDatabase = async () => {
       console.error('Erro ao verificar/criar FASE 38:', error);
     }
 
+    // FASE 39: Tabela de tipos de ativo (asset_types) para "Criar novo tipo" no patrimônio
+    console.log('🔍 Verificando tabela FASE 39 (asset_types)...');
+    try {
+      await executeSQLFile(path.join(__dirname, 'extendTablesPhase39_asset_types.sql'));
+      console.log('✅ FASE 39 aplicada (asset_types)');
+    } catch (error) {
+      console.error('Erro ao verificar/criar FASE 39 (asset_types):', error);
+    }
+
     // Criação do usuário master inicial (se não existir)
     console.log('🔍 Verificando usuário SUPER_MASTER inicial...');
     try {

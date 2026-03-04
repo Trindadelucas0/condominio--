@@ -20,6 +20,7 @@ router.get('/dashboard', patrimonioController.showPatrimonioDashboard);
 router.get('/ativos', patrimonioController.showAtivos);
 router.get('/ativos/novo', patrimonioController.showCreateAtivo);
 router.post('/ativos', patrimonioController.createAtivo);
+router.post('/ativos/tipos', patrimonioController.createTipoAtivo);
 router.get('/ativos/:id', patrimonioController.showAtivo);
 router.get('/ativos/:id/editar', patrimonioController.showEditAtivo);
 router.post('/ativos/:id', patrimonioController.updateAtivo);

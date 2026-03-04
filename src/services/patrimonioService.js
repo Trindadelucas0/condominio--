@@ -4,6 +4,7 @@
 
 const { query } = require('../config/database'); // Conexão com banco
 const { logAction } = require('../utils/logger'); // Para logs de auditoria
+const financeiroService = require('./financeiroService');
 
 // Função para calcular valor atual do ativo (depreciação)
 // Recebe: asset (objeto do ativo)
@@ -429,6 +430,35 @@ const createMaintenance = async (assetId, data, userId, condominiumId, ipAddress
       userAgent: userAgent,
     });
 
+    // Se há custo, criar despesa (saída financeira) vinculada ao ativo
+    const costNum = cost != null && cost !== '' ? parseFloat(cost) : 0;
+    if (costNum > 0) {
+      try {
+        const nameResult = await query(
+          `SELECT name FROM assets WHERE id = $1 AND condominium_id = $2`,
+          [assetId, condominiumId]
+        );
+        const assetName = nameResult.rows[0] ? nameResult.rows[0].name : 'Ativo';
+        const exitDescription = `Manutenção ${maintenanceType === 'PREVENTIVA' ? 'preventiva' : 'corretiva'}: ${description.trim()} - Ativo: ${assetName}`;
+        await financeiroService.createExit(
+          condominiumId,
+          userId,
+          {
+            description: exitDescription,
+            amount: costNum,
+            exitDate: maintenanceDate,
+            category: 'DESPESAS_MANUTENCAO',
+            asset_id: assetId,
+          },
+          ipAddress,
+          userAgent
+        );
+      } catch (exitError) {
+        await query(`DELETE FROM asset_maintenances WHERE id = $1`, [maintenance.id]);
+        throw exitError;
+      }
+    }
+
     return maintenance;
   } catch (error) {
     console.error('Erro ao criar manutenção:', error);
@@ -485,11 +515,53 @@ const calculateDepreciation = async (assetId, condominiumId) => {
   }
 };
 
+// Função para listar tipos de ativo: tabela asset_types + DISTINCT de assets (para legado)
+// Assim todos no condomínio veem os tipos salvos quando alguém clica em "Criar novo tipo"
+const getAssetTypes = async (condominiumId) => {
+  try {
+    const result = await query(
+      `(SELECT type_code AS asset_type FROM asset_types WHERE condominium_id = $1)
+       UNION
+       (SELECT DISTINCT asset_type FROM assets WHERE condominium_id = $1 AND archived_at IS NULL)
+       ORDER BY asset_type`,
+      [condominiumId]
+    );
+    return result.rows.map((r) => r.asset_type);
+  } catch (error) {
+    console.error('Erro ao buscar tipos de ativo:', error);
+    throw error;
+  }
+};
+
+// Função para criar um novo tipo de ativo (salva no banco para todos do condomínio)
+const createAssetType = async (condominiumId, typeCode, typeLabel) => {
+  try {
+    const code = (typeCode || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (!code) {
+      throw new Error('Nome do tipo é obrigatório');
+    }
+    const label = (typeLabel || code).trim();
+    const result = await query(
+      `INSERT INTO asset_types (condominium_id, type_code, type_label)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (condominium_id, type_code) DO UPDATE SET type_label = EXCLUDED.type_label
+       RETURNING *`,
+      [condominiumId, code, label || code]
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao criar tipo de ativo:', error);
+    throw error;
+  }
+};
+
 // Exporta funções
 module.exports = {
   getDashboardStats,
   listAssets,
   getAssetById,
+  getAssetTypes,
+  createAssetType,
   createAsset,
   updateAsset,
   createMaintenance,

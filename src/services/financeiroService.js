@@ -16,7 +16,8 @@ const reserveFundService = require('./reserveFundService');
 // Retorna: saída criada
 const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => {
   try {
-    const { description, amount, exitDate, costCenterId, category, billId, requiresApproval, approvalLimit, isRecurring, recurrenceType, isVariable, averageAmount, needsVerification, relatedBudgetRequestId, relatedBudgetQuoteId } = data;
+    const { description, amount, exitDate, costCenterId, category, billId, requiresApproval, approvalLimit, isRecurring, recurrenceType, isVariable, averageAmount, needsVerification, relatedBudgetRequestId, relatedBudgetQuoteId, assetId, asset_id } = data;
+    const assetIdValue = assetId != null ? assetId : asset_id;
 
     // Validações obrigatórias
     if (!description || !description.trim()) {
@@ -113,6 +114,12 @@ const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => 
     if (relatedBudgetQuoteId) {
       insertFields.push('related_budget_quote_id');
       insertValues.push(relatedBudgetQuoteId);
+      paramCount++;
+    }
+
+    if (assetIdValue != null) {
+      insertFields.push('asset_id');
+      insertValues.push(assetIdValue);
       paramCount++;
     }
 
