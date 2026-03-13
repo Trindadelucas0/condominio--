@@ -105,9 +105,38 @@ const createPayableItem = async (condominiumId, userId, data, ipAddress, userAge
   if (!dateVal.valid) throw new Error(dateVal.error);
 
   await validateUserBelongsToCondominium(userId, condominiumId);
+  let billName = null;
   if (billId) {
-    const bill = await query('SELECT id FROM bills WHERE id = $1 AND condominium_id = $2', [billId, condominiumId]);
+    const bill = await query('SELECT id, name FROM bills WHERE id = $1 AND condominium_id = $2', [billId, condominiumId]);
     if (bill.rows.length === 0) throw new Error('Conta não encontrada');
+    billName = bill.rows[0].name;
+  }
+
+  let savedAsCopy = false;
+  let copyLabel = null;
+  let finalBillId = billId || null;
+  let finalDescription = description && description.trim() ? description.trim() : null;
+
+  if (billId) {
+    const existing = await query(
+      `SELECT id FROM payable_items WHERE condominium_id = $1 AND bill_id = $2 AND due_date = $3`,
+      [condominiumId, billId, dueDate]
+    );
+    if (existing.rows.length > 0) {
+      const countResult = await query(
+        `SELECT COUNT(*) AS total FROM payable_items
+         WHERE condominium_id = $1 AND due_date = $2
+           AND (bill_id = $3 OR (bill_id IS NULL AND description LIKE '%- %º vencimento'))`,
+        [condominiumId, dueDate, billId]
+      );
+      const total = parseInt(countResult.rows[0].total, 10) || 0;
+      const ord = total + 1;
+      copyLabel = ord + 'º vencimento';
+      const baseDesc = (finalDescription || billName || 'Conta a pagar').trim();
+      finalDescription = baseDesc + ' - ' + copyLabel;
+      finalBillId = null;
+      savedAsCopy = true;
+    }
   }
 
   const result = await query(
@@ -116,10 +145,10 @@ const createPayableItem = async (condominiumId, userId, data, ipAddress, userAge
      RETURNING *`,
     [
       condominiumId,
-      billId || null,
+      finalBillId,
       dueDate,
       amountVal.value,
-      description && description.trim() ? description.trim() : null,
+      finalDescription,
       costCenterId || null,
       userId,
       boletoPdfPath && boletoPdfPath.trim() ? boletoPdfPath.trim() : null,
@@ -140,7 +169,8 @@ const createPayableItem = async (condominiumId, userId, data, ipAddress, userAge
     userAgent,
   });
 
-  return item;
+  if (savedAsCopy) return { item, savedAsCopy: true, copyLabel };
+  return { item };
 };
 
 /**

@@ -492,7 +492,7 @@ router.post('/contas-a-pagar', async (req, res) => {
   try {
     const ip = req.ip || req.connection.remoteAddress;
     const ua = req.get('user-agent');
-    await payableService.createPayableItem(
+    const result = await payableService.createPayableItem(
       req.user.condominiumId,
       req.user.id,
       {
@@ -505,9 +505,16 @@ router.post('/contas-a-pagar', async (req, res) => {
       ip,
       ua
     );
+    if (result.savedAsCopy && result.copyLabel) {
+      return res.redirect('/financeiro/contas-a-pagar?success=created_as_copy&copyLabel=' + encodeURIComponent(result.copyLabel));
+    }
     res.redirect('/financeiro/contas-a-pagar?success=created');
   } catch (e) {
     console.error('Erro ao criar conta a pagar:', e);
+    let errorMsg = e.message;
+    if (errorMsg && (errorMsg.includes('idx_payable_items_unique_bill_due') || errorMsg.includes('duplicate key'))) {
+      errorMsg = 'Já existe um vencimento para esta conta nesta data. Tente novamente; o sistema pode tê-lo salvo como outro vencimento.';
+    }
     const financeiroService = require('../services/financeiroService');
     const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
     const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
@@ -517,7 +524,7 @@ router.post('/contas-a-pagar', async (req, res) => {
       item: req.body,
       bills,
       costCenters,
-      error: e.message,
+      error: errorMsg,
       req: req,
     });
   }
