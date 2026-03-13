@@ -40,5 +40,11 @@
   window.ExitoTourDriver = (typeof window.driver !== 'undefined' && window.driver && window.driver.js && typeof window.driver.js.driver === 'function') ? window.driver.js.driver : (typeof window.driver !== 'undefined' && window.driver && typeof window.driver.js === 'function' ? window.driver.js : null);
 </script>
 <script src="/js/sistema-tour.js"></script>
+<!-- Registro do Service Worker para cache de recursos (carregamento mais rápido no celular) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  }
+</script>
 </body>
 </html>

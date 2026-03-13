@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <meta name="theme-color" content="#22a329">
+  <!-- PWA: manifest e ícones para instalação no telefone (ícone do app na tela inicial) -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="/logo.png">
+  <link rel="apple-touch-icon" href="/logo.png">
   <title>Login - Sistema de Gestão Condominial</title>
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -360,5 +364,11 @@
       </div>
     </div>
   </main>
+  <!-- Registro do Service Worker para cache de recursos (carregamento mais rápido no celular) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
+  </script>
 </body>
 </html>
