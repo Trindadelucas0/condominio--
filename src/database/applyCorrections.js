@@ -390,6 +390,17 @@ async function applyPermissionCorrection() {
 }
 
 /**
+ * Remove a constraint UNIQUE de monthly_closures (one-off idempotente).
+ * Permite múltiplas comandas do mesmo mês/ano. Só tem efeito na primeira execução.
+ */
+async function applyMonthlyClosuresConstraintRemoval() {
+  await query(`
+    ALTER TABLE monthly_closures
+    DROP CONSTRAINT IF EXISTS monthly_closures_condominium_id_month_year_key
+  `);
+}
+
+/**
  * Função principal: verifica e aplica correções se necessário
  */
 async function ensureCorrectionsApplied() {
@@ -403,6 +414,8 @@ async function ensureCorrectionsApplied() {
     await applyPaymentReceiptColumnsCorrection();
     console.log('  → Verificando e garantindo permissão occurrences:resolve para OPERACIONAL...');
     await applyPermissionCorrection();
+    console.log('  → Removendo constraint de unicidade de monthly_closures (se existir)...');
+    await applyMonthlyClosuresConstraintRemoval();
     
     if (status.allApplied && status.permissionExists) {
       console.log('✅ Todas as correções já foram aplicadas anteriormente.');
@@ -445,4 +458,5 @@ module.exports = {
   applyCorrections,
   applyPermissionCorrection,
   applyPaymentReceiptColumnsCorrection,
+  applyMonthlyClosuresConstraintRemoval,
 };

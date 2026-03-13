@@ -325,7 +325,7 @@ const showDashboard = async (req, res) => {
       total: 0
     };
 
-    // Buscar últimas transações financeiras (filtradas por data)
+    // Buscar últimas transações do período (só recebidas / só pagas para bater com totais do período)
     const recentEntries = await query(`
       SELECT 
         fe.id,
@@ -342,6 +342,7 @@ const showDashboard = async (req, res) => {
         AND fe.deleted_at IS NULL
         AND fe.entry_date >= $2::date
         AND fe.entry_date < $3::date
+        AND fe.received = TRUE
       ORDER BY fe.entry_date DESC, fe.created_at DESC
       LIMIT 50
     `, [condominiumId, filterDateStr, filterDateEndStr]);
@@ -354,17 +355,19 @@ const showDashboard = async (req, res) => {
         fx.exit_date,
         fx.payment_status,
         fx.category,
+        fx.payment_receipt_pdf_path,
         u.full_name as created_by_name
       FROM financial_exits fx
       LEFT JOIN users u ON fx.created_by = u.id
       WHERE fx.condominium_id = $1
         AND fx.exit_date >= $2::date
         AND fx.exit_date < $3::date
+        AND fx.payment_status = 'PAID'
       ORDER BY fx.exit_date DESC, fx.created_at DESC
       LIMIT 50
     `, [condominiumId, filterDateStr, filterDateEndStr]);
 
-    // Buscar gastos por categoria (filtrados por data)
+    // Gastos por categoria: só PAID para alinhar com total de saídas do período
     const expensesByCategory = await query(`
       SELECT 
         fx.category,
@@ -374,7 +377,7 @@ const showDashboard = async (req, res) => {
       WHERE fx.condominium_id = $1
         AND fx.exit_date >= $2::date
         AND fx.exit_date < $3::date
-        AND fx.payment_status IN ('PAID', 'APPROVED')
+        AND fx.payment_status = 'PAID'
       GROUP BY fx.category
       ORDER BY total DESC
       LIMIT 10
@@ -508,6 +511,98 @@ const showDashboard = async (req, res) => {
     // Fundo de Reserva (KPI)
     const reserveFund = await reserveFundService.getReserveFund(condominiumId).catch(() => null);
 
+    // Saldo em caixa no início e no fim do período (para prestação de contas)
+    const balanceAtStartResult = await query(`
+      SELECT 
+        (SELECT COALESCE(SUM(amount), 0) FROM financial_entries WHERE condominium_id = $1 AND deleted_at IS NULL AND received = TRUE AND entry_date < $2) -
+        (SELECT COALESCE(SUM(amount), 0) FROM financial_exits WHERE condominium_id = $1 AND payment_status = 'PAID' AND exit_date < $2) -
+        (SELECT COALESCE(SUM(amount), 0) FROM financial_exits WHERE condominium_id = $1 AND payment_status = 'APPROVED' AND exit_date < $2) AS balance
+    `, [condominiumId, filterDateStr]);
+    const balanceAtStartOfPeriod = parseFloat(balanceAtStartResult.rows[0]?.balance || 0);
+    const balanceAtEndOfPeriod = balanceAtStartOfPeriod + periodBalance;
+
+    // Contas a pagar: pagas no período, vencidas pendentes até fim do período, a vencer em 60 dias
+    let payablePaidInPeriod = 0;
+    let payableOverdueCount = 0;
+    let payableOverdueAmount = 0;
+    let payableUpcoming60DaysAmount = 0;
+    try {
+      const payablePaidResult = await query(`
+        SELECT COALESCE(SUM(pi.amount), 0) AS total
+        FROM payable_items pi
+        WHERE pi.condominium_id = $1 AND pi.status = 'PAID'
+          AND pi.paid_at >= $2::timestamp AND pi.paid_at < $3::timestamp
+      `, [condominiumId, filterDateStr, filterDateEndStr]);
+      payablePaidInPeriod = parseFloat(payablePaidResult.rows[0]?.total || 0);
+
+      const payableOverdueResult = await query(`
+        SELECT COUNT(*) AS cnt, COALESCE(SUM(pi.amount), 0) AS total
+        FROM payable_items pi
+        WHERE pi.condominium_id = $1 AND pi.status = 'PENDING' AND pi.due_date < $2::date
+      `, [condominiumId, filterDateEndStr]);
+      payableOverdueCount = parseInt(payableOverdueResult.rows[0]?.cnt || 0);
+      payableOverdueAmount = parseFloat(payableOverdueResult.rows[0]?.total || 0);
+
+      const sixtyDaysEnd = new Date(filterDateEndStr);
+      sixtyDaysEnd.setDate(sixtyDaysEnd.getDate() + 60);
+      const sixtyDaysEndStr = sixtyDaysEnd.toISOString().slice(0, 10);
+      const payableUpcomingResult = await query(`
+        SELECT COALESCE(SUM(pi.amount), 0) AS total
+        FROM payable_items pi
+        WHERE pi.condominium_id = $1 AND pi.status = 'PENDING'
+          AND pi.due_date >= $2::date AND pi.due_date < $3::date
+      `, [condominiumId, filterDateEndStr, sixtyDaysEndStr]);
+      payableUpcoming60DaysAmount = parseFloat(payableUpcomingResult.rows[0]?.total || 0);
+    } catch (e) {
+      // payable_items pode não existir em instalações antigas
+    }
+
+    // Rótulo para comparação (vs mês anterior / vs período anterior)
+    const periodLabelForComparison = (period === 'quarter' || period === 'semester' || period === 'year' || period === 'last-year')
+      ? 'vs período anterior'
+      : 'vs mês anterior';
+
+    // Data segura para impressão/PDF (evitar Invalid Date quando period === 'all' ou ano)
+    let filterDateForPrint = filterDateDisplay;
+    if (period === 'all' || filterDateDisplay === 'Todos os períodos') {
+      filterDateForPrint = 'Todos os períodos';
+    } else if (period === 'year' || period === 'last-year') {
+      filterDateForPrint = `Ano ${filterYear}`;
+    } else if (filterDateDisplay && /^\d{4}-\d{2}$/.test(filterDateDisplay)) {
+      try {
+        filterDateForPrint = new Date(filterDateDisplay + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      } catch (_) {
+        filterDateForPrint = filterDateDisplay;
+      }
+    }
+
+    // Resumo executivo (texto para o conselho)
+    const complianceNum = parseFloat(complianceRate);
+    const reservePercent = reserveFund && reserveFund.target_balance > 0 ? (reserveFund.target_percent || 0) : null;
+    const executiveSummaryParts = [
+      `No período: entradas de R$ ${periodEntries.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, saídas de R$ ${periodExits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, saldo do período R$ ${periodBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+      `Inadimplência: ${delinquencyRate}% (${delinquency.total_inadimplentes} de ${totalApartments} apartamentos).`,
+    ];
+    if (reservePercent != null) {
+      executiveSummaryParts.push(`Fundo de reserva: ${reservePercent.toFixed(1)}% da meta.`);
+    }
+    const executiveSummary = executiveSummaryParts.join(' ');
+
+    // Alertas para tomada de decisão
+    const alerts = [];
+    if (parseFloat(delinquencyRate) > 5) {
+      alerts.push({ type: 'warning', text: `Inadimplência acima de 5% (${delinquencyRate}%). Avaliar cobrança e medidas.` });
+    }
+    if (reserveFund && reserveFund.target_balance > 0 && (reserveFund.target_percent || 0) < 100) {
+      alerts.push({ type: 'info', text: `Fundo de reserva em ${(reserveFund.target_percent || 0).toFixed(1)}% da meta.` });
+    }
+    if (periodBalance < 0) {
+      alerts.push({ type: 'danger', text: 'Saldo do período negativo. Atenção ao fluxo de caixa.' });
+    }
+    if (payableOverdueCount > 0) {
+      alerts.push({ type: 'warning', text: `${payableOverdueCount} conta(s) a pagar vencida(s). Valor total: R$ ${payableOverdueAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.` });
+    }
+
     res.render('conselho/dashboard', {
       title: 'Dashboard Conselho - Prestação de Contas',
       user: req.user,
@@ -553,7 +648,17 @@ const showDashboard = async (req, res) => {
           total: parseInt(tasksStats.total)
         }
       },
-      reserveFund: reserveFund
+      reserveFund: reserveFund,
+      balanceAtStartOfPeriod,
+      balanceAtEndOfPeriod,
+      payablePaidInPeriod,
+      payableOverdueCount,
+      payableOverdueAmount,
+      payableUpcoming60DaysAmount,
+      periodLabelForComparison,
+      filterDateForPrint,
+      executiveSummary,
+      alerts,
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard conselho:', error);

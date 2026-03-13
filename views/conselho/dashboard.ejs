@@ -237,7 +237,7 @@
       <h1 class="text-3xl font-bold text-gray-900 mb-2">Relatório de Prestação de Contas</h1>
       <h2 class="text-xl font-semibold text-gray-700"><%= condominiumName %></h2>
       <p class="text-sm text-gray-600 mt-2">
-        Período: <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %>
+        Período: <%= typeof filterDateForPrint !== 'undefined' ? filterDateForPrint : (filterDate || new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })) %>
       </p>
       <p class="text-xs text-gray-500 mt-1">
         Gerado em: <%= new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
@@ -363,7 +363,7 @@
         </p>
       </div>
 
-      <!-- Entradas -->
+      <!-- Entradas do Período -->
       <div class="stat-card card-elevate bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up border-l-4 border-green-500" style="animation-delay: 0.1s">
         <div class="flex items-center justify-between mb-4">
           <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3">
@@ -371,13 +371,13 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
             </svg>
           </div>
-          <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Total Recebido</span>
+          <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Entradas do Período</span>
         </div>
         <h3 class="text-2xl font-bold text-green-700 mb-2">
-          R$ <%= stats.totalEntries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          R$ <%= typeof periodStats !== 'undefined' ? periodStats.entries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
         </h3>
         <p class="text-xs text-gray-600">
-          Entradas financeiras recebidas
+          Recebidas no período
         </p>
       </div>
 
@@ -503,7 +503,7 @@
         <p class="text-2xl font-bold text-orange-900">
           <%= typeof kpis !== 'undefined' && kpis.avgResolutionTime ? kpis.avgResolutionTime.toFixed(1) : '0' %> dias
         </p>
-        <p class="text-xs text-orange-600 mt-1">Últimos 6 meses</p>
+        <p class="text-xs text-orange-600 mt-1">No período</p>
       </div>
 
       <!-- Eficiência Financeira -->
@@ -533,7 +533,7 @@
         <p class="text-2xl font-bold <%= typeof kpis !== 'undefined' && kpis.revenueGrowth >= 0 ? 'text-green-900' : 'text-red-900' %>">
           <%= typeof kpis !== 'undefined' && kpis.revenueGrowth >= 0 ? '+' : '' %><%= typeof kpis !== 'undefined' ? kpis.revenueGrowth : 0 %>%
         </p>
-        <p class="text-xs <%= typeof kpis !== 'undefined' && kpis.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600' %> mt-1">vs mês anterior</p>
+        <p class="text-xs <%= typeof kpis !== 'undefined' && kpis.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600' %> mt-1"><%= typeof periodLabelForComparison !== 'undefined' ? periodLabelForComparison : 'vs mês anterior' %></p>
       </div>
 
       <!-- Redução de Custos -->
@@ -551,7 +551,7 @@
         <p class="text-2xl font-bold <%= typeof kpis !== 'undefined' && kpis.costReduction >= 0 ? 'text-green-900' : 'text-red-900' %>">
           <%= typeof kpis !== 'undefined' && kpis.costReduction >= 0 ? '+' : '' %><%= typeof kpis !== 'undefined' ? kpis.costReduction : 0 %>%
         </p>
-        <p class="text-xs <%= typeof kpis !== 'undefined' && kpis.costReduction >= 0 ? 'text-green-600' : 'text-red-600' %> mt-1">vs mês anterior</p>
+        <p class="text-xs <%= typeof kpis !== 'undefined' && kpis.costReduction >= 0 ? 'text-green-600' : 'text-red-600' %> mt-1"><%= typeof periodLabelForComparison !== 'undefined' ? periodLabelForComparison : 'vs mês anterior' %></p>
       </div>
 
       <!-- Índice de Saúde Financeira -->
@@ -593,7 +593,7 @@
       </div>
     </div>
 
-    <!-- Resumo Financeiro Detalhado -->
+    <!-- Resumo Financeiro do Período + Saldo em Caixa -->
     <div class="bg-white rounded-2xl shadow-xl p-6 mb-8 animate-fade-in-up" style="animation-delay: 0.4s">
       <h2 class="conselho-section-title flex items-center gap-3 mb-6">
         <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-2">
@@ -601,38 +601,83 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
           </svg>
         </div>
-        <span>Resumo Financeiro Completo</span>
+        <span>Resumo Financeiro do Período</span>
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-l-4 border-green-500">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Total de Entradas</p>
-          <p class="text-2xl font-bold text-green-700">R$ <%= stats.totalEntries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+          <p class="text-xs font-semibold text-gray-600 mb-1">Entradas do Período</p>
+          <p class="text-2xl font-bold text-green-700">R$ <%= typeof periodStats !== 'undefined' ? periodStats.entries.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %></p>
           <% if (typeof analytics !== 'undefined' && analytics.comparison && analytics.comparison.variations.entries !== 0) { %>
             <p class="text-xs mt-2 <%= analytics.comparison.variations.entries >= 0 ? 'text-green-600' : 'text-red-600' %>">
-              <%= analytics.comparison.variations.entries >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.entries).toFixed(1) %>% vs mês anterior
+              <%= analytics.comparison.variations.entries >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.entries).toFixed(1) %>% <%= typeof periodLabelForComparison !== 'undefined' ? periodLabelForComparison : 'vs mês anterior' %>
             </p>
           <% } %>
         </div>
         <div class="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 border-l-4 border-red-500">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Total de Saídas</p>
-          <p class="text-2xl font-bold text-red-700">R$ <%= (stats.totalExitsPaid + stats.totalExitsApproved || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></p>
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saídas do Período (pagas)</p>
+          <p class="text-2xl font-bold text-red-700">R$ <%= typeof periodStats !== 'undefined' ? periodStats.exits.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %></p>
           <% if (typeof analytics !== 'undefined' && analytics.comparison && analytics.comparison.variations.exits !== 0) { %>
             <p class="text-xs mt-2 <%= analytics.comparison.variations.exits >= 0 ? 'text-red-600' : 'text-green-600' %>">
-              <%= analytics.comparison.variations.exits >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.exits).toFixed(1) %>% vs mês anterior
+              <%= analytics.comparison.variations.exits >= 0 ? '↑' : '↓' %> <%= Math.abs(analytics.comparison.variations.exits).toFixed(1) %>% <%= typeof periodLabelForComparison !== 'undefined' ? periodLabelForComparison : 'vs mês anterior' %>
             </p>
           <% } %>
         </div>
-        <div class="bg-gradient-to-r <%= stats.balance >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= stats.balance >= 0 ? 'border-green-500' : 'border-red-500' %>">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo Disponível</p>
-          <p class="text-2xl font-bold <%= stats.balance >= 0 ? 'text-green-700' : 'text-red-700' %>">
-            R$ <%= stats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+        <div class="bg-gradient-to-r <%= typeof balanceAtStartOfPeriod !== 'undefined' && balanceAtStartOfPeriod >= 0 ? 'from-blue-50 to-indigo-50' : 'from-amber-50 to-orange-50' %> rounded-xl p-4 border-l-4 border-blue-500">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo Início do Período</p>
+          <p class="text-xl font-bold text-gray-800">R$ <%= typeof balanceAtStartOfPeriod !== 'undefined' ? balanceAtStartOfPeriod.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %></p>
+        </div>
+        <div class="bg-gradient-to-r <%= typeof stats !== 'undefined' && stats.balance >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= typeof stats !== 'undefined' && stats.balance >= 0 ? 'border-green-500' : 'border-red-500' %>">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo em Caixa (atual)</p>
+          <p class="text-xl font-bold <%= typeof stats !== 'undefined' && stats.balance >= 0 ? 'text-green-700' : 'text-red-700' %>">
+            R$ <%= typeof stats !== 'undefined' ? stats.balance.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
           </p>
           <% if (typeof analytics !== 'undefined' && analytics.trend) { %>
-            <p class="text-xs mt-2 <%= analytics.trend.trend === 'GROWING' ? 'text-green-600' : analytics.trend.trend === 'DECLINING' ? 'text-red-600' : 'text-gray-600' %>">
-              <% if (analytics.trend.trend === 'GROWING') { %>📈 Crescendo<% } else if (analytics.trend.trend === 'DECLINING') { %>📉 Declinando<% } else { %>➡️ Estável<% } %>
-              (<%= analytics.trend.rate.toFixed(1) %>%)
+            <p class="text-xs mt-1 <%= analytics.trend.trend === 'GROWING' ? 'text-green-600' : analytics.trend.trend === 'DECLINING' ? 'text-red-600' : 'text-gray-600' %>">
+              <% if (analytics.trend.trend === 'GROWING') { %>📈<% } else if (analytics.trend.trend === 'DECLINING') { %>📉<% } else { %>➡️<% } %> <%= analytics.trend.rate.toFixed(1) %>%
             </p>
           <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumo Executivo e Alertas -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <% if (typeof executiveSummary !== 'undefined' && executiveSummary) { %>
+      <div class="lg:col-span-2 bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up border-l-4 border-indigo-500">
+        <h2 class="conselho-section-title text-lg mb-3">Resumo Executivo</h2>
+        <p class="text-gray-700 leading-relaxed"><%= executiveSummary %></p>
+      </div>
+      <% } %>
+      <% if (typeof alerts !== 'undefined' && alerts && alerts.length > 0) { %>
+      <div class="bg-white rounded-2xl shadow-xl p-6 animate-fade-in-up border-l-4 border-amber-500">
+        <h2 class="conselho-section-title text-lg mb-3">Alertas para o Conselho</h2>
+        <ul class="space-y-2">
+          <% alerts.forEach(function(a) { %>
+          <li class="text-sm p-2 rounded-lg <%= a.type === 'danger' ? 'bg-red-50 text-red-800' : a.type === 'warning' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-800' %>"><%= a.text %></li>
+          <% }); %>
+        </ul>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Contas a Pagar (decisão) -->
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-8 animate-fade-in-up">
+      <h2 class="conselho-section-title flex items-center gap-2">
+        <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        <span>Contas a Pagar</span>
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-4 bg-green-50 rounded-xl border-l-4 border-green-500">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Pagas no Período</p>
+          <p class="text-xl font-bold text-green-700">R$ <%= typeof payablePaidInPeriod !== 'undefined' ? payablePaidInPeriod.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %></p>
+        </div>
+        <div class="p-4 bg-red-50 rounded-xl border-l-4 border-red-500">
+          <p class="text-xs font-semibold text-gray-600 mb-1">Vencidas (pendentes)</p>
+          <p class="text-xl font-bold text-red-700"><%= typeof payableOverdueCount !== 'undefined' ? payableOverdueCount : 0 %> itens · R$ <%= typeof payableOverdueAmount !== 'undefined' ? payableOverdueAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %></p>
+        </div>
+        <div class="p-4 bg-blue-50 rounded-xl border-l-4 border-blue-500">
+          <p class="text-xs font-semibold text-gray-600 mb-1">A vencer (60 dias)</p>
+          <p class="text-xl font-bold text-blue-700">R$ <%= typeof payableUpcoming60DaysAmount !== 'undefined' ? payableUpcoming60DaysAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %></p>
         </div>
       </div>
     </div>
@@ -871,7 +916,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
             </svg>
           </div>
-          <h2 class="text-xl font-bold text-gray-900">Últimas Entradas</h2>
+          <h2 class="text-xl font-bold text-gray-900">Entradas recebidas no período</h2>
         </div>
         <div class="space-y-3 max-h-96 overflow-y-auto">
           <% if (recentEntries && recentEntries.length > 0) { %>
@@ -937,7 +982,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
             </svg>
           </div>
-          <h2 class="text-xl font-bold text-gray-900">Últimas Saídas</h2>
+          <h2 class="text-xl font-bold text-gray-900">Saídas pagas no período</h2>
         </div>
         <div class="space-y-3 max-h-96 overflow-y-auto">
           <% if (recentExits && recentExits.length > 0) { %>
@@ -1079,7 +1124,7 @@
   <!-- Rodapé para impressão -->
   <div class="print-footer">
     <p><strong><%= condominiumName %></strong> - Relatório de Prestação de Contas</p>
-    <p>Período: <%= filterDate ? new Date(filterDate + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) %> | 
+    <p>Período: <%= typeof filterDateForPrint !== 'undefined' ? filterDateForPrint : (filterDate || new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })) %> | 
        Gerado em: <%= new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></p>
     <p class="text-xs mt-2">Este relatório foi gerado automaticamente pelo sistema de gestão condominial.</p>
   </div>
