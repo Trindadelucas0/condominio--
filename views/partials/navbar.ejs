@@ -635,67 +635,79 @@
 </nav>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Toggle menu mobile (compatível com PWA/touch: touchend + click sem duplicar)
-    const toggleButton = document.getElementById('mobile-menu-toggle');
-    const mobileMenu = document.getElementById('mobile-menu');
-    
-    function toggleMobileMenu() {
-      const isHidden = mobileMenu.classList.contains('hidden');
-      if (isHidden) {
-        mobileMenu.classList.remove('hidden');
-      } else {
-        mobileMenu.classList.add('hidden');
-      }
-      var icon = toggleButton.querySelector('#menu-icon');
-      var path = icon && icon.querySelector('path');
-      if (path) {
+  (function() {
+    var menuController = null;
+
+    function initMobileMenu(signal) {
+      var toggleButton = document.getElementById('mobile-menu-toggle');
+      var mobileMenu = document.getElementById('mobile-menu');
+      if (!toggleButton || !mobileMenu) return;
+
+      function toggleMobileMenu() {
+        var isHidden = mobileMenu.classList.contains('hidden');
         if (isHidden) {
-          path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
-          path.setAttribute('stroke-linecap', 'round');
-          path.setAttribute('stroke-linejoin', 'round');
+          mobileMenu.classList.remove('hidden');
         } else {
-          path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+          mobileMenu.classList.add('hidden');
+        }
+        var icon = toggleButton.querySelector('#menu-icon');
+        var path = icon && icon.querySelector('path');
+        if (path) {
+          if (isHidden) {
+            path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+          } else {
+            path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+          }
         }
       }
-    }
-    
-    function closeMobileMenu() {
-      mobileMenu.classList.add('hidden');
-      var icon = toggleButton.querySelector('#menu-icon');
-      var path = icon && icon.querySelector('path');
-      if (path) path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
-    }
-    
-    if (toggleButton && mobileMenu) {
+
+      function closeMobileMenu() {
+        mobileMenu.classList.add('hidden');
+        var icon = toggleButton.querySelector('#menu-icon');
+        var path = icon && icon.querySelector('path');
+        if (path) path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+      }
+
       var lastTap = 0;
-      // Toque (PWA/mobile): evita que o clique duplo dispare duas vezes
       toggleButton.addEventListener('touchend', function(e) {
-        e.preventDefault();
+        e.stopPropagation();
         lastTap = Date.now();
         toggleMobileMenu();
-      }, { passive: false });
-      // Clique (desktop ou fallback): ignorar se já foi tratado por touchend
+      }, { passive: false, signal: signal });
       toggleButton.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         if (Date.now() - lastTap < 400) return;
         toggleMobileMenu();
-      });
-      
-      // Fechar menu ao tocar/clicar fora
+      }, { signal: signal });
       document.addEventListener('click', function(e) {
         if (!toggleButton.contains(e.target) && !mobileMenu.contains(e.target)) {
           closeMobileMenu();
         }
-      });
+      }, { signal: signal });
       document.addEventListener('touchend', function(e) {
         if (!toggleButton.contains(e.target) && !mobileMenu.contains(e.target)) {
           closeMobileMenu();
         }
-      });
+      }, { signal: signal });
     }
-    
+
+    function runNavbarInit() {
+      if (menuController) menuController.abort();
+      menuController = new AbortController();
+      initMobileMenu(menuController.signal);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      runNavbarInit();
+      window.addEventListener('pageshow', function(e) {
+        if (e.persisted) runNavbarInit();
+      });
+    });
+
+  document.addEventListener('DOMContentLoaded', function() {
     // Atualizar badge de notificações
     <% if (typeof user !== 'undefined' && user !== null && user.id) { %>
     fetch('/notifications/unread-count')
@@ -727,4 +739,5 @@
       }
     });
   });
+  })();
 </script>
