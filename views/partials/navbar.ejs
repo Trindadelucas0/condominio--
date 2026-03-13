@@ -182,10 +182,13 @@
     transform: scale(1.05);
   }
 
-  /* Botão de menu moderno */
+  /* Botão de menu moderno - touch-friendly para PWA/mobile */
   .menu-button {
     position: relative;
     overflow: hidden;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .menu-button::before {
@@ -199,6 +202,7 @@
     background: rgba(255, 255, 255, 0.1);
     transform: translate(-50%, -50%);
     transition: width 0.6s, height 0.6s;
+    pointer-events: none;
   }
 
   .menu-button:hover::before {
@@ -632,46 +636,62 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Toggle menu mobile
+    // Toggle menu mobile (compatível com PWA/touch: touchend + click sem duplicar)
     const toggleButton = document.getElementById('mobile-menu-toggle');
     const mobileMenu = document.getElementById('mobile-menu');
     
+    function toggleMobileMenu() {
+      const isHidden = mobileMenu.classList.contains('hidden');
+      if (isHidden) {
+        mobileMenu.classList.remove('hidden');
+      } else {
+        mobileMenu.classList.add('hidden');
+      }
+      var icon = toggleButton.querySelector('#menu-icon');
+      var path = icon && icon.querySelector('path');
+      if (path) {
+        if (isHidden) {
+          path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+          path.setAttribute('stroke-linecap', 'round');
+          path.setAttribute('stroke-linejoin', 'round');
+        } else {
+          path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+        }
+      }
+    }
+    
+    function closeMobileMenu() {
+      mobileMenu.classList.add('hidden');
+      var icon = toggleButton.querySelector('#menu-icon');
+      var path = icon && icon.querySelector('path');
+      if (path) path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+    }
+    
     if (toggleButton && mobileMenu) {
+      var lastTap = 0;
+      // Toque (PWA/mobile): evita que o clique duplo dispare duas vezes
+      toggleButton.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        lastTap = Date.now();
+        toggleMobileMenu();
+      }, { passive: false });
+      // Clique (desktop ou fallback): ignorar se já foi tratado por touchend
       toggleButton.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        
-        const isHidden = mobileMenu.classList.contains('hidden');
-        
-        if (isHidden) {
-          mobileMenu.classList.remove('hidden');
-        } else {
-          mobileMenu.classList.add('hidden');
-        }
-        
-        // Animar o ícone do botão (hamburger para X)
-        const icon = toggleButton.querySelector('#menu-icon');
-        const path = icon?.querySelector('path');
-        if (path) {
-          if (isHidden) {
-            path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
-            path.setAttribute('stroke-linecap', 'round');
-            path.setAttribute('stroke-linejoin', 'round');
-          } else {
-            path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
-          }
-        }
+        if (Date.now() - lastTap < 400) return;
+        toggleMobileMenu();
       });
       
-      // Fechar menu ao clicar fora
+      // Fechar menu ao tocar/clicar fora
       document.addEventListener('click', function(e) {
         if (!toggleButton.contains(e.target) && !mobileMenu.contains(e.target)) {
-          mobileMenu.classList.add('hidden');
-          const icon = toggleButton.querySelector('#menu-icon');
-          const path = icon?.querySelector('path');
-          if (path) {
-            path.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
-          }
+          closeMobileMenu();
+        }
+      });
+      document.addEventListener('touchend', function(e) {
+        if (!toggleButton.contains(e.target) && !mobileMenu.contains(e.target)) {
+          closeMobileMenu();
         }
       });
     }
