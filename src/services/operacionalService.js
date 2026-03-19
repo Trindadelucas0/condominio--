@@ -93,7 +93,7 @@ const getDashboardStats = async (userId, condominiumId) => {
     // Conta manutenções pendentes atribuídas ao usuário
     const pendingMaintenancesResult = await query(
       `SELECT COUNT(*) as total FROM maintenances 
-       WHERE assigned_to = $1 AND status = 'PENDING' AND condominium_id = $2`,
+       WHERE assigned_to = $1 AND status = 'pendente' AND condominium_id = $2`,
       [userId, condominiumId]
     );
     const pendingMaintenances = parseInt(pendingMaintenancesResult.rows[0].total);
@@ -101,7 +101,7 @@ const getDashboardStats = async (userId, condominiumId) => {
     // Conta manutenções em andamento
     const inProgressMaintenancesResult = await query(
       `SELECT COUNT(*) as total FROM maintenances 
-       WHERE assigned_to = $1 AND status = 'IN_PROGRESS' AND condominium_id = $2`,
+       WHERE assigned_to = $1 AND status = 'em_andamento' AND condominium_id = $2`,
       [userId, condominiumId]
     );
     const inProgressMaintenances = parseInt(inProgressMaintenancesResult.rows[0].total);

@@ -246,7 +246,7 @@ const showDashboard = async (req, res) => {
     // Buscar estatísticas de manutenções (filtradas por período)
     const maintenanceResult = await query(`
       SELECT 
-        COUNT(*) FILTER (WHERE status = 'PENDING') as pendentes,
+        COUNT(*) FILTER (WHERE status = 'pendente') as pendentes,
         COUNT(*) FILTER (WHERE status = 'IN_PROGRESS') as em_andamento,
         COUNT(*) FILTER (WHERE status = 'COMPLETED') as concluidas,
         COUNT(*) FILTER (WHERE status = 'CANCELLED') as canceladas,

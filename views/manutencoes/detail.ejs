@@ -221,7 +221,12 @@
             statusText.textContent = visual.text;
           }
           showFeedback(data.message || 'Status atualizado com sucesso.', 'success');
-          setTimeout(() => window.location.reload(), 600);
+          statusButtons.forEach((btn) => {
+            if (btn !== this) btn.disabled = true;
+            if (data.maintenance.status === 'concluida' || data.maintenance.status === 'cancelada') {
+              btn.classList.add('hidden');
+            }
+          });
         } catch (error) {
           this.disabled = false;
           this.textContent = oldLabel;

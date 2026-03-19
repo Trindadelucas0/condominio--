@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS maintenances (
   priority VARCHAR(20) DEFAULT 'NORMAL',
   scheduled_date DATE,
   assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  status VARCHAR(20) DEFAULT 'PENDING',
+  status VARCHAR(20) DEFAULT 'pendente',
   started_at TIMESTAMP NULL,
   completed_at TIMESTAMP NULL,
   completed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -43,16 +43,43 @@ BEGIN
   IF EXISTS (
     SELECT 1
     FROM maintenances
-    WHERE status IN ('PENDING', 'IN_PROGRESS')
+    WHERE status IN ('pendente', 'em_andamento')
     GROUP BY condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01')
     HAVING COUNT(*) > 1
   ) THEN
     CREATE INDEX IF NOT EXISTS idx_maintenances_active_dedup_lookup
     ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
-    WHERE status IN ('PENDING', 'IN_PROGRESS');
+    WHERE status IN ('pendente', 'em_andamento');
   ELSE
     CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenances_active_dedup
     ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
-    WHERE status IN ('PENDING', 'IN_PROGRESS');
+    WHERE status IN ('pendente', 'em_andamento');
+  END IF;
+END $$;
+
+-- Normalização de status legado (inglês -> português)
+UPDATE maintenances
+SET status = CASE
+  WHEN status = 'PENDING' THEN 'pendente'
+  WHEN status = 'IN_PROGRESS' THEN 'em_andamento'
+  WHEN status = 'COMPLETED' THEN 'concluida'
+  WHEN status = 'CANCELLED' THEN 'cancelada'
+  ELSE status
+END
+WHERE status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
+
+-- Define default e validação de domínio de status
+ALTER TABLE maintenances
+  ALTER COLUMN status SET DEFAULT 'pendente';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'maintenances_status_check'
+  ) THEN
+    ALTER TABLE maintenances
+      ADD CONSTRAINT maintenances_status_check
+      CHECK (status IN ('pendente', 'em_andamento', 'concluida', 'cancelada'));
   END IF;
 END $$;

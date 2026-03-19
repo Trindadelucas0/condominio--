@@ -437,10 +437,10 @@ async function run(runner) {
 
     const result = await query(`
       SELECT COUNT(*) as total,
-             SUM(CASE WHEN maintenance_type = 'PREVENTIVE' THEN 1 ELSE 0 END) as preventive,
-             SUM(CASE WHEN maintenance_type = 'CORRECTIVE' THEN 1 ELSE 0 END) as corrective,
-             SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as pending,
-             SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed
+             SUM(CASE WHEN maintenance_type = 'PREVENTIVA' THEN 1 ELSE 0 END) as preventive,
+             SUM(CASE WHEN maintenance_type = 'CORRETIVA' THEN 1 ELSE 0 END) as corrective,
+             SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) as pending,
+             SUM(CASE WHEN status = 'concluida' THEN 1 ELSE 0 END) as completed
       FROM maintenances
       WHERE asset_id = $1
     `, [testAssetId]);

@@ -170,7 +170,7 @@ const checkAndCreateAutomaticAlerts = async (condominiumId) => {
     const upcomingMaintenances = await query(
       `SELECT id, scheduled_date, title FROM maintenances 
        WHERE condominium_id = $1 
-       AND status = 'PENDING' 
+       AND status = 'pendente' 
        AND scheduled_date BETWEEN CURRENT_DATE - INTERVAL '7 days' AND CURRENT_DATE + INTERVAL '3 days'`,
       [condominiumId]
     );

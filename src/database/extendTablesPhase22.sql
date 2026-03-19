@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS maintenances (
   priority VARCHAR(20) DEFAULT 'NORMAL', -- Prioridade: BAIXA, NORMAL, ALTA, URGENTE
   scheduled_date DATE, -- Data prevista (para preventivas)
   assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Operacional responsável
-  status VARCHAR(20) DEFAULT 'PENDING', -- Status: PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  status VARCHAR(20) DEFAULT 'pendente', -- Status: pendente, em_andamento, concluida, cancelada
   started_at TIMESTAMP NULL, -- Quando começou
   completed_at TIMESTAMP NULL, -- Quando foi concluída
   completed_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Quem concluiu
@@ -256,7 +256,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created
 -- ============================================
 COMMENT ON TABLE maintenances IS 'Manutenções preventivas e corretivas criadas pelo síndico e executadas pelo operacional';
 COMMENT ON COLUMN maintenances.maintenance_type IS 'Tipo: PREVENTIVA (agendada) ou CORRETIVA (reparo)';
-COMMENT ON COLUMN maintenances.status IS 'Status: PENDING (criada), IN_PROGRESS (em execução), COMPLETED (concluída), CANCELLED (cancelada)';
+COMMENT ON COLUMN maintenances.status IS 'Status: pendente (criada), em_andamento (em execução), concluida (concluída), cancelada (cancelada)';
 
 COMMENT ON COLUMN financial_entries.review_status IS 'Status de análise: PENDING_REVIEW (aguardando), APPROVED (aprovada), REJECTED (rejeitada), RECEIVED (recebida)';
 COMMENT ON COLUMN financial_entries.review_notes IS 'Observações do síndico ao aprovar';

@@ -246,7 +246,7 @@ const getDashboardStats = async (condominiumId) => {
     // Tarefas atrasadas
     const overdueTasksResult = await query(
       `SELECT COUNT(*) as total FROM tasks 
-       WHERE condominium_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') 
+       WHERE condominium_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')
        AND due_date < CURRENT_DATE`,
       [condominiumId]
     );
@@ -286,7 +286,7 @@ const getDashboardStats = async (condominiumId) => {
     // Conta manutenções concluídas aguardando revisão
     const completedMaintenancesResult = await query(
       `SELECT COUNT(*) as total FROM maintenances 
-       WHERE condominium_id = $1 AND status = 'COMPLETED' AND created_by IN (
+       WHERE condominium_id = $1 AND status = 'concluida' AND created_by IN (
          SELECT id FROM users WHERE condominium_id = $1
        )`,
       [condominiumId]
