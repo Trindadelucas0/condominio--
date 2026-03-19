@@ -84,6 +84,14 @@ const uploadReceipt = uploadReceipts.single('receiptPdf');
 // Middleware para upload de um único arquivo PDF de pagamento
 const uploadPayment = uploadPayments.single('paymentReceiptPdf');
 
+// Middleware para upload de anexos de saída com campos nomeados
+// Mantém compatibilidade com o campo legado paymentReceiptPdf
+const uploadExitPaymentAttachments = uploadPayments.fields([
+  { name: 'comprovantePagamento', maxCount: 1 },
+  { name: 'notaFiscal', maxCount: 1 },
+  { name: 'paymentReceiptPdf', maxCount: 1 },
+]);
+
 // Configuração para comprovante de conta (bills - Fase 35)
 const billReceiptsStorage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -221,6 +229,7 @@ const uploadBudgetAttachmentsMiddleware = uploadBudgetAttachments.array('attachm
 module.exports = {
   uploadReceipt,
   uploadPayment,
+  uploadExitPaymentAttachments,
   uploadBillReceipt,
   uploadBoleto,
   uploadContract,

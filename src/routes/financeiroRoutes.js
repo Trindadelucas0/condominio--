@@ -8,7 +8,7 @@ const fs = require('fs');
 const financeiroController = require('../controllers/financeiroController');
 const { ALL_CATEGORY_LABELS, DESPESA_CATEGORIES, DEFAULT_DESPESA_CATEGORY, normalizeDespesaCategoryForForm } = require('../constants/financialCategories');
 const { authenticate, authorize } = require('../middlewares/auth');
-const { uploadPayment, uploadReceipt, uploadBillReceipt } = require('../middlewares/upload');
+const { uploadPayment, uploadReceipt, uploadBillReceipt, uploadExitPaymentAttachments } = require('../middlewares/upload');
 const { validateNumericIdParam } = require('../middlewares/validateParams');
 const { requireCondominium } = require('../middlewares/requireCondominium');
 
@@ -242,7 +242,34 @@ router.get('/entradas', financeiroController.listEntries);
 
 // Saídas
 router.get('/saidas/nova', financeiroController.showCreateExit);
-router.post('/saidas', financeiroController.createExit);
+router.post('/saidas', (req, res, next) => {
+  uploadExitPaymentAttachments(req, res, async (err) => {
+    try {
+      if (err) {
+        const financeiroService = require('../services/financeiroService');
+        const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+        const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
+        let errorMsg = err.message || 'Erro ao fazer upload do arquivo';
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          errorMsg = 'O arquivo é muito grande. O limite permitido é 50MB por PDF.';
+        }
+        return res.render('administrativo/financeiro/saidas/form', {
+          title: 'Nova Saída Financeira',
+          user: req.user,
+          saida: req.body,
+          costCenters,
+          bills: bills || [],
+          despesaCategories: DESPESA_CATEGORIES,
+          error: errorMsg,
+        });
+      }
+      return financeiroController.createExit(req, res, next);
+    } catch (error) {
+      console.error('Erro no upload de anexos na criação da saída:', error);
+      return res.redirect('/financeiro/saidas?error=' + encodeURIComponent(error.message));
+    }
+  });
+});
 // Rota de pagamento deve vir ANTES da rota genérica /:id para evitar conflito
 router.get('/saidas/:id/pagar', async (req, res) => {
   try {
@@ -271,23 +298,39 @@ router.get('/saidas/:id/pagar', async (req, res) => {
   }
 });
 router.post('/saidas/:id/pagar', async (req, res) => {
-  const { uploadPayment } = require('../middlewares/upload');
+  const extractExitAttachmentPaths = () => {
+    const files = req.files || {};
+    const comprovanteFile = (files.comprovantePagamento && files.comprovantePagamento[0])
+      || (files.paymentReceiptPdf && files.paymentReceiptPdf[0])
+      || null;
+    const notaFiscalFile = (files.notaFiscal && files.notaFiscal[0]) || null;
+    const basePath = path.join(__dirname, '../../');
+    return {
+      comprovantePath: comprovanteFile ? path.relative(basePath, comprovanteFile.path).replace(/\\/g, '/') : null,
+      notaFiscalPath: notaFiscalFile ? path.relative(basePath, notaFiscalFile.path).replace(/\\/g, '/') : null,
+      notaFiscalFileName: notaFiscalFile ? notaFiscalFile.originalname : null,
+    };
+  };
   
   // Aplica middleware de upload
-  uploadPayment(req, res, async (err) => {
+  uploadExitPaymentAttachments(req, res, async (err) => {
     try {
       if (err) {
         console.error('Erro no upload:', err);
         const financeiroService = require('../services/financeiroService');
         const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
         const exit = exits.find(e => e.id === parseInt(req.params.id));
+        let errorMsg = err.message || 'Erro ao fazer upload do arquivo';
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          errorMsg = 'O arquivo é muito grande. O limite permitido é 50MB por PDF.';
+        }
         return res.render('administrativo/financeiro/saidas/pagar', {
           title: 'Marcar Saída como Paga',
           user: req.user,
           exit: exit || null,
           categoryLabels: ALL_CATEGORY_LABELS,
           req: req,
-          error: err.message || 'Erro ao fazer upload do arquivo',
+          error: errorMsg,
           formData: req.body,
         });
       }
@@ -295,30 +338,46 @@ router.post('/saidas/:id/pagar', async (req, res) => {
       const financeiroService = require('../services/financeiroService');
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('user-agent');
+      const attachments = extractExitAttachmentPaths();
+      const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
+      const exit = exits.find(e => e.id === parseInt(req.params.id));
+      if (!exit) {
+        return res.status(404).send('Saída não encontrada');
+      }
 
-      if (!req.file) {
-        const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 });
-        const exit = exits.find(e => e.id === parseInt(req.params.id));
+      const removeCurrentComprovante = req.body.removeCurrentComprovante === 'true';
+      const removeCurrentNotaFiscal = req.body.removeCurrentNotaFiscal === 'true';
+
+      const currentComprovantePath = (exit.payment_receipt_pdf_path && String(exit.payment_receipt_pdf_path).trim()) || null;
+      const currentNotaFiscalPath = (exit.invoice_path && String(exit.invoice_path).trim()) || null;
+      const currentNotaFiscalFileName = (exit.invoice_file_name && String(exit.invoice_file_name).trim()) || null;
+
+      const finalComprovantePath = attachments.comprovantePath || (removeCurrentComprovante ? null : currentComprovantePath);
+      const finalNotaFiscalPath = attachments.notaFiscalPath || (removeCurrentNotaFiscal ? null : currentNotaFiscalPath);
+      const finalNotaFiscalFileName = attachments.notaFiscalPath
+        ? attachments.notaFiscalFileName
+        : (removeCurrentNotaFiscal ? null : currentNotaFiscalFileName);
+
+      if (!finalComprovantePath) {
         return res.render('administrativo/financeiro/saidas/pagar', {
           title: 'Marcar Saída como Paga',
           user: req.user,
           exit: exit,
           categoryLabels: ALL_CATEGORY_LABELS,
           req: req,
-          error: 'Comprovante em PDF é obrigatório',
+          error: 'Comprovante em PDF é obrigatório para concluir o pagamento.',
           formData: req.body,
         });
       }
-
-      // Caminho relativo para acessar via /uploads/payments/
-      const paymentReceiptPdfPath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
 
       await financeiroService.markExitAsPaid(
         req.params.id,
         req.user.condominiumId,
         req.user.id,
         {
-          paymentReceiptPdfPath: paymentReceiptPdfPath,
+          paymentReceiptPdfPath: finalComprovantePath,
+          invoicePath: finalNotaFiscalPath,
+          invoiceFileName: finalNotaFiscalFileName,
           paymentDetails: req.body.paymentDetails,
           paymentMethod: req.body.paymentMethod,
           paymentNotes: req.body.paymentNotes,
@@ -345,8 +404,112 @@ router.post('/saidas/:id/pagar', async (req, res) => {
     }
   });
 });
+router.get('/saidas/:id/comprovante', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const exit = await financeiroService.getExitById(req.params.id, req.user.condominiumId).catch(() => null);
+    if (!exit) return res.status(404).send('Saída não encontrada');
+    const pathValue = exit.payment_receipt_pdf_path && exit.payment_receipt_pdf_path.trim();
+    if (!pathValue) return res.status(404).send('Comprovante não cadastrado');
+    const baseDir = path.join(__dirname, '../../');
+    const absolutePath = path.resolve(baseDir, pathValue.replace(/^\//, ''));
+    if (!absolutePath.startsWith(path.resolve(baseDir, 'uploads', 'payments'))) {
+      return res.status(400).send('Caminho de arquivo inválido');
+    }
+    if (!fs.existsSync(absolutePath)) return res.status(404).send('Arquivo não encontrado');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.sendFile(absolutePath, (err) => {
+      if (err && !res.headersSent) res.status(500).send('Erro ao enviar arquivo');
+    });
+  } catch (error) {
+    console.error('Erro ao obter comprovante da saída:', error);
+    res.status(500).send('Erro ao obter comprovante');
+  }
+});
+router.get('/saidas/:id/nota-fiscal', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const exit = await financeiroService.getExitById(req.params.id, req.user.condominiumId).catch(() => null);
+    if (!exit) return res.status(404).send('Saída não encontrada');
+    const pathValue = exit.invoice_path && exit.invoice_path.trim();
+    if (!pathValue) return res.status(404).send('Nota fiscal não cadastrada');
+    const baseDir = path.join(__dirname, '../../');
+    const absolutePath = path.resolve(baseDir, pathValue.replace(/^\//, ''));
+    if (!absolutePath.startsWith(path.resolve(baseDir, 'uploads', 'payments'))) {
+      return res.status(400).send('Caminho de arquivo inválido');
+    }
+    if (!fs.existsSync(absolutePath)) return res.status(404).send('Arquivo não encontrado');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.sendFile(absolutePath, (err) => {
+      if (err && !res.headersSent) res.status(500).send('Erro ao enviar arquivo');
+    });
+  } catch (error) {
+    console.error('Erro ao obter nota fiscal da saída:', error);
+    res.status(500).send('Erro ao obter nota fiscal');
+  }
+});
 router.get('/saidas/:id/editar', financeiroController.showEditExit);
-router.post('/saidas/:id', financeiroController.updateExitController);
+router.post('/saidas/:id', (req, res, next) => {
+  uploadExitPaymentAttachments(req, res, async (err) => {
+    try {
+      if (err) {
+        const financeiroService = require('../services/financeiroService');
+        const exit = await financeiroService.getExitById(req.params.id, req.user.condominiumId).catch(() => null);
+        const costCenters = await financeiroService.listCostCenters(req.user.condominiumId).catch(() => []);
+        const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
+        let errorMsg = err.message || 'Erro ao fazer upload do arquivo';
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          errorMsg = 'O arquivo é muito grande. O limite permitido é 50MB por PDF.';
+        }
+        return res.render('administrativo/financeiro/saidas/form', {
+          title: 'Editar Saída Financeira',
+          user: req.user,
+          saida: {
+            ...(exit || {}),
+            id: parseInt(req.params.id, 10),
+            description: req.body.description,
+            amount: req.body.amount,
+            exitDate: req.body.exitDate,
+            costCenterId: req.body.costCenterId || null,
+            category: req.body.category || DEFAULT_DESPESA_CATEGORY,
+            categoryForSelect: normalizeDespesaCategoryForForm(req.body.category || DEFAULT_DESPESA_CATEGORY),
+            billId: req.body.billId || null,
+            approvalLimit: req.body.approvalLimit || null,
+            paymentReceiptPdfPath: exit ? exit.payment_receipt_pdf_path : null,
+            invoicePath: exit ? exit.invoice_path : null,
+            invoiceFileName: exit ? exit.invoice_file_name : null,
+          },
+          costCenters,
+          bills: bills || [],
+          despesaCategories: DESPESA_CATEGORIES,
+          error: errorMsg,
+        });
+      }
+      return financeiroController.updateExitController(req, res, next);
+    } catch (error) {
+      console.error('Erro no upload de anexos da saída:', error);
+      return res.redirect('/financeiro/saidas?error=' + encodeURIComponent(error.message));
+    }
+  });
+});
+router.post('/saidas/:id/anexos/remover', async (req, res) => {
+  try {
+    const financeiroService = require('../services/financeiroService');
+    const attachmentType = req.body.attachmentType;
+    await financeiroService.removeExitAttachment(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      attachmentType,
+      req.ip || req.connection?.remoteAddress,
+      req.get('user-agent')
+    );
+    res.redirect('/financeiro/saidas/' + req.params.id + '/editar?success=attachment_removed&type=' + encodeURIComponent(attachmentType));
+  } catch (error) {
+    console.error('Erro ao remover anexo da saída:', error);
+    res.redirect('/financeiro/saidas/' + req.params.id + '/editar?error=' + encodeURIComponent(error.message));
+  }
+});
 router.get('/saidas/:id/desfazer-pagamento', financeiroController.showUnpayExit);
 router.post('/saidas/:id/desfazer-pagamento', financeiroController.unpayExit);
 router.get('/saidas', financeiroController.listExits);

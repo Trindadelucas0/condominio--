@@ -7,16 +7,42 @@ const { logAction } = require('../utils/logger');
 const { validateFinancialAmount, validateDate } = require('../utils/validators');
 const { validateCondominiumOwnership, validateUserBelongsToCondominium } = require('../utils/queryHelper');
 const { DEFAULT_RECEITA_CATEGORY, DEFAULT_DESPESA_CATEGORY } = require('../constants/financialCategories');
+const fs = require('fs/promises');
+const path = require('path');
 const RESERVA_RECEITA = 'RECEITAS_FUNDO_RESERVA';
 const RESERVA_DESPESA = 'DESPESAS_FUNDO_RESERVA';
 const reserveFundService = require('./reserveFundService');
+
+const PROJECT_ROOT = path.join(__dirname, '../../');
+const PAYMENTS_UPLOAD_DIR = path.join(PROJECT_ROOT, 'uploads/payments');
+
+const resolveSafePaymentPath = (storedPath) => {
+  if (!storedPath || !String(storedPath).trim()) return null;
+  const normalized = String(storedPath).replace(/^\//, '');
+  const absolute = path.resolve(PROJECT_ROOT, normalized);
+  const relativeFromPayments = path.relative(PAYMENTS_UPLOAD_DIR, absolute);
+  if (relativeFromPayments.startsWith('..') || path.isAbsolute(relativeFromPayments)) return null;
+  return absolute;
+};
+
+const unlinkIfExistsSafe = async (storedPath) => {
+  const absolute = resolveSafePaymentPath(storedPath);
+  if (!absolute) return false;
+  try {
+    await fs.unlink(absolute);
+    return true;
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return false;
+    throw error;
+  }
+};
 
 // Função para criar saída financeira
 // Recebe: condominiumId, userId, dados da saída
 // Retorna: saída criada
 const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => {
   try {
-    const { description, amount, exitDate, costCenterId, category, billId, requiresApproval, approvalLimit, isRecurring, recurrenceType, isVariable, averageAmount, needsVerification, relatedBudgetRequestId, relatedBudgetQuoteId, assetId, asset_id } = data;
+    const { description, amount, exitDate, costCenterId, category, billId, requiresApproval, approvalLimit, isRecurring, recurrenceType, isVariable, averageAmount, needsVerification, relatedBudgetRequestId, relatedBudgetQuoteId, assetId, asset_id, paymentReceiptPdfPath, invoicePath, invoiceFileName } = data;
     const assetIdValue = assetId != null ? assetId : asset_id;
 
     // Validações obrigatórias
@@ -120,6 +146,24 @@ const createExit = async (condominiumId, userId, data, ipAddress, userAgent) => 
     if (assetIdValue != null) {
       insertFields.push('asset_id');
       insertValues.push(assetIdValue);
+      paramCount++;
+    }
+
+    if (paymentReceiptPdfPath && String(paymentReceiptPdfPath).trim()) {
+      insertFields.push('payment_receipt_pdf_path');
+      insertValues.push(String(paymentReceiptPdfPath).trim());
+      paramCount++;
+    }
+
+    if (invoicePath && String(invoicePath).trim()) {
+      insertFields.push('invoice_path');
+      insertValues.push(String(invoicePath).trim());
+      paramCount++;
+    }
+
+    if (invoiceFileName && String(invoiceFileName).trim()) {
+      insertFields.push('invoice_file_name');
+      insertValues.push(String(invoiceFileName).trim());
       paramCount++;
     }
 
@@ -627,7 +671,7 @@ const rejectExit = async (exitId, condominiumId, userId, rejectionReason, ipAddr
 // Retorna: saída atualizada
 const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddress, userAgent) => {
   try {
-    const { paymentReceiptPdfPath, paymentDetails, paymentMethod, paymentNotes } = paymentData || {};
+    const { paymentReceiptPdfPath, paymentDetails, paymentMethod, paymentNotes, invoicePath, invoiceFileName } = paymentData || {};
 
     // Busca saída atual
     const currentResult = await query(
@@ -677,6 +721,10 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
       throw new Error('Comprovante de pagamento é obrigatório');
     }
 
+    const nextPaymentReceiptPath = paymentReceiptPdfPath.trim();
+    const nextInvoicePath = invoicePath && invoicePath.trim() ? invoicePath.trim() : null;
+    const nextInvoiceFileName = invoiceFileName && invoiceFileName.trim() ? invoiceFileName.trim() : null;
+
     // Atualiza status para pago
     const updateResult = await query(
       `UPDATE financial_exits 
@@ -686,14 +734,18 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
            payment_receipt_pdf_path = $1,
            payment_details = $2,
            payment_method = $3,
-           payment_notes = $4
-       WHERE id = $5 AND condominium_id = $6 AND payment_status = 'APPROVED'
+           payment_notes = $4,
+           invoice_path = $5,
+           invoice_file_name = $6
+       WHERE id = $7 AND condominium_id = $8 AND payment_status = 'APPROVED'
        RETURNING *`,
       [
-        paymentReceiptPdfPath,
+        nextPaymentReceiptPath,
         paymentDetails || null,
         paymentMethod || null,
         paymentNotes || null,
+        nextInvoicePath,
+        nextInvoiceFileName,
         exitId,
         condominiumId
       ]
@@ -704,6 +756,16 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
     }
 
     const updated = updateResult.rows[0];
+    if (current.payment_receipt_pdf_path && current.payment_receipt_pdf_path !== nextPaymentReceiptPath) {
+      await unlinkIfExistsSafe(current.payment_receipt_pdf_path).catch((error) => {
+        console.warn('Aviso ao remover comprovante antigo de saída:', error.message);
+      });
+    }
+    if (current.invoice_path && current.invoice_path !== nextInvoicePath) {
+      await unlinkIfExistsSafe(current.invoice_path).catch((error) => {
+        console.warn('Aviso ao remover nota fiscal antiga de saída:', error.message);
+      });
+    }
 
     // Fundo de reserva como conta: saída paga com DESPESAS_FUNDO_RESERVA debita o fundo
     if (current.category === RESERVA_DESPESA && !current.reserve_fund_debited) {
@@ -972,6 +1034,116 @@ const listExits = async (condominiumId, filters = {}) => {
     console.error('Erro ao listar saídas financeiras:', error);
     throw error;
   }
+};
+
+const getExitById = async (exitId, condominiumId) => {
+  const result = await query(
+    `SELECT fe.*, cc.name as cost_center_name, b.name as bill_name, u.full_name as created_by_name
+     FROM financial_exits fe
+     LEFT JOIN cost_centers cc ON fe.cost_center_id = cc.id AND cc.condominium_id = $2
+     LEFT JOIN bills b ON fe.bill_id = b.id AND b.condominium_id = $2
+     LEFT JOIN users u ON fe.created_by = u.id
+     WHERE fe.id = $1 AND fe.condominium_id = $2`,
+    [exitId, condominiumId]
+  );
+  if (result.rows.length === 0) {
+    throw new Error('Saída não encontrada');
+  }
+  return result.rows[0];
+};
+
+const updateExitAttachments = async (exitId, condominiumId, userId, attachments, ipAddress, userAgent) => {
+  try {
+    const current = await getExitById(exitId, condominiumId);
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    const hasComprovante = Object.prototype.hasOwnProperty.call(attachments || {}, 'comprovantePagamentoPath');
+    const hasNota = Object.prototype.hasOwnProperty.call(attachments || {}, 'notaFiscalPath');
+    if (!hasComprovante && !hasNota) {
+      throw new Error('Nenhum anexo para atualizar');
+    }
+
+    const updateFields = [];
+    const updateValues = [];
+    let paramCount = 1;
+
+    if (hasComprovante) {
+      const nextComprovante = attachments.comprovantePagamentoPath && attachments.comprovantePagamentoPath.trim()
+        ? attachments.comprovantePagamentoPath.trim()
+        : null;
+      updateFields.push(`payment_receipt_pdf_path = $${paramCount++}`);
+      updateValues.push(nextComprovante);
+    }
+
+    if (hasNota) {
+      const nextNota = attachments.notaFiscalPath && attachments.notaFiscalPath.trim()
+        ? attachments.notaFiscalPath.trim()
+        : null;
+      const nextNotaNome = attachments.notaFiscalFileName && attachments.notaFiscalFileName.trim()
+        ? attachments.notaFiscalFileName.trim()
+        : null;
+      updateFields.push(`invoice_path = $${paramCount++}`);
+      updateValues.push(nextNota);
+      updateFields.push(`invoice_file_name = $${paramCount++}`);
+      updateValues.push(nextNotaNome);
+    }
+
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    updateValues.push(exitId, condominiumId);
+
+    const result = await query(
+      `UPDATE financial_exits
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramCount++} AND condominium_id = $${paramCount++}
+       RETURNING *`,
+      updateValues
+    );
+    const updated = result.rows[0];
+
+    if (hasComprovante && current.payment_receipt_pdf_path && current.payment_receipt_pdf_path !== updated.payment_receipt_pdf_path) {
+      await unlinkIfExistsSafe(current.payment_receipt_pdf_path).catch((error) => {
+        console.warn('Aviso ao remover comprovante substituído/removido:', error.message);
+      });
+    }
+    if (hasNota && current.invoice_path && current.invoice_path !== updated.invoice_path) {
+      await unlinkIfExistsSafe(current.invoice_path).catch((error) => {
+        console.warn('Aviso ao remover nota fiscal substituída/removida:', error.message);
+      });
+    }
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'UPDATE',
+      module: 'FINANCIAL',
+      entityType: 'financial_exits',
+      entityId: exitId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress,
+      userAgent,
+      notes: 'Atualização de anexos da saída',
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao atualizar anexos da saída:', error);
+    throw error;
+  }
+};
+
+const removeExitAttachment = async (exitId, condominiumId, userId, attachmentType, ipAddress, userAgent) => {
+  const normalizedType = String(attachmentType || '').trim();
+  if (normalizedType !== 'comprovantePagamento' && normalizedType !== 'notaFiscal') {
+    throw new Error('Tipo de anexo inválido');
+  }
+  const payload = normalizedType === 'comprovantePagamento'
+    ? { comprovantePagamentoPath: null }
+    : { notaFiscalPath: null, notaFiscalFileName: null };
+  return updateExitAttachments(exitId, condominiumId, userId, payload, ipAddress, userAgent);
 };
 
 // Função para obter estatísticas do dashboard financeiro
@@ -2685,6 +2857,9 @@ module.exports = {
   unmarkExitAsPaid,
   requestUnpayExit,
   listExits,
+  getExitById,
+  updateExitAttachments,
+  removeExitAttachment,
   getDashboardStats,
   createEntry,
   getEntryById,

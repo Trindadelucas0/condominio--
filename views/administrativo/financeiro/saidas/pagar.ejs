@@ -71,6 +71,29 @@
     <h2 class="text-xl font-bold text-gray-800 mb-4">Detalhes do Pagamento</h2>
     
     <form method="POST" action="/financeiro/saidas/<%= exit.id %>/pagar" enctype="multipart/form-data">
+      <input type="hidden" id="removeCurrentComprovante" name="removeCurrentComprovante" value="false" />
+      <input type="hidden" id="removeCurrentNotaFiscal" name="removeCurrentNotaFiscal" value="false" />
+
+      <% if (exit.payment_receipt_pdf_path || exit.invoice_path) { %>
+        <div class="mb-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+          <h3 class="text-sm font-semibold text-gray-800 mb-2">Anexos atuais</h3>
+          <% if (exit.payment_receipt_pdf_path) { %>
+            <div class="mb-2 flex items-center gap-3">
+              <span class="text-sm text-gray-700">Comprovante já anexado</span>
+              <a href="/financeiro/saidas/<%= exit.id %>/comprovante" target="_blank" class="text-xs text-blue-700 hover:text-blue-900 underline">Visualizar</a>
+              <button type="button" id="removeComprovanteBtn" class="text-xs text-red-700 hover:text-red-900">Excluir</button>
+            </div>
+          <% } %>
+          <% if (exit.invoice_path) { %>
+            <div class="flex items-center gap-3">
+              <span class="text-sm text-gray-700">Nota fiscal já anexada</span>
+              <a href="/financeiro/saidas/<%= exit.id %>/nota-fiscal" target="_blank" class="text-xs text-blue-700 hover:text-blue-900 underline">Visualizar</a>
+              <button type="button" id="removeNotaFiscalBtn" class="text-xs text-red-700 hover:text-red-900">Excluir</button>
+            </div>
+          <% } %>
+        </div>
+      <% } %>
+
       <!-- Método de Pagamento -->
       <div class="mb-4">
         <label for="paymentMethod" class="block text-sm font-medium text-gray-700 mb-2">
@@ -93,20 +116,38 @@
         </select>
       </div>
 
-      <!-- Upload de PDF -->
+      <!-- Upload de anexos -->
       <div class="mb-4">
-        <label for="paymentReceiptPdf" class="block text-sm font-medium text-gray-700 mb-2">
-          Comprovante em PDF <span class="text-red-500">*</span>
+        <label for="comprovantePagamento" class="block text-sm font-medium text-gray-700 mb-2">
+          <%= exit.payment_receipt_pdf_path ? 'Substituir Comprovante de Pagamento (PDF)' : 'Comprovante de Pagamento (PDF)' %> <span class="text-red-500">*</span>
         </label>
         <input
           type="file"
-          id="paymentReceiptPdf"
-          name="paymentReceiptPdf"
+          id="comprovantePagamento"
+          name="comprovantePagamento"
           accept="application/pdf"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
+          <%= exit.payment_receipt_pdf_path ? '' : 'required' %>
         />
-        <p class="text-xs text-gray-500 mt-1">Apenas arquivos PDF são permitidos (máximo 10MB)</p>
+        <p id="comprovantePagamentoFileName" class="text-xs text-gray-600 mt-1"></p>
+        <p class="text-xs text-gray-500 mt-1">
+          <%= exit.payment_receipt_pdf_path ? 'Envie um PDF apenas se quiser substituir o comprovante atual.' : 'Apenas arquivos PDF são permitidos (máximo 50MB).' %>
+        </p>
+      </div>
+
+      <div class="mb-4">
+        <label for="notaFiscal" class="block text-sm font-medium text-gray-700 mb-2">
+          <%= exit.invoice_path ? 'Substituir Nota Fiscal (PDF)' : 'Nota Fiscal (PDF)' %>
+        </label>
+        <input
+          type="file"
+          id="notaFiscal"
+          name="notaFiscal"
+          accept="application/pdf"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p id="notaFiscalFileName" class="text-xs text-gray-600 mt-1"></p>
+        <p class="text-xs text-gray-500 mt-1">Opcional. Envie em PDF para complementar a documentação do pagamento.</p>
       </div>
 
       <!-- Detalhes do Pagamento -->
@@ -157,5 +198,40 @@
     </form>
   </div>
 </div>
+
+<script>
+function bindSelectedFileName(inputId, outputId) {
+  var input = document.getElementById(inputId);
+  var output = document.getElementById(outputId);
+  if (!input || !output) return;
+  input.addEventListener('change', function() {
+    var fileName = (input.files && input.files[0] && input.files[0].name) ? input.files[0].name : '';
+    output.textContent = fileName ? ('Arquivo selecionado: ' + fileName) : '';
+  });
+}
+bindSelectedFileName('comprovantePagamento', 'comprovantePagamentoFileName');
+bindSelectedFileName('notaFiscal', 'notaFiscalFileName');
+
+var removeComprovanteBtn = document.getElementById('removeComprovanteBtn');
+var removeNotaFiscalBtn = document.getElementById('removeNotaFiscalBtn');
+var removeCurrentComprovante = document.getElementById('removeCurrentComprovante');
+var removeCurrentNotaFiscal = document.getElementById('removeCurrentNotaFiscal');
+
+if (removeComprovanteBtn && removeCurrentComprovante) {
+  removeComprovanteBtn.addEventListener('click', function() {
+    removeCurrentComprovante.value = 'true';
+    removeComprovanteBtn.textContent = 'Comprovante será excluído';
+    removeComprovanteBtn.disabled = true;
+  });
+}
+
+if (removeNotaFiscalBtn && removeCurrentNotaFiscal) {
+  removeNotaFiscalBtn.addEventListener('click', function() {
+    removeCurrentNotaFiscal.value = 'true';
+    removeNotaFiscalBtn.textContent = 'Nota fiscal será excluída';
+    removeNotaFiscalBtn.disabled = true;
+  });
+}
+</script>
 
 <%- include('../../../partials/footer') %>

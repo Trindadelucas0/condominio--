@@ -9,7 +9,31 @@ const { validateDate } = require('../utils/validators');
 
 const ALLOWED_TYPES = ['PREVENTIVA', 'CORRETIVA'];
 const ALLOWED_PRIORITIES = ['BAIXA', 'NORMAL', 'ALTA', 'URGENTE'];
-const ACTIVE_STATUSES = ['PENDING', 'IN_PROGRESS'];
+const STATUS = {
+  PENDENTE: 'pendente',
+  EM_ANDAMENTO: 'em_andamento',
+  CONCLUIDA: 'concluida',
+  CANCELADA: 'cancelada',
+};
+const ACTIVE_STATUSES = [STATUS.PENDENTE, STATUS.EM_ANDAMENTO];
+const FINALIZED_STATUSES = [STATUS.CONCLUIDA, STATUS.CANCELADA];
+const STATUS_TRANSITIONS = {
+  [STATUS.PENDENTE]: [STATUS.EM_ANDAMENTO, STATUS.CANCELADA],
+  [STATUS.EM_ANDAMENTO]: [STATUS.CONCLUIDA, STATUS.CANCELADA],
+  [STATUS.CONCLUIDA]: [],
+  [STATUS.CANCELADA]: [],
+};
+const STATUS_SYNONYMS = {
+  PENDING: STATUS.PENDENTE,
+  IN_PROGRESS: STATUS.EM_ANDAMENTO,
+  COMPLETED: STATUS.CONCLUIDA,
+  CANCELLED: STATUS.CANCELADA,
+  PENDENTE: STATUS.PENDENTE,
+  EM_ANDAMENTO: STATUS.EM_ANDAMENTO,
+  CONCLUIDA: STATUS.CONCLUIDA,
+  CANCELADA: STATUS.CANCELADA,
+  DAR_BAIXA: STATUS.CONCLUIDA,
+};
 
 const createAppError = (message, statusCode = 400, code = 'VALIDATION_ERROR') => {
   const error = new Error(message);
@@ -30,6 +54,17 @@ const parseOptionalInt = (value) => {
   const num = Number.parseInt(value, 10);
   return Number.isInteger(num) && num > 0 ? num : null;
 };
+
+const normalizeStatus = (value) => {
+  if (!value && value !== 0) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const normalizedKey = raw.toUpperCase();
+  return STATUS_SYNONYMS[normalizedKey] || raw.toLowerCase();
+};
+
+const isManagerRole = (roles = []) =>
+  Array.isArray(roles) && roles.some((role) => role === 'SINDICO' || role === 'SUBSINDICO');
 
 const normalizeMaintenanceData = (data = {}) => {
   const maintenanceType = sanitizeText(data.maintenanceType, 20);
@@ -193,7 +228,7 @@ const createMaintenance = async (condominiumId, userId, data, ipAddress, userAge
         condominium_id, maintenance_type, title, description, location, priority,
         scheduled_date, assigned_to, status, asset_id, created_by, idempotency_key
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10, $11)
        RETURNING *`,
       [
         condominiumId,
@@ -256,7 +291,7 @@ const createMaintenance = async (condominiumId, userId, data, ipAddress, userAge
 const updateMaintenance = async (maintenanceId, condominiumId, userId, data, ipAddress, userAgent) => {
   try {
     const existing = await getMaintenanceById(maintenanceId, condominiumId);
-    if (existing.status === 'COMPLETED' || existing.status === 'CANCELLED') {
+    if (FINALIZED_STATUSES.includes(normalizeStatus(existing.status))) {
       throw createAppError('Não é possível editar uma manutenção finalizada', 409, 'MAINTENANCE_FINALIZED');
     }
 
@@ -385,14 +420,15 @@ const deleteMaintenance = async (maintenanceId, condominiumId, userId, ipAddress
 const listMaintenances = async (condominiumId, userId, filters = {}) => {
   try {
     const { status, maintenanceType, assignedTo, myMaintenances } = filters;
+    const normalizedStatus = normalizeStatus(status);
 
     let whereClause = 'WHERE m.condominium_id = $1';
     const params = [condominiumId];
     let paramCount = 2;
 
-    if (status) {
+    if (normalizedStatus) {
       whereClause += ` AND m.status = $${paramCount++}`;
-      params.push(status);
+      params.push(normalizedStatus);
     }
 
     if (maintenanceType) {
@@ -465,56 +501,16 @@ const getMaintenanceById = async (maintenanceId, condominiumId) => {
 // Retorna: manutenção atualizada
 const startMaintenance = async (maintenanceId, userId, condominiumId, ipAddress, userAgent) => {
   try {
-    // Busca manutenção
-    const maintenance = await getMaintenanceById(maintenanceId, condominiumId);
-
-    if (maintenance.status !== 'PENDING') {
-      throw new Error('Manutenção não está pendente');
-    }
-
-    if (maintenance.assigned_to !== userId) {
-      throw new Error('Você não está atribuído a esta manutenção');
-    }
-
-    // Atualiza status
-    const result = await query(
-      `UPDATE maintenances
-       SET status = 'IN_PROGRESS', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1 AND condominium_id = $2
-       RETURNING *`,
-      [maintenanceId, condominiumId]
+    return updateMaintenanceStatus(
+      maintenanceId,
+      userId,
+      condominiumId,
+      STATUS.EM_ANDAMENTO,
+      {},
+      ipAddress,
+      userAgent,
+      { actorRoles: ['OPERACIONAL'] }
     );
-
-    const updated = result.rows[0];
-
-    // Registra no log
-    await logAction({
-      userId: userId,
-      condominiumId: condominiumId,
-      action: 'UPDATE',
-      module: 'MAINTENANCE',
-      entityType: 'maintenances',
-      entityId: maintenanceId,
-      beforeData: maintenance,
-      afterData: updated,
-      ipAddress: ipAddress,
-      userAgent: userAgent,
-    });
-
-    // Notifica síndico
-    if (maintenance.created_by) {
-      await notificationService.createNotification(
-        maintenance.created_by,
-        condominiumId,
-        'Manutenção Iniciada',
-        `A manutenção "${maintenance.title}" foi iniciada pelo operacional`,
-        'MAINTENANCE_STARTED',
-        'maintenances',
-        maintenanceId
-      );
-    }
-
-    return updated;
   } catch (error) {
     console.error('Erro ao iniciar manutenção:', error);
     throw error;
@@ -526,63 +522,149 @@ const startMaintenance = async (maintenanceId, userId, condominiumId, ipAddress,
 // Retorna: manutenção atualizada
 const completeMaintenance = async (maintenanceId, userId, condominiumId, data, ipAddress, userAgent) => {
   try {
-    const { completionNotes, cost } = data;
-
-    // Busca manutenção
-    const maintenance = await getMaintenanceById(maintenanceId, condominiumId);
-
-    if (maintenance.status === 'COMPLETED' || maintenance.status === 'CANCELLED') {
-      throw new Error('Manutenção já foi finalizada');
-    }
-
-    if (maintenance.assigned_to !== userId) {
-      throw new Error('Você não está atribuído a esta manutenção');
-    }
-
-    // Atualiza manutenção
-    const result = await query(
-      `UPDATE maintenances
-       SET status = 'COMPLETED',
-           completed_at = CURRENT_TIMESTAMP,
-           completed_by = $1,
-           completion_notes = $2,
-           cost = $3,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $4 AND condominium_id = $5
-       RETURNING *`,
-      [
-        userId,
-        completionNotes || null,
-        cost ? parseFloat(cost) : null,
-        maintenanceId,
-        condominiumId
-      ]
+    return updateMaintenanceStatus(
+      maintenanceId,
+      userId,
+      condominiumId,
+      STATUS.CONCLUIDA,
+      data,
+      ipAddress,
+      userAgent,
+      { actorRoles: ['OPERACIONAL'] }
     );
+  } catch (error) {
+    console.error('Erro ao completar manutenção:', error);
+    throw error;
+  }
+};
 
+const updateMaintenanceStatus = async (
+  maintenanceId,
+  userId,
+  condominiumId,
+  nextStatusInput,
+  data = {},
+  ipAddress,
+  userAgent,
+  options = {}
+) => {
+  try {
+    const nextStatus = normalizeStatus(nextStatusInput);
+    if (!Object.values(STATUS).includes(nextStatus)) {
+      throw createAppError('Status de manutenção inválido', 400, 'INVALID_STATUS');
+    }
+
+    const maintenance = await getMaintenanceById(maintenanceId, condominiumId);
+    const currentStatus = normalizeStatus(maintenance.status);
+    const actorRoles = options.actorRoles || [];
+    const canManage = maintenance.assigned_to === userId || isManagerRole(actorRoles);
+
+    if (!canManage) {
+      throw createAppError('Você não tem permissão para alterar esta manutenção', 403, 'FORBIDDEN_STATUS_CHANGE');
+    }
+
+    if (currentStatus === nextStatus) {
+      return maintenance;
+    }
+
+    const allowedNext = STATUS_TRANSITIONS[currentStatus] || [];
+    if (!allowedNext.includes(nextStatus)) {
+      throw createAppError(
+        `Transição de status inválida: ${currentStatus} -> ${nextStatus}`,
+        409,
+        'INVALID_STATUS_TRANSITION'
+      );
+    }
+
+    const completionNotes = sanitizeText(data.completionNotes, 4000);
+    const costValue = data.cost !== undefined && data.cost !== null && data.cost !== ''
+      ? Number.parseFloat(data.cost)
+      : null;
+    if (costValue !== null && Number.isNaN(costValue)) {
+      throw createAppError('Custo inválido', 400, 'INVALID_COST');
+    }
+
+    const updateQueryByStatus = {
+      [STATUS.EM_ANDAMENTO]: {
+        sql: `UPDATE maintenances
+              SET status = $1,
+                  started_at = COALESCE(started_at, CURRENT_TIMESTAMP),
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = $2 AND condominium_id = $3
+              RETURNING *`,
+        params: [nextStatus, maintenanceId, condominiumId],
+        action: 'START',
+      },
+      [STATUS.CONCLUIDA]: {
+        sql: `UPDATE maintenances
+              SET status = $1,
+                  completed_at = CURRENT_TIMESTAMP,
+                  completed_by = $2,
+                  completion_notes = $3,
+                  cost = $4,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = $5 AND condominium_id = $6
+              RETURNING *`,
+        params: [nextStatus, userId, completionNotes, costValue, maintenanceId, condominiumId],
+        action: 'COMPLETE',
+      },
+      [STATUS.CANCELADA]: {
+        sql: `UPDATE maintenances
+              SET status = $1,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = $2 AND condominium_id = $3
+              RETURNING *`,
+        params: [nextStatus, maintenanceId, condominiumId],
+        action: 'CANCEL',
+      },
+    };
+
+    const updateDef = updateQueryByStatus[nextStatus];
+    if (!updateDef) {
+      throw createAppError('Status de destino não suportado', 400, 'UNSUPPORTED_STATUS');
+    }
+
+    const result = await query(updateDef.sql, updateDef.params);
     const updated = result.rows[0];
 
-    // Registra no log
     await logAction({
-      userId: userId,
-      condominiumId: condominiumId,
-      action: 'COMPLETE',
+      userId,
+      condominiumId,
+      action: updateDef.action,
       module: 'MAINTENANCE',
       entityType: 'maintenances',
       entityId: maintenanceId,
       beforeData: maintenance,
       afterData: updated,
-      ipAddress: ipAddress,
-      userAgent: userAgent,
+      ipAddress,
+      userAgent,
     });
 
-    // Notifica síndico
     if (maintenance.created_by) {
+      const messages = {
+        [STATUS.EM_ANDAMENTO]: {
+          title: 'Manutenção Iniciada',
+          body: `A manutenção "${maintenance.title}" foi iniciada.`,
+          type: 'MAINTENANCE_STARTED',
+        },
+        [STATUS.CONCLUIDA]: {
+          title: 'Manutenção Concluída',
+          body: `A manutenção "${maintenance.title}" foi concluída (dar baixa).`,
+          type: 'MAINTENANCE_COMPLETED',
+        },
+        [STATUS.CANCELADA]: {
+          title: 'Manutenção Cancelada',
+          body: `A manutenção "${maintenance.title}" foi cancelada.`,
+          type: 'MAINTENANCE_CANCELLED',
+        },
+      };
+      const notification = messages[nextStatus];
       await notificationService.createNotification(
         maintenance.created_by,
         condominiumId,
-        'Manutenção Concluída',
-        `A manutenção "${maintenance.title}" foi concluída pelo operacional`,
-        'MAINTENANCE_COMPLETED',
+        notification.title,
+        notification.body,
+        notification.type,
         'maintenances',
         maintenanceId
       );
@@ -590,7 +672,7 @@ const completeMaintenance = async (maintenanceId, userId, condominiumId, data, i
 
     return updated;
   } catch (error) {
-    console.error('Erro ao completar manutenção:', error);
+    console.error('Erro ao atualizar status da manutenção:', error);
     throw error;
   }
 };
@@ -611,9 +693,9 @@ const getMaintenanceStats = async (condominiumId, userId = null) => {
 
     const result = await query(
       `SELECT 
-        COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
-        COUNT(*) FILTER (WHERE status = 'IN_PROGRESS') as in_progress,
-        COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed,
+        COUNT(*) FILTER (WHERE status = 'pendente') as pending,
+        COUNT(*) FILTER (WHERE status = 'em_andamento') as in_progress,
+        COUNT(*) FILTER (WHERE status = 'concluida') as completed,
         COUNT(*) FILTER (WHERE maintenance_type = 'PREVENTIVA') as preventiva,
         COUNT(*) FILTER (WHERE maintenance_type = 'CORRETIVA') as corretiva
        FROM maintenances
@@ -642,5 +724,6 @@ module.exports = {
   getMaintenanceById,
   startMaintenance,
   completeMaintenance,
+  updateMaintenanceStatus,
   getMaintenanceStats,
 };

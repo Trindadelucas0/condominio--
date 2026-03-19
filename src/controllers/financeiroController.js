@@ -180,6 +180,12 @@ const createExit = async (req, res) => {
 
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
+    const files = req.files || {};
+    const comprovanteFile = (files.comprovantePagamento && files.comprovantePagamento[0])
+      || (files.paymentReceiptPdf && files.paymentReceiptPdf[0])
+      || null;
+    const notaFiscalFile = (files.notaFiscal && files.notaFiscal[0]) || null;
+    const basePath = path.join(__dirname, '../../');
 
     const data = {
       description: req.body.description,
@@ -190,6 +196,9 @@ const createExit = async (req, res) => {
       billId: req.body.billId || null,
       requiresApproval: req.body.requiresApproval === 'true' || req.body.requiresApproval === true,
       approvalLimit: req.body.approvalLimit || null,
+      paymentReceiptPdfPath: comprovanteFile ? path.relative(basePath, comprovanteFile.path).replace(/\\/g, '/') : null,
+      invoicePath: notaFiscalFile ? path.relative(basePath, notaFiscalFile.path).replace(/\\/g, '/') : null,
+      invoiceFileName: notaFiscalFile ? notaFiscalFile.originalname : null,
     };
 
     await financeiroService.createExit(req.user.condominiumId, req.user.id, data, ipAddress, userAgent);
@@ -226,6 +235,7 @@ const listExits = async (req, res) => {
       user: req.user,
       exits,
       categoryLabels: ALL_CATEGORY_LABELS,
+      query: req.query,
     });
   } catch (error) {
     console.error('Erro ao listar saídas:', error);
@@ -697,6 +707,9 @@ const showEditExit = async (req, res) => {
       billId: exit.bill_id,
       requiresApproval: exit.requires_approval,
       approvalLimit: exit.approval_limit,
+      paymentReceiptPdfPath: exit.payment_receipt_pdf_path,
+      invoicePath: exit.invoice_path,
+      invoiceFileName: exit.invoice_file_name,
     };
 
     res.render('administrativo/financeiro/saidas/form', {
@@ -706,6 +719,7 @@ const showEditExit = async (req, res) => {
       costCenters,
       bills: bills || [],
       despesaCategories: DESPESA_CATEGORIES,
+      query: req.query,
       error: null,
     });
   } catch (error) {
@@ -747,6 +761,35 @@ const updateExitController = async (req, res) => {
       userAgent
     );
 
+    const files = req.files || {};
+    const comprovanteFile = (files.comprovantePagamento && files.comprovantePagamento[0])
+      || (files.paymentReceiptPdf && files.paymentReceiptPdf[0])
+      || null;
+    const notaFiscalFile = (files.notaFiscal && files.notaFiscal[0]) || null;
+    const hasAttachmentUpdate = !!(comprovanteFile || notaFiscalFile);
+    if (hasAttachmentUpdate) {
+      const basePath = path.join(__dirname, '../../');
+      await financeiroService.updateExitAttachments(
+        req.params.id,
+        req.user.condominiumId,
+        req.user.id,
+        {
+          ...(comprovanteFile ? { comprovantePagamentoPath: path.relative(basePath, comprovanteFile.path).replace(/\\/g, '/') } : {}),
+          ...(notaFiscalFile
+            ? {
+                notaFiscalPath: path.relative(basePath, notaFiscalFile.path).replace(/\\/g, '/'),
+                notaFiscalFileName: notaFiscalFile.originalname,
+              }
+            : {}),
+        },
+        ipAddress,
+        userAgent
+      );
+    }
+
+    if (hasAttachmentUpdate) {
+      return res.redirect('/financeiro/saidas/' + req.params.id + '/editar?success=attachments_updated');
+    }
     res.redirect('/financeiro/saidas?success=updated');
   } catch (error) {
     console.error('Erro ao atualizar saída:', error);
@@ -763,6 +806,9 @@ const updateExitController = async (req, res) => {
         billId: req.body.billId,
         requiresApproval: req.body.requiresApproval === 'true' || req.body.requiresApproval === 'on',
         approvalLimit: req.body.approvalLimit,
+        paymentReceiptPdfPath: req.body.currentComprovantePagamentoPath || null,
+        invoicePath: req.body.currentNotaFiscalPath || null,
+        invoiceFileName: req.body.currentNotaFiscalFileName || null,
       };
 
       res.render('administrativo/financeiro/saidas/form', {

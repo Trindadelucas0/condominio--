@@ -13,15 +13,15 @@
           </span>
           <% 
             let statusClass = 'bg-gray-100 text-gray-800';
-            if (manutencao.status === 'PENDING') statusClass = 'bg-yellow-100 text-yellow-800';
-            else if (manutencao.status === 'IN_PROGRESS') statusClass = 'bg-blue-100 text-blue-800';
-            else if (manutencao.status === 'COMPLETED') statusClass = 'bg-green-100 text-green-800';
-            else if (manutencao.status === 'CANCELLED') statusClass = 'bg-red-100 text-red-800';
+            if (manutencao.status === 'pendente') statusClass = 'bg-yellow-100 text-yellow-800';
+            else if (manutencao.status === 'em_andamento') statusClass = 'bg-blue-100 text-blue-800';
+            else if (manutencao.status === 'concluida') statusClass = 'bg-green-100 text-green-800';
+            else if (manutencao.status === 'cancelada') statusClass = 'bg-red-100 text-red-800';
           %>
-          <span class="px-2 py-1 text-xs font-semibold rounded-full <%= statusClass %> ml-2">
-            <%= manutencao.status === 'PENDING' ? 'Pendente' : 
-                manutencao.status === 'IN_PROGRESS' ? 'Em Andamento' :
-                manutencao.status === 'COMPLETED' ? 'Concluída' : 'Cancelada' %>
+          <span id="status-badge" class="px-2 py-1 text-xs font-semibold rounded-full <%= statusClass %> ml-2">
+            <span id="status-text"><%= manutencao.status === 'pendente' ? 'Pendente' : 
+                manutencao.status === 'em_andamento' ? 'Em Andamento' :
+                manutencao.status === 'concluida' ? 'Concluída' : 'Cancelada' %></span>
           </span>
         </p>
       </div>
@@ -68,7 +68,7 @@
     </div>
 
     <!-- Conclusão (se concluída) -->
-    <% if (manutencao.status === 'COMPLETED') { %>
+    <% if (manutencao.status === 'concluida') { %>
     <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
       <h2 class="text-xl font-bold text-gray-800 mb-4">Conclusão</h2>
       <div class="space-y-2">
@@ -109,17 +109,25 @@
             Excluir Manutenção
           </button>
         <% } %>
-        <% if (user.roles && user.roles.includes('OPERACIONAL') && manutencao.status === 'PENDING' && manutencao.assigned_to === user.id) { %>
-          <form method="POST" action="/operacional/manutencoes/<%= manutencao.id %>/iniciar" class="inline">
-            <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700" onclick="return confirm('Deseja iniciar esta manutenção?')">
-              Iniciar Manutenção
-            </button>
-          </form>
+        <% 
+          const isManager = user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'));
+          const isAssignedOperational = user.roles && user.roles.includes('OPERACIONAL') && manutencao.assigned_to === user.id;
+          const canAct = isManager || isAssignedOperational;
+        %>
+        <% if (canAct && manutencao.status === 'pendente') { %>
+          <button type="button" class="status-action-btn bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700" data-status="em_andamento">
+            Iniciar
+          </button>
         <% } %>
-        <% if (user.roles && user.roles.includes('OPERACIONAL') && manutencao.status === 'IN_PROGRESS' && manutencao.assigned_to === user.id) { %>
-          <a href="/operacional/manutencoes/<%= manutencao.id %>/concluir" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
-            Concluir Manutenção
-          </a>
+        <% if (canAct && manutencao.status === 'em_andamento') { %>
+          <button type="button" class="status-action-btn bg-emerald-600 text-white px-6 py-2 rounded hover:bg-emerald-700" data-status="concluida">
+            Dar baixa
+          </button>
+        <% } %>
+        <% if (canAct && (manutencao.status === 'pendente' || manutencao.status === 'em_andamento')) { %>
+          <button type="button" class="status-action-btn bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700" data-status="cancelada">
+            Cancelar
+          </button>
         <% } %>
       </div>
     </div>
@@ -169,6 +177,57 @@
         button.textContent = oldText;
         showFeedback(error.message || 'Erro ao excluir manutenção.', 'error');
       }
+    });
+
+    const rolePrefix = '<%= user.roles && (user.roles.includes("SINDICO") || user.roles.includes("SUBSINDICO")) ? "/sindico" : "/operacional" %>';
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const statusButtons = document.querySelectorAll('.status-action-btn');
+    const statusMap = {
+      pendente: { text: 'Pendente', classes: ['bg-yellow-100', 'text-yellow-800'] },
+      em_andamento: { text: 'Em Andamento', classes: ['bg-blue-100', 'text-blue-800'] },
+      concluida: { text: 'Concluída', classes: ['bg-green-100', 'text-green-800'] },
+      cancelada: { text: 'Cancelada', classes: ['bg-red-100', 'text-red-800'] },
+    };
+
+    statusButtons.forEach((statusButton) => {
+      statusButton.addEventListener('click', async function () {
+        const nextStatus = this.dataset.status;
+        if (!nextStatus) return;
+        if (!window.confirm('Confirma a atualização de status desta manutenção?')) return;
+
+        const oldLabel = this.textContent;
+        this.disabled = true;
+        this.textContent = 'Processando...';
+        try {
+          const response = await fetch(`${rolePrefix}/manutencoes/<%= manutencao.id %>/status`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ status: nextStatus }),
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error((data && data.error) || 'Falha ao atualizar status');
+          }
+
+          if (statusBadge && statusText) {
+            statusBadge.classList.remove('bg-yellow-100', 'text-yellow-800', 'bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+            const visual = statusMap[data.maintenance.status] || statusMap.pendente;
+            statusBadge.classList.add(...visual.classes);
+            statusText.textContent = visual.text;
+          }
+          showFeedback(data.message || 'Status atualizado com sucesso.', 'success');
+          setTimeout(() => window.location.reload(), 600);
+        } catch (error) {
+          this.disabled = false;
+          this.textContent = oldLabel;
+          showFeedback(error.message || 'Erro ao atualizar status.', 'error');
+        }
+      });
     });
   })();
 </script>

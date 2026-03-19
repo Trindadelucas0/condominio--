@@ -9,6 +9,15 @@ const isAjaxRequest = (req) =>
   (req.get('X-Requested-With') || '').toLowerCase() === 'xmlhttprequest' ||
   (req.get('accept') || '').includes('application/json');
 
+const mapStatusLabel = (status) => {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'pendente') return 'Pendente';
+  if (normalized === 'em_andamento') return 'Em andamento';
+  if (normalized === 'concluida') return 'Concluída';
+  if (normalized === 'cancelada') return 'Cancelada';
+  return status;
+};
+
 const loadFormDependencies = async (condominiumId) => {
   const administrativoService = require('../services/administrativoService');
   const patrimonioService = require('../services/patrimonioService');
@@ -290,13 +299,21 @@ const startManutencao = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
-    await manutencaoService.startMaintenance(
+    const updated = await manutencaoService.startMaintenance(
       req.params.id,
       req.user.id,
       req.user.condominiumId,
       ipAddress,
       userAgent
     );
+
+    if (isAjaxRequest(req)) {
+      return res.json({
+        success: true,
+        maintenance: updated,
+        message: 'Manutenção iniciada com sucesso.',
+      });
+    }
 
     res.redirect('/operacional/manutencoes?success=started');
   } catch (error) {
@@ -345,7 +362,7 @@ const completeManutencao = async (req, res) => {
       cost: req.body.cost,
     };
 
-    await manutencaoService.completeMaintenance(
+    const updated = await manutencaoService.completeMaintenance(
       req.params.id,
       req.user.id,
       req.user.condominiumId,
@@ -353,6 +370,14 @@ const completeManutencao = async (req, res) => {
       ipAddress,
       userAgent
     );
+
+    if (isAjaxRequest(req)) {
+      return res.json({
+        success: true,
+        maintenance: updated,
+        message: 'Dar baixa realizada com sucesso.',
+      });
+    }
 
     res.redirect('/operacional/manutencoes?success=completed');
   } catch (error) {
@@ -376,6 +401,47 @@ const completeManutencao = async (req, res) => {
   }
 };
 
+// PATCH /sindico/manutencoes/:id/status ou /operacional/manutencoes/:id/status
+const patchStatusManutencao = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const data = {
+      completionNotes: req.body.completionNotes || req.body.notes || null,
+      cost: req.body.cost || null,
+    };
+
+    const updated = await manutencaoService.updateMaintenanceStatus(
+      req.params.id,
+      req.user.id,
+      req.user.condominiumId,
+      req.body.status,
+      data,
+      ipAddress,
+      userAgent,
+      { actorRoles: req.user.roles || [] }
+    );
+
+    return res.json({
+      success: true,
+      maintenance: updated,
+      statusLabel: mapStatusLabel(updated.status),
+      message: `Status atualizado para ${mapStatusLabel(updated.status)}.`,
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar status da manutenção:', error);
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      error: error.message || 'Erro ao atualizar status da manutenção',
+      code: error.code || 'PATCH_MAINTENANCE_STATUS_ERROR',
+    });
+  }
+};
+
 module.exports = {
   listManutencoes,
   showCreateManutencao,
@@ -387,4 +453,5 @@ module.exports = {
   startManutencao,
   showCompleteManutencao,
   completeManutencao,
+  patchStatusManutencao,
 };

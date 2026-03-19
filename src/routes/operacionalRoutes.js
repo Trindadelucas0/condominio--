@@ -133,6 +133,7 @@ const manutencaoController = require('../controllers/manutencaoController');
 router.get('/manutencoes', authorize('OPERACIONAL'), manutencaoController.listManutencoes);
 router.get('/manutencoes/:id', authorize('OPERACIONAL'), manutencaoController.showManutencao);
 router.post('/manutencoes/:id/iniciar', authorize('OPERACIONAL'), manutencaoController.startManutencao);
+router.patch('/manutencoes/:id/status', authorize('OPERACIONAL'), manutencaoController.patchStatusManutencao);
 router.get('/manutencoes/:id/concluir', authorize('OPERACIONAL'), manutencaoController.showCompleteManutencao);
 router.post('/manutencoes/:id/concluir', authorize('OPERACIONAL'), manutencaoController.completeManutencao);
 

@@ -50,8 +50,8 @@
     <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Despesas', url: '/financeiro/saidas' }, { label: saida && saida.id ? 'Editar despesa' : 'Nova despesa', url: '' } ] }) %>
     <% var helpModalId = 'modalComoFunciona'; %>
     <% var helpTitle = 'Nova despesa – como preencher'; %>
-    <% var resumo = ['Preencha valor, descrição, conta (fornecedor) e centro de custo. Despesas acima de certo valor podem exigir aprovação.', 'Após salvar, se precisar de aprovação a despesa vai para Aprovações do síndico.', 'Quando pagar de fato, na lista de Despesas use Pagar e anexe o comprovante.', 'Centro de custo e conta ajudam nos relatórios por tipo e fornecedor.']; %>
-    <% var helpModalContent = '<p>Preencha valor, descrição, conta e centro de custo. Se houver regra de aprovação por valor, a despesa vai para Aprovações. Após aprovação, quando efetuar o pagamento use Pagar na lista de Despesas e anexe o comprovante.</p>'; %>
+    <% var resumo = ['Preencha valor, descrição, conta (fornecedor) e centro de custo. Despesas acima de certo valor podem exigir aprovação.', 'Você pode anexar comprovante e nota fiscal já no cadastro (ambos opcionais nesta etapa).', 'Mesmo com comprovante anexado, o status só vira Pago quando usar a ação Pagar na lista.', 'Centro de custo e conta ajudam nos relatórios por tipo e fornecedor.']; %>
+    <% var helpModalContent = '<p>Preencha valor, descrição, conta e centro de custo. Se houver regra de aprovação por valor, a despesa vai para Aprovações. Você pode anexar comprovante e nota fiscal já no cadastro. O pagamento oficial continua no botão Pagar na lista de Despesas.</p>'; %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <a href="/financeiro/saidas" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors mb-4 w-fit">
@@ -95,11 +95,22 @@
         </div>
       </div>
     <% } %>
+    <% if (typeof query !== 'undefined' && query && query.success === 'attachments_updated') { %>
+      <div class="mb-6 animate-slide-in">
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md">
+          <p class="font-semibold text-green-800">Anexos substituídos com sucesso.</p>
+          <p class="text-sm text-green-600">Os novos arquivos foram salvos e os antigos foram removidos.</p>
+        </div>
+      </div>
+    <% } %>
 
     <!-- Formulário Moderno -->
     <div class="max-w-3xl mx-auto">
       <div class="bg-white rounded-2xl shadow-xl p-8 card-glow animate-slide-in">
-        <form method="POST" action="<%= saida && saida.id ? '/financeiro/saidas/' + saida.id : '/financeiro/saidas' %>" class="space-y-6">
+        <form method="POST" action="<%= saida && saida.id ? '/financeiro/saidas/' + saida.id : '/financeiro/saidas' %>" enctype="multipart/form-data" class="space-y-6">
+          <input type="hidden" name="currentComprovantePagamentoPath" value="<%= saida && saida.paymentReceiptPdfPath ? saida.paymentReceiptPdfPath : '' %>" />
+          <input type="hidden" name="currentNotaFiscalPath" value="<%= saida && saida.invoicePath ? saida.invoicePath : '' %>" />
+          <input type="hidden" name="currentNotaFiscalFileName" value="<%= saida && saida.invoiceFileName ? saida.invoiceFileName : '' %>" />
           <!-- Descrição -->
           <div>
             <label for="description" class="flex items-center text-sm font-bold text-gray-700 mb-2">
@@ -166,6 +177,63 @@
               />
               <div id="reopenedMonthWarning" class="hidden mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm" role="alert">
                 <span id="reopenedMonthWarningText"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-gray-200 rounded-xl p-4 bg-gray-50">
+            <h3 class="text-sm font-bold text-gray-800 mb-3">Anexos da despesa</h3>
+            <% if (typeof query !== 'undefined' && query && query.success === 'attachment_removed') { %>
+              <p class="text-xs text-green-700 mb-3">Anexo removido com sucesso.</p>
+            <% } %>
+            <div class="space-y-4">
+              <div>
+                <label for="comprovantePagamento" class="block text-sm font-medium text-gray-700 mb-1">
+                  Comprovante de Pagamento (PDF)
+                </label>
+                <% if (saida && saida.id && saida.paymentReceiptPdfPath) { %>
+                  <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <a href="/financeiro/saidas/<%= saida.id %>/comprovante" target="_blank" class="text-xs text-blue-700 hover:text-blue-900 underline">Ver comprovante atual</a>
+                    <button type="submit" name="attachmentType" value="comprovantePagamento" formaction="/financeiro/saidas/<%= saida.id %>/anexos/remover" formmethod="POST" class="text-xs text-red-700 hover:text-red-900">Remover comprovante</button>
+                  </div>
+                <% } else { %>
+                  <p class="text-xs text-gray-500 mb-2">Opcional no lançamento. Obrigatório apenas ao marcar como paga.</p>
+                <% } %>
+                <input
+                  type="file"
+                  id="comprovantePagamento"
+                  name="comprovantePagamento"
+                  accept="application/pdf"
+                  class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
+                />
+                <p id="comprovantePagamentoFileName" class="text-xs text-gray-600 mt-1"></p>
+                <p class="text-xs text-gray-500 mt-1">
+                  <%= saida && saida.id ? 'Envie um novo arquivo para substituir o comprovante atual.' : 'Você pode anexar agora ou no passo de pagamento.' %>
+                </p>
+              </div>
+              <div>
+                <label for="notaFiscal" class="block text-sm font-medium text-gray-700 mb-1">
+                  Nota Fiscal (PDF)
+                </label>
+                <% if (saida && saida.id && saida.invoicePath) { %>
+                  <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <a href="/financeiro/saidas/<%= saida.id %>/nota-fiscal" target="_blank" class="text-xs text-blue-700 hover:text-blue-900 underline">Ver nota fiscal atual</a>
+                    <button type="submit" name="attachmentType" value="notaFiscal" formaction="/financeiro/saidas/<%= saida.id %>/anexos/remover" formmethod="POST" class="text-xs text-red-700 hover:text-red-900">Remover nota fiscal</button>
+                  </div>
+                <% } else { %>
+                  <p class="text-xs text-gray-500 mb-2">Opcional no lançamento e na edição.</p>
+                <% } %>
+                <input
+                  type="file"
+                  id="notaFiscal"
+                  name="notaFiscal"
+                  accept="application/pdf"
+                  class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all duration-200 text-gray-900 bg-white"
+                />
+                <p id="notaFiscalFileName" class="text-xs text-gray-600 mt-1"></p>
+                <p class="text-xs text-gray-500 mt-1">
+                  <%= saida && saida.id ? 'Envie um novo arquivo para substituir a nota fiscal atual.' : 'Recomendado anexar já no cadastro, se disponível.' %>
+                </p>
               </div>
             </div>
           </div>
@@ -367,6 +435,19 @@ document.getElementById('isVariable')?.addEventListener('change', function() {
   dateInput.addEventListener('input', check);
   check();
 })();
+
+function bindSelectedFileName(inputId, outputId) {
+  var input = document.getElementById(inputId);
+  var output = document.getElementById(outputId);
+  if (!input || !output) return;
+  input.addEventListener('change', function() {
+    var fileName = (input.files && input.files[0] && input.files[0].name) ? input.files[0].name : '';
+    output.textContent = fileName ? ('Arquivo selecionado: ' + fileName) : '';
+  });
+}
+
+bindSelectedFileName('comprovantePagamento', 'comprovantePagamentoFileName');
+bindSelectedFileName('notaFiscal', 'notaFiscalFileName');
 </script>
 
 <%- include('../../../partials/footer') %>
