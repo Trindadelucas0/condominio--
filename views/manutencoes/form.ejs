@@ -19,7 +19,11 @@
       </div>
     <% } %>
 
-    <form method="POST" action="<%= manutencao ? '/sindico/manutencoes/' + manutencao.id : '/sindico/manutencoes' %>" class="bg-white rounded-lg shadow-lg p-6">
+    <div id="form-feedback" class="hidden mb-4 rounded border px-4 py-3 text-sm"></div>
+    <form id="maintenance-form" method="POST" action="<%= manutencao ? '/sindico/manutencoes/' + manutencao.id : '/sindico/manutencoes' %>" class="bg-white rounded-lg shadow-lg p-6" data-is-edit="<%= manutencao ? 'true' : 'false' %>">
+      <% if (!manutencao) { %>
+        <input type="hidden" name="idempotencyKey" id="idempotencyKey" value="">
+      <% } %>
       <!-- Tipo de Manutenção -->
       <div class="mb-4">
         <label class="block text-gray-700 text-sm font-bold mb-2">Tipo de Manutenção *</label>
@@ -107,12 +111,80 @@
         <a href="/sindico/manutencoes" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">
           Cancelar
         </a>
-        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
-          <%= manutencao ? 'Atualizar' : 'Criar' %> Manutenção
+        <button id="submit-btn" type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed">
+          <span id="submit-btn-text"><%= manutencao ? 'Atualizar' : 'Criar' %> Manutenção</span>
         </button>
       </div>
     </form>
   </div>
 </div>
+
+<script>
+  (function () {
+    const form = document.getElementById('maintenance-form');
+    if (!form) return;
+
+    const submitBtn = document.getElementById('submit-btn');
+    const submitBtnText = document.getElementById('submit-btn-text');
+    const feedback = document.getElementById('form-feedback');
+    const isEdit = form.dataset.isEdit === 'true';
+    const idempotencyKeyInput = document.getElementById('idempotencyKey');
+
+    const showFeedback = (message, type) => {
+      feedback.textContent = message;
+      feedback.className = 'mb-4 rounded border px-4 py-3 text-sm';
+      if (type === 'error') {
+        feedback.classList.add('border-red-300', 'bg-red-50', 'text-red-700');
+      } else {
+        feedback.classList.add('border-green-300', 'bg-green-50', 'text-green-700');
+      }
+      feedback.classList.remove('hidden');
+    };
+
+    const setLoading = (loading) => {
+      submitBtn.disabled = loading;
+      submitBtnText.textContent = loading
+        ? (isEdit ? 'Atualizando...' : 'Criando...')
+        : (isEdit ? 'Atualizar Manutenção' : 'Criar Manutenção');
+    };
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      if (submitBtn.disabled) return;
+      feedback.classList.add('hidden');
+
+      if (!isEdit && idempotencyKeyInput && !idempotencyKeyInput.value) {
+        idempotencyKeyInput.value = (window.crypto && window.crypto.randomUUID)
+          ? window.crypto.randomUUID()
+          : ('mk-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+      }
+
+      setLoading(true);
+
+      try {
+        const response = await fetch(form.action, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: new URLSearchParams(new FormData(form)).toString(),
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error((data && data.error) || 'Não foi possível salvar a manutenção.');
+        }
+
+        showFeedback(data.message || 'Operação realizada com sucesso.', 'success');
+        window.location.href = data.redirectUrl || '/sindico/manutencoes';
+      } catch (error) {
+        showFeedback(error.message || 'Erro inesperado ao enviar os dados.', 'error');
+        setLoading(false);
+      }
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>

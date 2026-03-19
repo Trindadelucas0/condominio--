@@ -99,7 +99,16 @@
     <!-- Ações -->
     <div class="bg-white rounded-lg shadow-lg p-6">
       <h2 class="text-xl font-bold text-gray-800 mb-4">Ações</h2>
+      <div id="maintenance-feedback" class="hidden mb-4 rounded border px-4 py-3 text-sm"></div>
       <div class="flex space-x-4">
+        <% if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) { %>
+          <a href="/sindico/manutencoes/<%= manutencao.id %>/editar" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700">
+            Editar Manutenção
+          </a>
+          <button id="delete-maintenance-btn" type="button" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+            Excluir Manutenção
+          </button>
+        <% } %>
         <% if (user.roles && user.roles.includes('OPERACIONAL') && manutencao.status === 'PENDING' && manutencao.assigned_to === user.id) { %>
           <form method="POST" action="/operacional/manutencoes/<%= manutencao.id %>/iniciar" class="inline">
             <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700" onclick="return confirm('Deseja iniciar esta manutenção?')">
@@ -116,5 +125,52 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    const button = document.getElementById('delete-maintenance-btn');
+    const feedback = document.getElementById('maintenance-feedback');
+    if (!button) return;
+
+    const showFeedback = (message, type) => {
+      feedback.textContent = message;
+      feedback.className = 'mb-4 rounded border px-4 py-3 text-sm';
+      if (type === 'error') {
+        feedback.classList.add('border-red-300', 'bg-red-50', 'text-red-700');
+      } else {
+        feedback.classList.add('border-green-300', 'bg-green-50', 'text-green-700');
+      }
+      feedback.classList.remove('hidden');
+    };
+
+    button.addEventListener('click', async function () {
+      if (!window.confirm('Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.')) {
+        return;
+      }
+      button.disabled = true;
+      const oldText = button.textContent;
+      button.textContent = 'Excluindo...';
+      try {
+        const response = await fetch('/sindico/manutencoes/<%= manutencao.id %>', {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error((data && data.error) || 'Falha ao excluir manutenção.');
+        }
+        showFeedback(data.message || 'Manutenção excluída com sucesso.', 'success');
+        window.location.href = '/sindico/manutencoes?success=deleted';
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = oldText;
+        showFeedback(error.message || 'Erro ao excluir manutenção.', 'error');
+      }
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>

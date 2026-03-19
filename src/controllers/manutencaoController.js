@@ -4,6 +4,19 @@
 const manutencaoService = require('../services/manutencaoService');
 const { renderError } = require('../utils/errorHandler');
 
+const isAjaxRequest = (req) =>
+  req.xhr ||
+  (req.get('X-Requested-With') || '').toLowerCase() === 'xmlhttprequest' ||
+  (req.get('accept') || '').includes('application/json');
+
+const loadFormDependencies = async (condominiumId) => {
+  const administrativoService = require('../services/administrativoService');
+  const patrimonioService = require('../services/patrimonioService');
+  const operacionais = await administrativoService.listOperacionais(condominiumId);
+  const ativos = await patrimonioService.listAssets(condominiumId, { status: 'ACTIVE' });
+  return { operacionais, ativos };
+};
+
 // Função para exibir lista de manutenções
 // GET /sindico/manutencoes ou /operacional/manutencoes
 const listManutencoes = async (req, res) => {
@@ -30,6 +43,8 @@ const listManutencoes = async (req, res) => {
       user: req.user,
       manutencoes: manutencoes,
       filters: filters,
+      success: req.query.success,
+      error: req.query.error,
     });
   } catch (error) {
     console.error('Erro ao listar manutenções:', error);
@@ -45,13 +60,7 @@ const showCreateManutencao = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    // Busca operacionais para atribuir
-    const administrativoService = require('../services/administrativoService');
-    const operacionais = await administrativoService.listOperacionais(req.user.condominiumId);
-
-    // Busca ativos (opcional)
-    const patrimonioService = require('../services/patrimonioService');
-    const ativos = await patrimonioService.listAssets(req.user.condominiumId, { status: 'ACTIVE' });
+    const { operacionais, ativos } = await loadFormDependencies(req.user.condominiumId);
 
     res.render('manutencoes/form', {
       title: 'Nova Manutenção',
@@ -86,9 +95,10 @@ const createManutencao = async (req, res) => {
       scheduledDate: req.body.scheduledDate,
       assignedTo: parseInt(req.body.assignedTo),
       assetId: req.body.assetId ? parseInt(req.body.assetId) : null,
+      idempotencyKey: req.body.idempotencyKey || req.get('Idempotency-Key') || null,
     };
 
-    await manutencaoService.createMaintenance(
+    const maintenance = await manutencaoService.createMaintenance(
       req.user.condominiumId,
       req.user.id,
       data,
@@ -96,14 +106,27 @@ const createManutencao = async (req, res) => {
       userAgent
     );
 
+    if (isAjaxRequest(req)) {
+      return res.json({
+        success: true,
+        maintenance: maintenance,
+        message: 'Manutenção criada com sucesso.',
+        redirectUrl: '/sindico/manutencoes?success=created',
+      });
+    }
+
     res.redirect('/sindico/manutencoes?success=created');
   } catch (error) {
     console.error('Erro ao criar manutenção:', error);
+    if (isAjaxRequest(req)) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        error: error.message || 'Erro ao criar manutenção',
+        code: error.code || 'CREATE_MAINTENANCE_ERROR',
+      });
+    }
     try {
-      const administrativoService = require('../services/administrativoService');
-      const patrimonioService = require('../services/patrimonioService');
-      const operacionais = await administrativoService.listOperacionais(req.user.condominiumId);
-      const ativos = await patrimonioService.listAssets(req.user.condominiumId, { status: 'ACTIVE' });
+      const { operacionais, ativos } = await loadFormDependencies(req.user.condominiumId);
 
       res.render('manutencoes/form', {
         title: 'Nova Manutenção',
@@ -116,6 +139,119 @@ const createManutencao = async (req, res) => {
     } catch (renderError) {
       res.redirect('/sindico/manutencoes?error=' + encodeURIComponent(error.message));
     }
+  }
+};
+
+const showEditManutencao = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+    const manutencao = await manutencaoService.getMaintenanceById(req.params.id, req.user.condominiumId);
+    const { operacionais, ativos } = await loadFormDependencies(req.user.condominiumId);
+    res.render('manutencoes/form', {
+      title: 'Editar Manutenção',
+      user: req.user,
+      operacionais,
+      ativos,
+      manutencao,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir edição de manutenção:', error);
+    res.redirect('/sindico/manutencoes?error=' + encodeURIComponent(error.message));
+  }
+};
+
+const updateManutencao = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const data = {
+      maintenanceType: req.body.maintenanceType,
+      title: req.body.title,
+      description: req.body.description,
+      location: req.body.location,
+      priority: req.body.priority,
+      scheduledDate: req.body.scheduledDate,
+      assignedTo: parseInt(req.body.assignedTo),
+      assetId: req.body.assetId ? parseInt(req.body.assetId) : null,
+    };
+    const maintenance = await manutencaoService.updateMaintenance(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      data,
+      ipAddress,
+      userAgent
+    );
+
+    if (isAjaxRequest(req)) {
+      return res.json({
+        success: true,
+        maintenance,
+        message: 'Manutenção atualizada com sucesso.',
+        redirectUrl: '/sindico/manutencoes?success=updated',
+      });
+    }
+
+    return res.redirect('/sindico/manutencoes?success=updated');
+  } catch (error) {
+    console.error('Erro ao atualizar manutenção:', error);
+    if (isAjaxRequest(req)) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        error: error.message || 'Erro ao atualizar manutenção',
+        code: error.code || 'UPDATE_MAINTENANCE_ERROR',
+      });
+    }
+    try {
+      const { operacionais, ativos } = await loadFormDependencies(req.user.condominiumId);
+      return res.render('manutencoes/form', {
+        title: 'Editar Manutenção',
+        user: req.user,
+        operacionais,
+        ativos,
+        manutencao: { ...req.body, id: req.params.id },
+        error: error.message,
+        formData: req.body,
+      });
+    } catch (renderErr) {
+      return res.redirect('/sindico/manutencoes?error=' + encodeURIComponent(error.message));
+    }
+  }
+};
+
+const deleteManutencao = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    await manutencaoService.deleteMaintenance(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      ipAddress,
+      userAgent
+    );
+    if (isAjaxRequest(req)) {
+      return res.json({ success: true, message: 'Manutenção excluída com sucesso.' });
+    }
+    return res.redirect('/sindico/manutencoes?success=deleted');
+  } catch (error) {
+    console.error('Erro ao excluir manutenção:', error);
+    if (isAjaxRequest(req)) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        error: error.message || 'Erro ao excluir manutenção',
+        code: error.code || 'DELETE_MAINTENANCE_ERROR',
+      });
+    }
+    return res.redirect('/sindico/manutencoes?error=' + encodeURIComponent(error.message));
   }
 };
 
@@ -244,6 +380,9 @@ module.exports = {
   listManutencoes,
   showCreateManutencao,
   createManutencao,
+  showEditManutencao,
+  updateManutencao,
+  deleteManutencao,
   showManutencao,
   startManutencao,
   showCompleteManutencao,

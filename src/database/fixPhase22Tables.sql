@@ -30,3 +30,29 @@ CREATE INDEX IF NOT EXISTS idx_maintenances_assigned_to ON maintenances(assigned
 CREATE INDEX IF NOT EXISTS idx_maintenances_status ON maintenances(status);
 CREATE INDEX IF NOT EXISTS idx_maintenances_type ON maintenances(maintenance_type);
 CREATE INDEX IF NOT EXISTS idx_maintenances_scheduled_date ON maintenances(scheduled_date);
+
+-- Suporte a idempotência e prevenção de duplicidade
+ALTER TABLE maintenances ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(120);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenances_idempotency
+ON maintenances(condominium_id, created_by, idempotency_key)
+WHERE idempotency_key IS NOT NULL;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM maintenances
+    WHERE status IN ('PENDING', 'IN_PROGRESS')
+    GROUP BY condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01')
+    HAVING COUNT(*) > 1
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_maintenances_active_dedup_lookup
+    ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
+    WHERE status IN ('PENDING', 'IN_PROGRESS');
+  ELSE
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenances_active_dedup
+    ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
+    WHERE status IN ('PENDING', 'IN_PROGRESS');
+  END IF;
+END $$;

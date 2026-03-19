@@ -84,6 +84,9 @@
       </div>
     </div>
     <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
+    <div id="maintenance-feedback" class="<%= success || error ? '' : 'hidden' %> mb-4 rounded border px-4 py-3 text-sm <%= error ? 'border-red-300 bg-red-50 text-red-700' : 'border-green-300 bg-green-50 text-green-700' %>">
+      <%= error ? decodeURIComponent(error) : (success === 'created' ? 'Manutenção criada com sucesso.' : success === 'updated' ? 'Manutenção atualizada com sucesso.' : success === 'deleted' ? 'Manutenção excluída com sucesso.' : '') %>
+    </div>
 
     <!-- Filtros Modernos -->
     <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 animate-slide-in">
@@ -151,7 +154,7 @@
           <tbody class="bg-white divide-y divide-gray-200">
             <% if (manutencoes && manutencoes.length > 0) { %>
               <% manutencoes.forEach((manutencao, index) => { %>
-                <tr class="table-row-animate card-hover-effect" style="animation-delay: <%= index * 0.05 %>s">
+                <tr id="maintenance-row-<%= manutencao.id %>" class="table-row-animate card-hover-effect" style="animation-delay: <%= index * 0.05 %>s">
                   <td class="px-6 py-4">
                     <div class="text-sm font-bold text-gray-900"><%= manutencao.title %></div>
                     <div class="text-sm text-gray-500 mt-1"><%= manutencao.description ? (manutencao.description.length > 50 ? manutencao.description.substring(0, 50) + '...' : manutencao.description) : '-' %></div>
@@ -209,6 +212,14 @@
                         </svg>
                         Ver
                       </a>
+                      <% if (user.roles && (user.roles.includes('SINDICO') || user.roles.includes('SUBSINDICO'))) { %>
+                        <a href="/sindico/manutencoes/<%= manutencao.id %>/editar" class="text-blue-600 hover:text-blue-800 font-semibold transition-colors inline-flex items-center">
+                          Editar
+                        </a>
+                        <button type="button" class="delete-maintenance-btn text-red-600 hover:text-red-800 font-semibold transition-colors inline-flex items-center" data-id="<%= manutencao.id %>">
+                          Excluir
+                        </button>
+                      <% } %>
                       <% if (user.roles && user.roles.includes('OPERACIONAL') && manutencao.status === 'PENDING' && manutencao.assigned_to === user.id) { %>
                         <form method="POST" action="/operacional/manutencoes/<%= manutencao.id %>/iniciar" class="inline" onsubmit="return confirm('Deseja iniciar esta manutenção?')">
                           <button type="submit" class="text-green-600 hover:text-green-800 font-semibold transition-colors inline-flex items-center">
@@ -254,5 +265,58 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    const feedback = document.getElementById('maintenance-feedback');
+    const showFeedback = (message, type) => {
+      if (!feedback) return;
+      feedback.textContent = message;
+      feedback.className = 'mb-4 rounded border px-4 py-3 text-sm';
+      if (type === 'error') {
+        feedback.classList.add('border-red-300', 'bg-red-50', 'text-red-700');
+      } else {
+        feedback.classList.add('border-green-300', 'bg-green-50', 'text-green-700');
+      }
+      feedback.classList.remove('hidden');
+    };
+
+    document.querySelectorAll('.delete-maintenance-btn').forEach((button) => {
+      button.addEventListener('click', async function () {
+        const maintenanceId = this.dataset.id;
+        if (!maintenanceId) return;
+        if (!window.confirm('Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.')) {
+          return;
+        }
+
+        this.disabled = true;
+        const originalText = this.textContent;
+        this.textContent = 'Excluindo...';
+
+        try {
+          const response = await fetch('/sindico/manutencoes/' + maintenanceId, {
+            method: 'DELETE',
+            headers: {
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error((data && data.error) || 'Não foi possível excluir a manutenção.');
+          }
+
+          const row = document.getElementById('maintenance-row-' + maintenanceId);
+          if (row) row.remove();
+          showFeedback(data.message || 'Manutenção excluída com sucesso.', 'success');
+        } catch (error) {
+          showFeedback(error.message || 'Erro ao excluir manutenção.', 'error');
+          this.disabled = false;
+          this.textContent = originalText;
+        }
+      });
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>

@@ -146,6 +146,11 @@ const manutencaoController = require('../controllers/manutencaoController');
 router.get('/manutencoes', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), manutencaoController.listManutencoes);
 router.get('/manutencoes/novo', authorize('SINDICO', 'SUBSINDICO'), manutencaoController.showCreateManutencao);
 router.post('/manutencoes', authorize('SINDICO', 'SUBSINDICO'), manutencaoController.createManutencao);
+router.get('/manutencoes/:id/editar', authorize('SINDICO', 'SUBSINDICO'), manutencaoController.showEditManutencao);
+router.put('/manutencoes/:id', authorize('SINDICO', 'SUBSINDICO'), manutencaoController.updateManutencao);
+router.patch('/manutencoes/:id', authorize('SINDICO', 'SUBSINDICO'), manutencaoController.updateManutencao);
+router.post('/manutencoes/:id', authorize('SINDICO', 'SUBSINDICO'), manutencaoController.updateManutencao);
+router.delete('/manutencoes/:id', authorize('SINDICO', 'SUBSINDICO'), manutencaoController.deleteManutencao);
 router.get('/manutencoes/:id', authorize('FINANCEIRO', 'SINDICO', 'SUBSINDICO'), manutencaoController.showManutencao);
 
 // Aprovação de entradas financeiras - FINANCEIRO pode visualizar, mas só SINDICO/SUBSINDICO aprova

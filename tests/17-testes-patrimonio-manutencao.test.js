@@ -208,6 +208,227 @@ async function run(runner) {
     runner.logDetail('✅ Manutenção persistida corretamente no banco');
   });
 
+  await runner.test('CRUD Manutenção: Idempotência no create (mesma chave, mesmo registro)', async () => {
+    if (!testCondominiumId || !testUserId || !testAssetId) {
+      runner.logWarning('Pulando teste - dados de teste não disponíveis');
+      return;
+    }
+
+    const operacionalResult = await query(`
+      SELECT u.id FROM users u
+      INNER JOIN user_roles ur ON u.id = ur.user_id
+      INNER JOIN roles r ON ur.role_id = r.id
+      WHERE r.name = 'OPERACIONAL' AND u.condominium_id = $1 AND u.active = TRUE
+      LIMIT 1
+    `, [testCondominiumId]);
+
+    if (operacionalResult.rows.length === 0) {
+      runner.logWarning('Usuário OPERACIONAL não encontrado - pulando teste');
+      return;
+    }
+
+    const idempotencyKey = `idem-${Date.now()}`;
+    const payload = {
+      assetId: testAssetId,
+      maintenanceType: 'CORRETIVA',
+      title: `[TESTE QA] Idempotência ${Date.now()}`,
+      description: 'Teste de idempotência em criação de manutenção',
+      assignedTo: operacionalResult.rows[0].id,
+      scheduledDate: new Date().toISOString().split('T')[0],
+      priority: 'NORMAL',
+      location: 'Área Técnica',
+      idempotencyKey,
+    };
+
+    const first = await manutencaoService.createMaintenance(
+      testCondominiumId,
+      testUserId,
+      payload,
+      '127.0.0.1',
+      'Test Runner'
+    );
+    const second = await manutencaoService.createMaintenance(
+      testCondominiumId,
+      testUserId,
+      payload,
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    if (!first || !second || first.id !== second.id) {
+      throw new Error('Idempotência falhou: retornou IDs diferentes para a mesma chave');
+    }
+
+    const duplicateCheck = await query(
+      `SELECT COUNT(*)::int as total
+       FROM maintenances
+       WHERE condominium_id = $1 AND created_by = $2 AND idempotency_key = $3`,
+      [testCondominiumId, testUserId, idempotencyKey]
+    );
+    if (duplicateCheck.rows[0].total !== 1) {
+      throw new Error('Idempotência falhou: mais de um registro com a mesma chave');
+    }
+
+    runner.logDetail('✅ Idempotência no create validada');
+  });
+
+  await runner.test('CRUD Manutenção: Bloqueio de duplicidade semântica no create', async () => {
+    if (!testCondominiumId || !testUserId) {
+      runner.logWarning('Pulando teste - dados de teste não disponíveis');
+      return;
+    }
+
+    const operacionalResult = await query(`
+      SELECT u.id FROM users u
+      INNER JOIN user_roles ur ON u.id = ur.user_id
+      INNER JOIN roles r ON ur.role_id = r.id
+      WHERE r.name = 'OPERACIONAL' AND u.condominium_id = $1 AND u.active = TRUE
+      LIMIT 1
+    `, [testCondominiumId]);
+
+    if (operacionalResult.rows.length === 0) {
+      runner.logWarning('Usuário OPERACIONAL não encontrado - pulando teste');
+      return;
+    }
+
+    const sameTitle = `[TESTE QA] Duplicidade ${Date.now()}`;
+    const sameDate = new Date().toISOString().split('T')[0];
+    const basePayload = {
+      maintenanceType: 'PREVENTIVA',
+      title: sameTitle,
+      description: 'Primeira manutenção para teste de duplicidade',
+      assignedTo: operacionalResult.rows[0].id,
+      scheduledDate: sameDate,
+      priority: 'NORMAL',
+      location: 'Bloco A',
+    };
+
+    await manutencaoService.createMaintenance(
+      testCondominiumId,
+      testUserId,
+      basePayload,
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    let blocked = false;
+    try {
+      await manutencaoService.createMaintenance(
+        testCondominiumId,
+        testUserId,
+        {
+          ...basePayload,
+          description: 'Tentativa duplicada',
+        },
+        '127.0.0.1',
+        'Test Runner'
+      );
+    } catch (error) {
+      blocked = error.code === 'DUPLICATE_MAINTENANCE' || (error.message || '').includes('Já existe uma manutenção ativa');
+    }
+
+    if (!blocked) {
+      throw new Error('Duplicidade semântica não foi bloqueada');
+    }
+
+    runner.logDetail('✅ Bloqueio de duplicidade semântica validado');
+  });
+
+  await runner.test('CRUD Manutenção: Atualizar manutenção existente', async () => {
+    if (!testMaintenanceId || !testCondominiumId || !testUserId) {
+      runner.logWarning('Pulando teste - manutenção de teste não disponível');
+      return;
+    }
+
+    const operacionalResult = await query(`
+      SELECT u.id FROM users u
+      INNER JOIN user_roles ur ON u.id = ur.user_id
+      INNER JOIN roles r ON ur.role_id = r.id
+      WHERE r.name = 'OPERACIONAL' AND u.condominium_id = $1 AND u.active = TRUE
+      LIMIT 1
+    `, [testCondominiumId]);
+    if (operacionalResult.rows.length === 0) {
+      runner.logWarning('Usuário OPERACIONAL não encontrado - pulando teste');
+      return;
+    }
+
+    const updated = await manutencaoService.updateMaintenance(
+      testMaintenanceId,
+      testCondominiumId,
+      testUserId,
+      {
+        maintenanceType: 'CORRETIVA',
+        title: `[TESTE QA] Atualizada ${Date.now()}`,
+        description: 'Descrição atualizada via teste',
+        location: 'Nova localização',
+        priority: 'ALTA',
+        scheduledDate: new Date().toISOString().split('T')[0],
+        assignedTo: operacionalResult.rows[0].id,
+        assetId: testAssetId,
+      },
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    if (!updated || updated.id !== testMaintenanceId) {
+      throw new Error('Atualização retornou registro inválido');
+    }
+    if (updated.priority !== 'ALTA') {
+      throw new Error('Prioridade não foi atualizada corretamente');
+    }
+    runner.logDetail('✅ Atualização de manutenção validada');
+  });
+
+  await runner.test('CRUD Manutenção: Excluir manutenção (hard delete)', async () => {
+    if (!testCondominiumId || !testUserId) {
+      runner.logWarning('Pulando teste - dados de teste não disponíveis');
+      return;
+    }
+
+    const operacionalResult = await query(`
+      SELECT u.id FROM users u
+      INNER JOIN user_roles ur ON u.id = ur.user_id
+      INNER JOIN roles r ON ur.role_id = r.id
+      WHERE r.name = 'OPERACIONAL' AND u.condominium_id = $1 AND u.active = TRUE
+      LIMIT 1
+    `, [testCondominiumId]);
+
+    if (operacionalResult.rows.length === 0) {
+      runner.logWarning('Usuário OPERACIONAL não encontrado - pulando teste');
+      return;
+    }
+
+    const toDelete = await manutencaoService.createMaintenance(
+      testCondominiumId,
+      testUserId,
+      {
+        maintenanceType: 'CORRETIVA',
+        title: `[TESTE QA] Excluir ${Date.now()}`,
+        description: 'Manutenção para teste de exclusão',
+        assignedTo: operacionalResult.rows[0].id,
+        scheduledDate: new Date().toISOString().split('T')[0],
+        priority: 'NORMAL',
+        location: 'Bloco B',
+      },
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    await manutencaoService.deleteMaintenance(
+      toDelete.id,
+      testCondominiumId,
+      testUserId,
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    const deletedCheck = await query('SELECT id FROM maintenances WHERE id = $1', [toDelete.id]);
+    if (deletedCheck.rows.length > 0) {
+      throw new Error('Exclusão hard delete falhou');
+    }
+    runner.logDetail('✅ Exclusão hard delete validada');
+  });
+
   await runner.test('CRUD Manutenção: Listar manutenções do ativo', async () => {
     if (!testAssetId) {
       runner.logWarning('Pulando teste - ativo de teste não foi criado');
