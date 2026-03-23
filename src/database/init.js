@@ -627,38 +627,82 @@ const initializeDatabase = async () => {
       console.error('Erro ao atualizar estados da FASE 22b:', error);
     }
 
-    // Correção: Garantir que tabelas da FASE 22 foram criadas
+    // Correção: Garantir que tabelas da FASE 22 foram criadas (somente se necessário)
     console.log('🔍 Verificando tabelas da FASE 22 (correção)...');
     try {
-      await executeSQLFile(path.join(__dirname, 'fixPhase22Tables.sql'));
-      console.log('✅ Tabelas da FASE 22 verificadas/criadas');
+      const maintenanceTableExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'maintenances'
+        )
+      `);
+
+      if (!maintenanceTableExists.rows[0].exists) {
+        await executeSQLFile(path.join(__dirname, 'fixPhase22Tables.sql'));
+        console.log('✅ Tabelas da FASE 22 verificadas/criadas');
+      } else {
+        console.log('✅ Correção de tabelas da FASE 22 não necessária');
+      }
     } catch (error) {
       console.error('Erro ao verificar/criar tabelas da FASE 22:', error);
     }
 
-    // Correção: Garantir que colunas da FASE 22 foram criadas
+    // Correção: Garantir que colunas da FASE 22 foram criadas (somente se necessário)
     console.log('🔍 Verificando colunas da FASE 22 (correção)...');
     try {
-      await executeSQLFile(path.join(__dirname, 'fixPhase22Columns.sql'));
-      console.log('✅ Colunas da FASE 22 verificadas/corrigidas');
+      const reviewStatusExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'financial_entries' AND column_name = 'review_status'
+        )
+      `);
+
+      if (!reviewStatusExists.rows[0].exists) {
+        await executeSQLFile(path.join(__dirname, 'fixPhase22Columns.sql'));
+        console.log('✅ Colunas da FASE 22 verificadas/corrigidas');
+      } else {
+        console.log('✅ Correção de colunas gerais da FASE 22 não necessária');
+      }
     } catch (error) {
       console.error('Erro ao verificar/corrigir colunas da FASE 22:', error);
     }
 
-    // Correção: Garantir que colunas de budget_requests da FASE 22 foram criadas
+    // Correção: Garantir que colunas de budget_requests da FASE 22 foram criadas (somente se necessário)
     console.log('🔍 Verificando colunas de budget_requests da FASE 22 (correção)...');
     try {
-      await executeSQLFile(path.join(__dirname, 'fixPhase22BudgetColumns.sql'));
-      console.log('✅ Colunas de budget_requests da FASE 22 verificadas/corrigidas');
+      const financeiroReviewedExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'budget_requests' AND column_name = 'financeiro_reviewed'
+        )
+      `);
+
+      if (!financeiroReviewedExists.rows[0].exists) {
+        await executeSQLFile(path.join(__dirname, 'fixPhase22BudgetColumns.sql'));
+        console.log('✅ Colunas de budget_requests da FASE 22 verificadas/corrigidas');
+      } else {
+        console.log('✅ Correção de colunas de budget_requests (FASE 22) não necessária');
+      }
     } catch (error) {
       console.error('Erro ao verificar/corrigir colunas de budget_requests da FASE 22:', error);
     }
 
-    // Correção: Garantir que colunas de occurrences da FASE 22 foram criadas
+    // Correção: Garantir que colunas de occurrences da FASE 22 foram criadas (somente se necessário)
     console.log('🔍 Verificando colunas de occurrences da FASE 22 (correção)...');
     try {
-      await executeSQLFile(path.join(__dirname, 'fixPhase22OccurrencesColumns.sql'));
-      console.log('✅ Colunas de occurrences da FASE 22 verificadas/corrigidas');
+      const requiresApprovalExists = await query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'occurrences' AND column_name = 'requires_approval'
+        )
+      `);
+
+      if (!requiresApprovalExists.rows[0].exists) {
+        await executeSQLFile(path.join(__dirname, 'fixPhase22OccurrencesColumns.sql'));
+        console.log('✅ Colunas de occurrences da FASE 22 verificadas/corrigidas');
+      } else {
+        console.log('✅ Correção de colunas de occurrences (FASE 22) não necessária');
+      }
     } catch (error) {
       console.error('Erro ao verificar/corrigir colunas de occurrences da FASE 22:', error);
     }

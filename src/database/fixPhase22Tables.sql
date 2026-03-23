@@ -38,25 +38,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenances_idempotency
 ON maintenances(condominium_id, created_by, idempotency_key)
 WHERE idempotency_key IS NOT NULL;
 
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM maintenances
-    WHERE status IN ('pendente', 'em_andamento')
-    GROUP BY condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01')
-    HAVING COUNT(*) > 1
-  ) THEN
-    CREATE INDEX IF NOT EXISTS idx_maintenances_active_dedup_lookup
-    ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
-    WHERE status IN ('pendente', 'em_andamento');
-  ELSE
-    CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenances_active_dedup
-    ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
-    WHERE status IN ('pendente', 'em_andamento');
-  END IF;
-END $$;
-
 -- Normalização de status legado (inglês -> português)
 UPDATE maintenances
 SET status = CASE
@@ -81,5 +62,36 @@ BEGIN
     ALTER TABLE maintenances
       ADD CONSTRAINT maintenances_status_check
       CHECK (status IN ('pendente', 'em_andamento', 'concluida', 'cancelada'));
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM maintenances
+    WHERE status IN ('pendente', 'em_andamento')
+    GROUP BY condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01')
+    HAVING COUNT(*) > 1
+  ) THEN
+    -- Com duplicatas ativas, garantir apenas índice de apoio (não único)
+    DROP INDEX IF EXISTS uq_maintenances_active_dedup;
+    CREATE INDEX IF NOT EXISTS idx_maintenances_active_dedup_lookup
+    ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
+    WHERE status IN ('pendente', 'em_andamento');
+  ELSE
+    -- Sem duplicatas ativas, priorizar garantia de unicidade
+    DROP INDEX IF EXISTS idx_maintenances_active_dedup_lookup;
+    BEGIN
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenances_active_dedup
+      ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
+      WHERE status IN ('pendente', 'em_andamento');
+    EXCEPTION
+      WHEN unique_violation THEN
+        -- Concorrência ou dado legado: não bloquear startup
+        CREATE INDEX IF NOT EXISTS idx_maintenances_active_dedup_lookup
+        ON maintenances(condominium_id, created_by, LOWER(title), COALESCE(scheduled_date, DATE '1900-01-01'))
+        WHERE status IN ('pendente', 'em_andamento');
+    END;
   END IF;
 END $$;
