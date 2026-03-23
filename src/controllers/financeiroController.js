@@ -746,6 +746,7 @@ const updateExitController = async (req, res) => {
       costCenterId: req.body.costCenterId || null,
       category: req.body.category || DEFAULT_DESPESA_CATEGORY,
       billId: req.body.billId || null,
+      requiresApproval: req.body.requiresApproval === 'true' || req.body.requiresApproval === true || req.body.requiresApproval === 'on',
       approvalLimit: req.body.approvalLimit,
     };
 
@@ -858,7 +859,7 @@ const showUnpayExit = async (req, res) => {
   }
 };
 
-// Função para solicitar desfazer pagamento de saída
+// Função para desfazer pagamento de saída
 // POST /financeiro/saidas/:id/desfazer-pagamento
 const unpayExit = async (req, res) => {
   try {
@@ -868,9 +869,11 @@ const unpayExit = async (req, res) => {
 
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
-    const reason = req.body.reason;
+    const reason = (req.body.reason && String(req.body.reason).trim())
+      ? String(req.body.reason).trim()
+      : 'Desfazer pagamento solicitado na listagem de despesas';
 
-    await financeiroService.requestUnpayExit(
+    await financeiroService.unmarkExitAsPaid(
       req.params.id,
       req.user.condominiumId,
       req.user.id,
@@ -879,23 +882,53 @@ const unpayExit = async (req, res) => {
       userAgent
     );
 
-    res.redirect('/financeiro/saidas?success=unpay_requested');
+    res.redirect('/financeiro/saidas?success=unpaid');
   } catch (error) {
-    console.error('Erro ao solicitar desfazer pagamento da saída:', error);
+    console.error('Erro ao desfazer pagamento da saída:', error);
     try {
       const exits = await financeiroService.listExits(req.user.condominiumId, { limit: 1000 }).catch(() => []);
       const exit = exits.find(e => e.id === parseInt(req.params.id, 10)) || null;
 
       res.render('administrativo/financeiro/saidas/desfazer-pagamento', {
-        title: 'Solicitar desfazer pagamento da saída',
+        title: 'Desfazer pagamento da saída',
         user: req.user,
         saida: exit,
         error: getErrorMessage(error),
       });
     } catch (innerError) {
-      console.error('Erro adicional ao carregar saída para solicitar desfazer pagamento:', innerError);
-      renderError(res, 500, 'Erro ao solicitar desfazer pagamento da saída', error);
+      console.error('Erro adicional ao carregar saída para desfazer pagamento:', innerError);
+      renderError(res, 500, 'Erro ao desfazer pagamento da saída', error);
     }
+  }
+};
+
+// Função para excluir saída financeira
+// POST /financeiro/saidas/:id/excluir
+const deleteExit = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const reason = (req.body.reason && String(req.body.reason).trim())
+      ? String(req.body.reason).trim()
+      : 'Exclusão manual realizada na listagem de despesas';
+
+    await financeiroService.deleteExit(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      reason,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/saidas?success=deleted');
+  } catch (error) {
+    console.error('Erro ao excluir saída:', error);
+    res.redirect('/financeiro/saidas?error=' + encodeURIComponent(getErrorMessage(error)));
   }
 };
 
@@ -1032,6 +1065,7 @@ module.exports = {
   updateExitController,
   showUnpayExit,
   unpayExit,
+  deleteExit,
   showCreateAccount,
   createAccount,
   listAccounts,

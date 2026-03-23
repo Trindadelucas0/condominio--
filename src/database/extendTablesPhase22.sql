@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS maintenances (
   cost DECIMAL(15,2), -- Custo (se houver)
   asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL, -- Ativo relacionado (opcional)
   created_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Síndico que criou
+  idempotency_key VARCHAR(120), -- Chave de idempotência para evitar duplicidade por reenvio
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Data de criação
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Data da última atualização
 );
@@ -33,6 +34,14 @@ CREATE INDEX IF NOT EXISTS idx_maintenances_assigned_to ON maintenances(assigned
 CREATE INDEX IF NOT EXISTS idx_maintenances_status ON maintenances(status);
 CREATE INDEX IF NOT EXISTS idx_maintenances_type ON maintenances(maintenance_type);
 CREATE INDEX IF NOT EXISTS idx_maintenances_scheduled_date ON maintenances(scheduled_date);
+
+-- Suporte a idempotência (também para bancos onde a tabela já existia)
+ALTER TABLE maintenances
+  ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(120);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_maintenances_idempotency
+ON maintenances(condominium_id, created_by, idempotency_key)
+WHERE idempotency_key IS NOT NULL;
 
 -- ============================================
 -- 2. ATUALIZAR TABELA FINANCIAL_ENTRIES (Fluxo de Aprovação)

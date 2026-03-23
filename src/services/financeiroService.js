@@ -298,9 +298,13 @@ const updateExit = async (exitId, condominiumId, userId, data, userRoles, ipAddr
       updateValues.push(data.exitDate);
     }
 
-    // approval_limit não pode ser alterado após criação (mesmo por SINDICO)
-    if (data.approvalLimit !== undefined && current.payment_status === 'PENDING') {
-      // Só pode alterar se ainda está pendente
+    if (data.requiresApproval !== undefined) {
+      updateFields.push(`requires_approval = $${paramCount++}`);
+      updateValues.push(!!data.requiresApproval);
+    }
+
+    // approval_limit pode ser alterado em qualquer status editável (PAID já é bloqueado acima)
+    if (data.approvalLimit !== undefined) {
       const limitValidation = validateFinancialAmount(data.approvalLimit, {
         allowZero: false,
         allowNegative: false,
@@ -314,8 +318,6 @@ const updateExit = async (exitId, condominiumId, userId, data, userRoles, ipAddr
 
       updateFields.push(`approval_limit = $${paramCount++}`);
       updateValues.push(limitValidation.value);
-    } else if (data.approvalLimit !== undefined) {
-      throw new Error('Limite de aprovação não pode ser alterado após criação de saída pendente');
     }
 
     if (data.category !== undefined) {
@@ -901,6 +903,112 @@ const unmarkExitAsPaid = async (exitId, condominiumId, userId, reason, ipAddress
     return updated;
   } catch (error) {
     console.error('Erro ao desfazer pagamento da saída:', error);
+    throw error;
+  }
+};
+
+// Função para excluir saída financeira
+// Recebe: exitId, condominiumId, userId, motivo, ipAddress, userAgent
+// Retorna: saída excluída
+const deleteExit = async (exitId, condominiumId, userId, reason, ipAddress, userAgent) => {
+  try {
+    if (!reason || !reason.trim()) {
+      throw new Error('Motivo para excluir a despesa é obrigatório');
+    }
+
+    const currentResult = await query(
+      `SELECT * FROM financial_exits WHERE id = $1 AND condominium_id = $2`,
+      [exitId, condominiumId]
+    );
+
+    if (currentResult.rows.length === 0) {
+      throw new Error('Saída não encontrada');
+    }
+
+    const current = currentResult.rows[0];
+
+    // Valida ownership
+    const owns = await validateCondominiumOwnership('financial_exits', exitId, condominiumId);
+    if (!owns) {
+      throw new Error('Saída não pertence a este condomínio');
+    }
+
+    // Valida que usuário pertence ao condomínio
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    // Bloqueia exclusão quando o mês de referência estiver fechado
+    const monthlyClosureService = require('./monthlyClosureService');
+    const referenceDate = current.payment_status === 'PAID'
+      ? (current.paid_at || current.exit_date)
+      : current.exit_date;
+    const isClosed = await monthlyClosureService.isMonthClosed(condominiumId, referenceDate);
+    if (isClosed) {
+      const d = new Date(referenceDate);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      throw new Error(`Não é possível excluir a despesa. O mês ${m}/${y} está fechado.`);
+    }
+
+    // Se estiver paga, primeiro desfaz pagamento para reverter saldo/fundo de reserva.
+    if (current.payment_status === 'PAID') {
+      await unmarkExitAsPaid(
+        exitId,
+        condominiumId,
+        userId,
+        `Exclusão da despesa: ${reason.trim()}`,
+        ipAddress,
+        userAgent
+      );
+    }
+
+    const deleteResult = await query(
+      `DELETE FROM financial_exits
+       WHERE id = $1 AND condominium_id = $2
+       RETURNING *`,
+      [exitId, condominiumId]
+    );
+
+    if (deleteResult.rows.length === 0) {
+      throw new Error('Saída não encontrada ou não pertence a este condomínio');
+    }
+
+    const deleted = deleteResult.rows[0];
+
+    if (deleted.payment_receipt_pdf_path) {
+      await unlinkIfExistsSafe(deleted.payment_receipt_pdf_path).catch((error) => {
+        console.warn('Aviso ao remover comprovante de saída excluída:', error.message);
+      });
+    }
+    if (deleted.invoice_path) {
+      await unlinkIfExistsSafe(deleted.invoice_path).catch((error) => {
+        console.warn('Aviso ao remover nota fiscal de saída excluída:', error.message);
+      });
+    }
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'DELETE',
+      module: 'FINANCIAL',
+      entityType: 'financial_exits',
+      entityId: exitId,
+      beforeData: current,
+      afterData: null,
+      ipAddress,
+      userAgent,
+      notes: `Motivo exclusão: ${reason.trim()}`,
+    });
+
+    const cacheService = require('./cacheService');
+    cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
+
+    return deleted;
+  } catch (error) {
+    console.error('Erro ao excluir saída financeira:', error);
     throw error;
   }
 };
@@ -2855,6 +2963,7 @@ module.exports = {
   rejectExit,
   markExitAsPaid,
   unmarkExitAsPaid,
+  deleteExit,
   requestUnpayExit,
   listExits,
   getExitById,

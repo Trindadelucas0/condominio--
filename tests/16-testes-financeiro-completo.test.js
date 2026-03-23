@@ -302,6 +302,104 @@ async function run(runner) {
     }
   });
 
+  await runner.test('CRUD Saída: Atualizar limite de aprovação em saída PENDING', async () => {
+    if (!testCondominiumId || !testFinanceiroUserId) {
+      runner.logWarning('Pulando teste - dados de teste não disponíveis');
+      return;
+    }
+
+    const exitData = {
+      description: `[TESTE QA] Update Limite Pending ${Date.now()}`,
+      amount: '400.00',
+      exitDate: new Date().toISOString().split('T')[0],
+      category: 'MANUTENCAO',
+      requiresApproval: true,
+      approvalLimit: 100.00
+    };
+
+    const created = await financeiroService.createExit(
+      testCondominiumId,
+      testFinanceiroUserId,
+      exitData,
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    if (created.payment_status !== 'PENDING') {
+      runner.logWarning(`Status criado diferente de PENDING (${created.payment_status}); seguindo mesmo assim para validar update do limite`);
+    }
+
+    const updated = await financeiroService.updateExit(
+      created.id,
+      testCondominiumId,
+      testFinanceiroUserId,
+      { approvalLimit: '250.00' },
+      ['FINANCEIRO'],
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    if (parseFloat(updated.approval_limit) !== 250.00) {
+      throw new Error(`approval_limit esperado 250.00, obtido ${updated.approval_limit}`);
+    }
+
+    runner.logDetail(`✅ Limite atualizado em saída PENDING: ${updated.approval_limit}`);
+  });
+
+  await runner.test('CRUD Saída: Atualizar limite de aprovação em saída APPROVED', async () => {
+    if (!testCondominiumId || !testFinanceiroUserId) {
+      runner.logWarning('Pulando teste - dados de teste não disponíveis');
+      return;
+    }
+
+    const exitData = {
+      description: `[TESTE QA] Update Limite Approved ${Date.now()}`,
+      amount: '80.00',
+      exitDate: new Date().toISOString().split('T')[0],
+      category: 'MANUTENCAO',
+      requiresApproval: false
+    };
+
+    const created = await financeiroService.createExit(
+      testCondominiumId,
+      testFinanceiroUserId,
+      exitData,
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    if (created.payment_status === 'PENDING') {
+      if (!testSindicoUserId) {
+        runner.logWarning('Pulando teste - saída criada como PENDING e usuário SINDICO não está disponível para aprovar');
+        return;
+      }
+      await financeiroService.approveExit(
+        created.id,
+        testCondominiumId,
+        testSindicoUserId,
+        ['SINDICO'],
+        '127.0.0.1',
+        'Test Runner'
+      );
+    }
+
+    const updated = await financeiroService.updateExit(
+      created.id,
+      testCondominiumId,
+      testFinanceiroUserId,
+      { approvalLimit: '300.00' },
+      ['FINANCEIRO'],
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    if (parseFloat(updated.approval_limit) !== 300.00) {
+      throw new Error(`approval_limit esperado 300.00, obtido ${updated.approval_limit}`);
+    }
+
+    runner.logDetail(`✅ Limite atualizado em saída APPROVED: ${updated.approval_limit}`);
+  });
+
   await runner.test('CRUD Saída: Listar saídas do condomínio', async () => {
     if (!testCondominiumId) {
       runner.logWarning('Pulando teste - condomínio não disponível');

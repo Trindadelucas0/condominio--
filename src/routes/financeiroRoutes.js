@@ -512,6 +512,7 @@ router.post('/saidas/:id/anexos/remover', async (req, res) => {
 });
 router.get('/saidas/:id/desfazer-pagamento', financeiroController.showUnpayExit);
 router.post('/saidas/:id/desfazer-pagamento', financeiroController.unpayExit);
+router.post('/saidas/:id/excluir', financeiroController.deleteExit);
 router.get('/saidas', financeiroController.listExits);
 
 // Contas

@@ -193,6 +193,21 @@
           </div>
         </div>
       <% } %>
+      <% if (typeof query !== 'undefined' && query.success === 'deleted') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-red-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-red-800">Despesa excluída com sucesso!</p>
+              <p class="text-sm text-red-600">A despesa foi removida e o saldo foi recalculado.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
 
       <!-- Estatísticas Rápidas -->
       <% 
@@ -363,6 +378,12 @@
                           <a href="/financeiro/saidas/<%= exit.id %>/editar" class="inline-flex items-center px-3 py-1.5 mb-1 rounded-lg border border-rose-100 text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs font-semibold transition-colors">
                             Editar
                           </a>
+                          <form method="POST" action="/financeiro/saidas/<%= exit.id %>/excluir" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.');">
+                            <input type="hidden" name="reason" value="Exclusão manual na listagem de despesas">
+                            <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-semibold transition-colors">
+                              Excluir
+                            </button>
+                          </form>
                           <span class="text-gray-400 text-xs">Aguardando aprovação</span>
                         </div>
                       <% } else if (exit.payment_status === 'APPROVED') { %>
@@ -376,6 +397,12 @@
                             </svg>
                             Marcar como Paga
                           </a>
+                          <form method="POST" action="/financeiro/saidas/<%= exit.id %>/excluir" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa aprovada? Esta ação não pode ser desfeita.');">
+                            <input type="hidden" name="reason" value="Exclusão manual de despesa aprovada na listagem">
+                            <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-semibold transition-colors">
+                              Excluir
+                            </button>
+                          </form>
                         </div>
                       <% } else if (exit.payment_status === 'PAID') { %>
                         <div class="flex flex-col items-end space-y-1">
@@ -399,9 +426,18 @@
                               Ver Nota Fiscal
                             </a>
                           <% } %>
-                          <a href="/financeiro/saidas/<%= exit.id %>/desfazer-pagamento" class="inline-flex items-center text-xs text-amber-700 hover:text-amber-900 font-semibold">
-                            Solicitar desfazer pagamento
-                          </a>
+                          <form method="POST" action="/financeiro/saidas/<%= exit.id %>/desfazer-pagamento" onsubmit="return confirm('Deseja desfazer o pagamento desta despesa agora?');">
+                            <input type="hidden" name="reason" value="Desfazer pagamento solicitado na listagem de despesas">
+                            <button type="submit" class="inline-flex items-center text-xs text-amber-700 hover:text-amber-900 font-semibold">
+                              Desfazer pagamento
+                            </button>
+                          </form>
+                          <form method="POST" action="/financeiro/saidas/<%= exit.id %>/excluir" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa paga? O pagamento será desfeito antes da exclusão.');">
+                            <input type="hidden" name="reason" value="Exclusão manual de despesa paga na listagem">
+                            <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-semibold transition-colors">
+                              Excluir
+                            </button>
+                          </form>
                         </div>
                       <% } %>
                     </td>
