@@ -14,6 +14,7 @@ router.use(authorize('SUPER_MASTER'));
 
 // Dashboard
 router.get('/dashboard', masterController.showDashboard);
+router.get('/ia-relatorios', masterController.showIaReportsCenter);
 
 // Rotas de condomínios
 router.get('/condominios', masterController.listCondominios);
@@ -21,6 +22,11 @@ router.get('/condominios/novo', masterController.showCreateCondominio);
 router.post('/condominios', masterController.createCondominio);
 router.get('/condominios/:id/editar', masterController.showEditCondominio);
 router.post('/condominios/:id', masterController.updateCondominio);
+router.get('/condominios/:id/relatorios', masterController.showCondominioReportConfig);
+router.post('/condominios/:id/relatorios/preferencias', masterController.updateCondominioReportPreferences);
+router.post('/condominios/:id/relatorios/destinatarios', masterController.addCondominioReportRecipient);
+router.post('/condominios/:id/relatorios/destinatarios/:recipientId/remover', masterController.removeCondominioReportRecipient);
+router.post('/condominios/:id/relatorios/disparar', masterController.dispatchCondominioReportNow);
 
 // Rotas de usuários
 router.get('/usuarios', masterController.listUsuarios);

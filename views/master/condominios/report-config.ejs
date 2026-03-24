@@ -1,0 +1,192 @@
+<%- include('../../partials/header', { title: title }) %>
+<%- include('../../partials/navbar', { user: user }) %>
+
+<div class="container mx-auto px-4 py-8">
+  <% const monthlyTokenLimit = Number(preferences?.ai_monthly_token_limit || 2000000); %>
+  <% const monthlyTokensUsed = Number(usage?.monthly?.token_count || 0); %>
+  <% const monthlyTokensRemaining = Math.max(monthlyTokenLimit - monthlyTokensUsed, 0); %>
+
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Configuração de Relatórios</h1>
+    <p class="text-gray-600 mt-2">
+      Condomínio: <strong><%= condominio.name %></strong>
+    </p>
+  </div>
+
+  <% if (query && query.success) { %>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      Operação realizada com sucesso.
+    </div>
+  <% } %>
+  <% if (query && query.error) { %>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <%= query.error %>
+    </div>
+  <% } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-5">
+      <h2 class="text-lg font-semibold mb-3">Uso IA Hoje</h2>
+      <p class="text-sm text-gray-600">Requisições: <strong><%= usage?.daily?.request_count || 0 %></strong></p>
+      <p class="text-sm text-gray-600">Tokens: <strong><%= usage?.daily?.token_count || 0 %></strong></p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-5">
+      <h2 class="text-lg font-semibold mb-3">Uso IA Mês</h2>
+      <p class="text-sm text-gray-600">Requisições: <strong><%= usage?.monthly?.request_count || 0 %></strong></p>
+      <p class="text-sm text-gray-600">Tokens usados: <strong><%= monthlyTokensUsed %></strong></p>
+      <p class="text-sm text-gray-600">Limite tokens/mês: <strong><%= monthlyTokenLimit %></strong></p>
+      <p class="text-sm <%= monthlyTokensRemaining > 0 ? 'text-emerald-700' : 'text-red-600' %>">
+        Tokens restantes: <strong><%= monthlyTokensRemaining %></strong>
+      </p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-5">
+      <h2 class="text-lg font-semibold mb-3">Disparo Manual</h2>
+      <form method="POST" action="/master/condominios/<%= condominio.id %>/relatorios/disparar" class="space-y-3">
+        <select name="reportType" class="w-full border rounded px-3 py-2">
+          <option value="DAILY">Diário</option>
+          <option value="WEEKLY">Semanal</option>
+        </select>
+        <button type="submit" class="w-full bg-blue-600 text-white rounded px-3 py-2 hover:bg-blue-700">
+          Enviar agora
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-xl font-semibold mb-4">Preferências gerais</h2>
+    <form method="POST" action="/master/condominios/<%= condominio.id %>/relatorios/preferencias" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <label class="flex items-center gap-2"><input type="checkbox" name="enabled" <%= !preferences || preferences.enabled ? 'checked' : '' %> /> Habilitar relatórios</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="daily_enabled" <%= !preferences || preferences.daily_enabled ? 'checked' : '' %> /> Relatório diário</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="weekly_enabled" <%= !preferences || preferences.weekly_enabled ? 'checked' : '' %> /> Relatório semanal</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="include_ai_insights" <%= !preferences || preferences.include_ai_insights ? 'checked' : '' %> /> Análise IA</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="include_financial" <%= !preferences || preferences.include_financial ? 'checked' : '' %> /> Bloco financeiro</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="include_maintenance" <%= !preferences || preferences.include_maintenance ? 'checked' : '' %> /> Bloco manutenções</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="include_charts" <%= !preferences || preferences.include_charts ? 'checked' : '' %> /> Gráficos</label>
+
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Relatório diário - Hora</label>
+        <select name="daily_hour" class="w-full border rounded px-3 py-2">
+          <% for (let h = 0; h <= 23; h++) { %>
+            <option value="<%= h %>" <%= scheduleForm && scheduleForm.dailyHour === h ? 'selected' : '' %>><%= String(h).padStart(2, '0') %>h</option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Relatório diário - Minuto</label>
+        <select name="daily_minute" class="w-full border rounded px-3 py-2">
+          <% for (let m = 0; m <= 59; m++) { %>
+            <option value="<%= m %>" <%= scheduleForm && scheduleForm.dailyMinute === m ? 'selected' : '' %>><%= String(m).padStart(2, '0') %></option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Timezone</label>
+        <input type="text" name="timezone" value="<%= preferences?.timezone || 'America/Sao_Paulo' %>" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Relatório semanal - Dia da semana</label>
+        <select name="weekly_weekday" class="w-full border rounded px-3 py-2">
+          <option value="0" <%= scheduleForm && scheduleForm.weeklyWeekday === 0 ? 'selected' : '' %>>Domingo</option>
+          <option value="1" <%= scheduleForm && scheduleForm.weeklyWeekday === 1 ? 'selected' : '' %>>Segunda-feira</option>
+          <option value="2" <%= scheduleForm && scheduleForm.weeklyWeekday === 2 ? 'selected' : '' %>>Terça-feira</option>
+          <option value="3" <%= scheduleForm && scheduleForm.weeklyWeekday === 3 ? 'selected' : '' %>>Quarta-feira</option>
+          <option value="4" <%= scheduleForm && scheduleForm.weeklyWeekday === 4 ? 'selected' : '' %>>Quinta-feira</option>
+          <option value="5" <%= scheduleForm && scheduleForm.weeklyWeekday === 5 ? 'selected' : '' %>>Sexta-feira</option>
+          <option value="6" <%= scheduleForm && scheduleForm.weeklyWeekday === 6 ? 'selected' : '' %>>Sábado</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Relatório semanal - Hora</label>
+        <select name="weekly_hour" class="w-full border rounded px-3 py-2">
+          <% for (let h = 0; h <= 23; h++) { %>
+            <option value="<%= h %>" <%= scheduleForm && scheduleForm.weeklyHour === h ? 'selected' : '' %>><%= String(h).padStart(2, '0') %>h</option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Relatório semanal - Minuto</label>
+        <select name="weekly_minute" class="w-full border rounded px-3 py-2">
+          <% for (let m = 0; m <= 59; m++) { %>
+            <option value="<%= m %>" <%= scheduleForm && scheduleForm.weeklyMinute === m ? 'selected' : '' %>><%= String(m).padStart(2, '0') %></option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Limite IA diário (requisições)</label>
+        <input type="number" name="ai_daily_request_limit" value="<%= preferences?.ai_daily_request_limit || 200 %>" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Limite IA mensal (tokens)</label>
+        <input type="number" name="ai_monthly_token_limit" value="<%= preferences?.ai_monthly_token_limit || 2000000 %>" class="w-full border rounded px-3 py-2" />
+      </div>
+
+      <div class="md:col-span-2 flex justify-end">
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Salvar preferências</button>
+      </div>
+      <div class="md:col-span-2">
+        <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
+          O remetente é global e vem de <code>RESEND_FROM_EMAIL</code> / <code>RESEND_FROM_NAME</code> no <code>.env</code>.
+          Use sempre domínio verificado na Resend.
+        </p>
+        <p class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-3 mt-2">
+          O sistema gera o cron automaticamente com base nos horários escolhidos. Não é necessário configurar expressão cron manualmente.
+        </p>
+        <p class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-3 mt-2">
+          Envio automático: o servidor verifica o horário configurado para este condomínio e dispara sozinho no minuto correspondente.
+        </p>
+      </div>
+    </form>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-xl font-semibold mb-4">Destinatários</h2>
+    <form method="POST" action="/master/condominios/<%= condominio.id %>/relatorios/destinatarios" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <input type="email" name="email" placeholder="email@dominio.com" required class="border rounded px-3 py-2" />
+      <select name="role_scope" class="border rounded px-3 py-2">
+        <option value="CUSTOM">Custom</option>
+        <option value="SINDICO">Síndico</option>
+        <option value="FINANCEIRO">Financeiro</option>
+        <option value="CONSELHO">Conselho</option>
+      </select>
+      <button type="submit" class="bg-green-600 text-white rounded px-3 py-2 hover:bg-green-700">Adicionar</button>
+    </form>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Escopo</th>
+            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <% if (!recipients || recipients.length === 0) { %>
+            <tr><td colspan="3" class="px-3 py-3 text-sm text-gray-500">Nenhum destinatário cadastrado.</td></tr>
+          <% } else { %>
+            <% recipients.forEach(function(recipient) { %>
+              <tr>
+                <td class="px-3 py-2 text-sm text-gray-700"><%= recipient.email %></td>
+                <td class="px-3 py-2 text-sm text-gray-700"><%= recipient.role_scope %></td>
+                <td class="px-3 py-2 text-right">
+                  <% if (recipient.active) { %>
+                    <form method="POST" action="/master/condominios/<%= condominio.id %>/relatorios/destinatarios/<%= recipient.id %>/remover" class="inline">
+                      <button type="submit" class="text-red-600 hover:text-red-800 text-sm">Remover</button>
+                    </form>
+                  <% } else { %>
+                    <span class="text-gray-400 text-sm">Inativo</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <a href="/master/condominios" class="text-blue-600 hover:text-blue-800">Voltar para condomínios</a>
+</div>
+
+<%- include('../../partials/footer') %>

@@ -49,6 +49,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const automationRoutes = require('./routes/automationRoutes');
 const assemblyRoutes = require('./routes/assemblyRoutes');
 const criticalItemsRoutes = require('./routes/criticalItemsRoutes');
+const reportConfigRoutes = require('./routes/reportConfigRoutes');
 
 // Aplicar rotas
 app.use('/master', masterRoutes);
@@ -65,6 +66,7 @@ app.use('/notifications', notificationRoutes);
 app.use('/automation', automationRoutes);
 app.use('/assembleias', assemblyRoutes);
 app.use('/api/critical-items', criticalItemsRoutes);
+app.use('/report-config', reportConfigRoutes);
 
 // Rota raiz - sempre redireciona para login
 // Após login bem-sucedido, o authController redireciona para o dashboard correto

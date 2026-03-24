@@ -33,6 +33,15 @@ async function startServer() {
       if (!process.env.DB_USER && !process.env.DATABASE_URL) {
         console.warn('⚠️  AVISO: Configuração do banco de dados não encontrada no .env');
       }
+
+      if (process.env.REPORT_EMAIL_ENABLED !== 'false') {
+        try {
+          const reportDispatchJob = require('./jobs/reportDispatchJob');
+          reportDispatchJob.start();
+        } catch (jobError) {
+          console.error('⚠️  Falha ao iniciar scheduler de relatórios:', jobError.message);
+        }
+      }
     });
   } catch (error) {
     console.error('❌ Erro ao iniciar servidor:', error.message);

@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node tests/testRunner.js",
     "test:all": "node tests/testRunner.js",
+    "test:ai-email": "node scripts/test-ai-email.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "apply-corrections": "node src/database/applyCorrections.js"
@@ -14,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/genai": "^1.46.0",
     "bcrypt": "^5.1.1",
     "chart.js": "^4.5.1",
     "cookie-parser": "^1.4.6",
@@ -25,9 +27,13 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
+    "p-limit": "^7.3.0",
     "pdfkit": "^0.14.0",
     "pg": "^8.11.3",
-    "puppeteer": "^24.36.0"
+    "puppeteer": "^24.36.0",
+    "resend": "^6.9.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

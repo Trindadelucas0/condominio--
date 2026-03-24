@@ -1,10 +1,7 @@
 // Service para envio de emails
 // Gerencia envio de emails do sistema (convocações, notificações, etc)
-// NOTA: Em produção, configurar SMTP real (nodemailer, sendgrid, etc)
-
-// Por enquanto, apenas simula envio (em produção, integrar com serviço de email real)
-const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
+const { sendEmail } = require('./email/resendService');
 
 // Função para enviar convocação de assembleia por email
 // Recebe: assembly, condominium, emails (array de objetos com owner_email, owner_name, etc)
@@ -49,19 +46,12 @@ Atenciosamente,
 Administração do Condomínio ${condominium.name}
         `.trim();
 
-        // Em produção, usar nodemailer ou serviço similar:
-        // await transporter.sendMail({
-        //   from: condominium.email || 'noreply@condominio.com',
-        //   to: emailData.owner_email,
-        //   subject: emailSubject,
-        //   text: emailBody,
-        //   html: emailBody.replace(/\n/g, '<br>')
-        // });
-
-        // Por enquanto, apenas loga
-        console.log(`[EMAIL SIMULADO] Enviando convocação para ${emailData.owner_email}`);
-        console.log(`Assunto: ${emailSubject}`);
-        console.log(`Corpo: ${emailBody.substring(0, 100)}...`);
+        await sendEmail({
+          to: emailData.owner_email,
+          subject: emailSubject,
+          text: emailBody,
+          html: emailBody.replace(/\n/g, '<br>'),
+        });
 
         sentCount++;
       } catch (error) {
@@ -109,9 +99,12 @@ const sendNotification = async (to, subject, body, condominiumId = null) => {
 
     for (const recipient of recipients) {
       try {
-        // Em produção, usar serviço de email real
-        console.log(`[EMAIL SIMULADO] Enviando notificação para ${recipient}`);
-        console.log(`Assunto: ${subject}`);
+        await sendEmail({
+          to: recipient,
+          subject,
+          text: body,
+          html: body.replace(/\n/g, '<br>'),
+        });
         sentCount++;
       } catch (error) {
         console.error(`Erro ao enviar email para ${recipient}:`, error);

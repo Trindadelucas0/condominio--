@@ -3,7 +3,35 @@
 // Apenas usuários com perfil SUPER_MASTER podem acessar
 
 const masterService = require('../services/masterService');
+const reportConfigService = require('../services/reports/reportConfigService');
+const { dispatchCondominiumReport } = require('../services/reports/reportDispatchService');
 const { renderError } = require('../utils/errorHandler'); // Helper para tratamento de erros
+
+const parseCron = (cron, fallback) => {
+  const value = String(cron || '').trim();
+  const parts = value.split(/\s+/);
+  if (parts.length !== 5) return fallback;
+  const minute = parseInt(parts[0], 10);
+  const hour = parseInt(parts[1], 10);
+  const weekday = parts[4] === '*' ? null : parseInt(parts[4], 10);
+
+  if (Number.isNaN(minute) || minute < 0 || minute > 59) return fallback;
+  if (Number.isNaN(hour) || hour < 0 || hour > 23) return fallback;
+  if (weekday !== null && (Number.isNaN(weekday) || weekday < 0 || weekday > 6)) return fallback;
+
+  return { minute, hour, weekday };
+};
+
+const toCronDaily = (hour, minute) => `${minute} ${hour} * * *`;
+const toCronWeekly = (hour, minute, weekday) => `${minute} ${hour} * * ${weekday}`;
+
+const parseRangeInt = (value, min, max, fieldLabel) => {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${fieldLabel} inválido(a). Valor esperado entre ${min} e ${max}.`);
+  }
+  return parsed;
+};
 
 // Função para exibir dashboard master
 // GET /master/dashboard
@@ -19,6 +47,24 @@ const showDashboard = async (req, res) => {
   } catch (error) {
     console.error('Erro ao exibir dashboard master:', error);
     renderError(res, 500, 'Erro ao carregar dashboard master', error);
+  }
+};
+
+const showIaReportsCenter = async (req, res) => {
+  try {
+    const includeInactive = req.query.includeInactive === 'true';
+    const condominios = await masterService.listCondominios(includeInactive);
+
+    res.render('master/ia-relatorios/index', {
+      title: 'Central IA Relatórios',
+      user: req.user,
+      condominios,
+      includeInactive,
+      query: req.query,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir central IA de relatórios:', error);
+    renderError(res, 500, 'Erro ao carregar central IA de relatórios', error);
   }
 };
 
@@ -192,6 +238,140 @@ const updateCondominio = async (req, res) => {
   }
 };
 
+const showCondominioReportConfig = async (req, res) => {
+  try {
+    const condominiumId = parseInt(req.params.id, 10);
+    if (!condominiumId) return renderError(res, 400, 'ID do condomínio inválido');
+    console.log('[MASTER_REPORT_CONFIG] Abrindo tela de configuração', { condominiumId, userId: req.user?.id });
+
+    const condominio = await masterService.getCondominiumById(condominiumId);
+    const preferences = await reportConfigService.getPreferences(condominiumId);
+    const recipients = await reportConfigService.listRecipients(condominiumId);
+    const usage = await reportConfigService.getUsageSummary(condominiumId);
+    const dailyParsed = parseCron(preferences?.daily_cron, { minute: 0, hour: 7, weekday: null });
+    const weeklyParsed = parseCron(preferences?.weekly_cron, { minute: 30, hour: 7, weekday: 1 });
+
+    res.render('master/condominios/report-config', {
+      title: `Configuração de Relatórios - ${condominio.name}`,
+      user: req.user,
+      condominio,
+      preferences,
+      scheduleForm: {
+        dailyMinute: dailyParsed.minute,
+        dailyHour: dailyParsed.hour,
+        weeklyMinute: weeklyParsed.minute,
+        weeklyHour: weeklyParsed.hour,
+        weeklyWeekday: weeklyParsed.weekday === null ? 1 : weeklyParsed.weekday,
+      },
+      recipients,
+      usage,
+      query: req.query,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir configuração de relatórios:', error);
+    renderError(res, 500, 'Erro ao carregar configuração de relatórios', error);
+  }
+};
+
+const updateCondominioReportPreferences = async (req, res) => {
+  try {
+    const condominiumId = parseInt(req.params.id, 10);
+    console.log('[MASTER_REPORT_CONFIG] Atualizando preferências', { condominiumId, userId: req.user?.id });
+    const dailyHour = parseRangeInt(req.body.daily_hour, 0, 23, 'Hora do relatório diário');
+    const dailyMinute = parseRangeInt(req.body.daily_minute, 0, 59, 'Minuto do relatório diário');
+    const weeklyHour = parseRangeInt(req.body.weekly_hour, 0, 23, 'Hora do relatório semanal');
+    const weeklyMinute = parseRangeInt(req.body.weekly_minute, 0, 59, 'Minuto do relatório semanal');
+    const weeklyWeekday = parseRangeInt(req.body.weekly_weekday, 0, 6, 'Dia da semana do relatório semanal');
+
+    const data = {
+      enabled: req.body.enabled === 'on',
+      daily_enabled: req.body.daily_enabled === 'on',
+      weekly_enabled: req.body.weekly_enabled === 'on',
+      include_financial: req.body.include_financial === 'on',
+      include_maintenance: req.body.include_maintenance === 'on',
+      include_charts: req.body.include_charts === 'on',
+      include_ai_insights: req.body.include_ai_insights === 'on',
+      daily_cron: toCronDaily(dailyHour, dailyMinute),
+      weekly_cron: toCronWeekly(weeklyHour, weeklyMinute, weeklyWeekday),
+      timezone: req.body.timezone,
+      ai_daily_request_limit: req.body.ai_daily_request_limit,
+      ai_monthly_token_limit: req.body.ai_monthly_token_limit,
+    };
+    await reportConfigService.upsertPreferences(condominiumId, data);
+    console.log('[MASTER_REPORT_CONFIG] Preferências atualizadas', {
+      condominiumId,
+      dailyCron: data.daily_cron,
+      weeklyCron: data.weekly_cron,
+      timezone: data.timezone,
+    });
+    res.redirect(`/master/condominios/${condominiumId}/relatorios?success=preferences_updated`);
+  } catch (error) {
+    console.error('[MASTER_REPORT_CONFIG] Erro ao atualizar preferências', {
+      condominiumId: req.params.id,
+      userId: req.user?.id,
+      message: error.message,
+    });
+    res.redirect(`/master/condominios/${req.params.id}/relatorios?error=${encodeURIComponent(error.message)}`);
+  }
+};
+
+const addCondominioReportRecipient = async (req, res) => {
+  try {
+    const condominiumId = parseInt(req.params.id, 10);
+    console.log('[MASTER_REPORT_CONFIG] Adicionando destinatário', {
+      condominiumId,
+      userId: req.user?.id,
+      roleScope: req.body.role_scope || 'CUSTOM',
+    });
+    await reportConfigService.addRecipient(condominiumId, {
+      email: req.body.email,
+      role_scope: req.body.role_scope || 'CUSTOM',
+    });
+    res.redirect(`/master/condominios/${condominiumId}/relatorios?success=recipient_added`);
+  } catch (error) {
+    console.error('Erro ao adicionar destinatário:', error);
+    res.redirect(`/master/condominios/${req.params.id}/relatorios?error=${encodeURIComponent(error.message)}`);
+  }
+};
+
+const removeCondominioReportRecipient = async (req, res) => {
+  try {
+    const condominiumId = parseInt(req.params.id, 10);
+    console.log('[MASTER_REPORT_CONFIG] Removendo destinatário', {
+      condominiumId,
+      recipientId: req.params.recipientId,
+      userId: req.user?.id,
+    });
+    await reportConfigService.removeRecipient(condominiumId, parseInt(req.params.recipientId, 10));
+    res.redirect(`/master/condominios/${condominiumId}/relatorios?success=recipient_removed`);
+  } catch (error) {
+    console.error('Erro ao remover destinatário:', error);
+    res.redirect(`/master/condominios/${req.params.id}/relatorios?error=${encodeURIComponent(error.message)}`);
+  }
+};
+
+const dispatchCondominioReportNow = async (req, res) => {
+  try {
+    const condominiumId = parseInt(req.params.id, 10);
+    const reportType = req.body.reportType === 'WEEKLY' ? 'WEEKLY' : 'DAILY';
+    console.log('[MASTER_REPORT_CONFIG] Disparo manual solicitado', {
+      condominiumId,
+      reportType,
+      userId: req.user?.id,
+    });
+    await dispatchCondominiumReport(condominiumId, reportType);
+    console.log('[MASTER_REPORT_CONFIG] Disparo manual concluído', { condominiumId, reportType });
+    res.redirect(`/master/condominios/${condominiumId}/relatorios?success=report_sent`);
+  } catch (error) {
+    console.error('[MASTER_REPORT_CONFIG] Falha no disparo manual', {
+      condominiumId: req.params.id,
+      userId: req.user?.id,
+      message: error.message,
+    });
+    res.redirect(`/master/condominios/${req.params.id}/relatorios?error=${encodeURIComponent(error.message)}`);
+  }
+};
+
 // Função para listar usuários
 // GET /master/usuarios
 const listUsuarios = async (req, res) => {
@@ -332,11 +512,17 @@ const updateUsuario = async (req, res) => {
 // Exporta funções para uso nas rotas
 module.exports = {
   showDashboard,
+  showIaReportsCenter,
   listCondominios,
   showCreateCondominio,
   createCondominio,
   showEditCondominio,
   updateCondominio,
+  showCondominioReportConfig,
+  updateCondominioReportPreferences,
+  addCondominioReportRecipient,
+  removeCondominioReportRecipient,
+  dispatchCondominioReportNow,
   listUsuarios,
   showCreateUsuario,
   createUsuario,
