@@ -50,11 +50,28 @@ const compactDailyMetrics = (daily) => ({
   top_categories: (daily?.categories || []).slice(0, 6),
 });
 
-const buildPrompt = (payload) => {
+const buildPrompt = (payload, mode = 'FULL') => {
   const metrics =
     payload.reportType === 'WEEKLY'
       ? compactWeeklyMetrics(payload.weekly)
       : compactDailyMetrics(payload.daily);
+  const compactMetrics =
+    payload.reportType === 'WEEKLY'
+      ? {
+          period: metrics.period,
+          totals: metrics.totals,
+          days_count: metrics.days_count,
+          worst_exit_day: metrics.worst_exit_day,
+          worst_balance_day: metrics.worst_balance_day,
+        }
+      : {
+          period: metrics.period,
+          entries: metrics.entries,
+          exits: metrics.exits,
+          balance: metrics.balance,
+          maintenances: metrics.maintenances,
+          top_categories: metrics.top_categories,
+        };
 
   return JSON.stringify(
     {
@@ -62,7 +79,13 @@ const buildPrompt = (payload) => {
       report_type: payload.reportType,
       generated_at: payload.generatedAt,
       timezone: process.env.REPORT_DEFAULT_TZ || 'America/Sao_Paulo',
-      metrics,
+      metrics: mode === 'COMPACT' ? compactMetrics : metrics,
+      output_rules: {
+        max_summary_words: mode === 'COMPACT' ? 35 : 50,
+        max_items_each_list: 3,
+        short_sentences: true,
+        max_words_per_item: mode === 'COMPACT' ? 10 : 14,
+      },
       rules: [
         'Apontar 3 principais insights baseados nos números',
         'Listar 3 riscos objetivos e mensuráveis',
@@ -76,20 +99,50 @@ const buildPrompt = (payload) => {
 };
 
 const SCHEMA_HINT = JSON.stringify({
-  executive_summary: 'string max 120 palavras',
-  top_insights: ['string', 'string', 'string'],
-  risks: ['string', 'string', 'string'],
-  recommended_actions: ['string', 'string', 'string'],
+  executive_summary: 'string max 50 palavras',
+  top_insights: ['string curto', 'string curto', 'string curto'],
+  risks: ['string curto', 'string curto', 'string curto'],
+  recommended_actions: ['string curto', 'string curto', 'string curto'],
   confidence: 'number 0-100',
 });
 
 const systemInstruction =
   'Você é analista financeiro condominial. Use somente os dados fornecidos. Não invente números. Responda em português do Brasil, objetiva e profissional.';
 
-const tryGemini = async (payload) => {
+const normalizeInsightData = (data = {}) => {
+  const asShortArray = (value, fallbackLabel) => {
+    const base = Array.isArray(value) ? value : [];
+    const cleaned = base
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((item) => (item.length > 160 ? `${item.slice(0, 157)}...` : item));
+    while (cleaned.length < 3) cleaned.push(`${fallbackLabel} ${cleaned.length + 1}.`);
+    return cleaned;
+  };
+
+  const confidenceRaw = Number(data.confidence);
+  const confidence = Number.isFinite(confidenceRaw)
+    ? Math.max(0, Math.min(100, Math.round(confidenceRaw)))
+    : 60;
+
+  const summary = String(data.executive_summary || '').trim();
+  return {
+    executive_summary:
+      summary.length > 0
+        ? summary.slice(0, 450)
+        : 'Resumo indisponível. Dados do período considerados para análise.',
+    top_insights: asShortArray(data.top_insights, 'Insight'),
+    risks: asShortArray(data.risks, 'Risco'),
+    recommended_actions: asShortArray(data.recommended_actions, 'Ação'),
+    confidence,
+  };
+};
+
+const tryGemini = async (payload, mode = 'FULL') => {
   const result = await generateJson({
     systemInstruction,
-    prompt: buildPrompt(payload),
+    prompt: buildPrompt(payload, mode),
     schemaHint: SCHEMA_HINT,
     // Aumenta chance de JSON válido para relatórios maiores.
     maxOutputTokens: Math.max(parseInt(process.env.GEMINI_MAX_OUTPUT_TOKENS || '220', 10), 700),
@@ -100,7 +153,7 @@ const tryGemini = async (payload) => {
     enabled: true,
     cached: false,
     source: 'IA',
-    data: result.data,
+    data: normalizeInsightData(result.data),
     usage: result.usage,
     latencyMs: result.latencyMs,
   };
@@ -139,6 +192,7 @@ const generateInsight = async (payload) => {
     });
     const localInsight = buildLocalInsight(payload);
     localInsight.reason = quota.reason;
+    localInsight.data = normalizeInsightData(localInsight.data);
     cacheService.set(cacheKey, localInsight, 60 * 30);
     return localInsight;
   }
@@ -146,7 +200,7 @@ const generateInsight = async (payload) => {
   const feature = `${payload.reportType}_REPORT_INSIGHT`;
 
   try {
-    let insight = await tryGemini(payload);
+    let insight = await tryGemini(payload, 'FULL');
 
     await logUsage({
       condominiumId: payload.condominiumId,
@@ -171,7 +225,7 @@ const generateInsight = async (payload) => {
       message: error.message,
     });
     try {
-      const retryInsight = await tryGemini(payload);
+      const retryInsight = await tryGemini(payload, 'COMPACT');
       await logUsage({
         condominiumId: payload.condominiumId,
         feature,
@@ -201,6 +255,7 @@ const generateInsight = async (payload) => {
         message: retryError.message,
       });
       const localInsight = buildLocalInsight(payload);
+      localInsight.data = normalizeInsightData(localInsight.data);
       cacheService.set(cacheKey, localInsight, 60 * 30);
       return localInsight;
     }

@@ -28,6 +28,13 @@ const extractUsage = (response) => {
   };
 };
 
+const parseWithStrategy = (candidate, strategy) => {
+  return {
+    data: JSON.parse(candidate),
+    strategy,
+  };
+};
+
 const extractBalancedJsonObject = (text) => {
   const value = String(text || '');
   const start = value.indexOf('{');
@@ -84,19 +91,97 @@ const normalizeJsonCandidates = (rawText) => {
   return Array.from(candidates).filter(Boolean);
 };
 
+const tryLocalJsonRepair = (rawText) => {
+  const raw = String(rawText || '').trim();
+  const balanced = extractBalancedJsonObject(raw);
+  const candidate = balanced || raw;
+  if (!candidate) return null;
+
+  let repaired = candidate;
+  const openBraces = (repaired.match(/\{/g) || []).length;
+  const closeBraces = (repaired.match(/\}/g) || []).length;
+  if (openBraces > closeBraces) {
+    repaired += '}'.repeat(openBraces - closeBraces);
+  }
+  const quoteCount = (repaired.match(/"/g) || []).length;
+  if (quoteCount % 2 !== 0) repaired += '"';
+
+  return repaired;
+};
+
 const parseJsonFromModelText = (rawText) => {
   const candidates = normalizeJsonCandidates(rawText);
   let lastError = null;
 
-  for (const candidate of candidates) {
+  for (let i = 0; i < candidates.length; i += 1) {
+    const candidate = candidates[i];
+    const strategy = i === 0 ? 'RAW_PARSE' : i === 1 ? 'MARKDOWN_EXTRACT' : 'BALANCED_EXTRACT';
     try {
-      return JSON.parse(candidate);
+      return parseWithStrategy(candidate, strategy);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const repaired = tryLocalJsonRepair(rawText);
+  if (repaired) {
+    try {
+      return parseWithStrategy(repaired, 'LOCAL_REPAIR');
     } catch (error) {
       lastError = error;
     }
   }
 
   throw lastError || new Error('JSON inválido');
+};
+
+const callGeminiRaw = async ({
+  model,
+  prompt,
+  instruction,
+  temperature,
+  maxOutputTokens,
+  timeoutMs,
+}) => {
+  const client = getClient();
+  return withTimeout(
+    client.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        systemInstruction: instruction,
+        temperature,
+        maxOutputTokens,
+        responseMimeType: 'application/json',
+      },
+    }),
+    timeoutMs
+  );
+};
+
+const runGeminiRepairPass = async ({
+  model,
+  instruction,
+  schemaHint,
+  rawResponse,
+  timeoutMs,
+}) => {
+  const repairPrompt = [
+    'Conserte a resposta abaixo para JSON válido.',
+    'Retorne SOMENTE JSON válido, sem markdown.',
+    `Schema esperado: ${schemaHint || '{}'}`,
+    'Resposta original:',
+    String(rawResponse || ''),
+  ].join('\n\n');
+
+  return callGeminiRaw({
+    model,
+    prompt: repairPrompt,
+    instruction,
+    temperature: 0,
+    maxOutputTokens: 1600,
+    timeoutMs: Math.max(timeoutMs, 30000),
+  });
 };
 
 const generateJson = async ({
@@ -118,7 +203,6 @@ const generateJson = async ({
     ? `${systemInstruction}\nResponda estritamente em JSON válido com o formato: ${schemaHint}\nNão adicione explicações, títulos, markdown ou bloco \`\`\`json.`
     : `${systemInstruction}\nResponda estritamente em JSON válido.\nNão adicione explicações, títulos, markdown ou bloco \`\`\`json.`;
 
-  const client = getClient();
   const startedAt = Date.now();
   console.log('[GEMINI] Iniciando geração JSON', {
     model,
@@ -126,36 +210,64 @@ const generateJson = async ({
     temperature,
     promptSize: String(prompt || '').length,
   });
-  const response = await withTimeout(
-    client.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        systemInstruction: instruction,
-        temperature,
-        maxOutputTokens,
-        responseMimeType: 'application/json',
-      },
-    }),
-    timeoutMs
-  );
+  const response = await callGeminiRaw({
+    model,
+    prompt,
+    instruction,
+    temperature,
+    maxOutputTokens,
+    timeoutMs,
+  });
 
-  const text = response.text || '{}';
+  let text = response.text || '{}';
+  let finishReason = response?.candidates?.[0]?.finishReason || null;
   let parsed;
+  let parseStrategy = 'RAW_PARSE';
   try {
     parsed = parseJsonFromModelText(text);
   } catch (error) {
+    if (finishReason === 'MAX_TOKENS') {
+      try {
+        const repairedResponse = await runGeminiRepairPass({
+          model,
+          instruction,
+          schemaHint,
+          rawResponse: text,
+          timeoutMs,
+        });
+        text = repairedResponse?.text || text;
+        finishReason = repairedResponse?.candidates?.[0]?.finishReason || finishReason;
+        parsed = parseJsonFromModelText(text);
+        parseStrategy = 'GEMINI_REPAIR_PASS';
+      } catch (repairError) {
+        console.error('[GEMINI] Repair pass falhou', {
+          elapsedMs: Date.now() - startedAt,
+          message: repairError.message,
+        });
+      }
+    }
+  }
+
+  if (!parsed) {
     console.error('[GEMINI] Resposta não JSON', {
       elapsedMs: Date.now() - startedAt,
+      finishReason,
       preview: String(text).slice(0, 160),
     });
     throw new Error('Gemini retornou JSON inválido');
+  }
+  if (typeof parsed === 'object' && parsed && parsed.strategy && parsed.data) {
+    parseStrategy = parseStrategy === 'GEMINI_REPAIR_PASS' ? parseStrategy : parsed.strategy;
+    parsed = parsed.data;
   }
 
   const usage = extractUsage(response);
   const latencyMs = Date.now() - startedAt;
   console.log('[GEMINI] Geração concluída', {
     latencyMs,
+    finishReason,
+    parseStrategy,
+    responseSize: String(text || '').length,
     requestTokens: usage.requestTokens,
     responseTokens: usage.responseTokens,
   });
