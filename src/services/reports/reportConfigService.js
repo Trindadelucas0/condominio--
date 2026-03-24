@@ -1,5 +1,27 @@
 const { query } = require('../../config/database');
 
+const normalizeDate = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    throw new Error('Data inválida. Use o formato AAAA-MM-DD.');
+  }
+  return raw;
+};
+
+const normalizeCustomRange = (data) => {
+  const customStartDate = normalizeDate(data.custom_start_date);
+  const customEndDate = normalizeDate(data.custom_end_date);
+  if (!customStartDate && !customEndDate) return { customStartDate: null, customEndDate: null };
+  if (!customStartDate || !customEndDate) {
+    throw new Error('Para usar período personalizado, informe data inicial e data final.');
+  }
+  if (customStartDate > customEndDate) {
+    throw new Error('Período personalizado inválido: data inicial maior que data final.');
+  }
+  return { customStartDate, customEndDate };
+};
+
 const getPreferences = async (condominiumId) => {
   const result = await query(
     `SELECT *
@@ -12,13 +34,15 @@ const getPreferences = async (condominiumId) => {
 };
 
 const upsertPreferences = async (condominiumId, data) => {
+  const customRange = normalizeCustomRange(data);
   const result = await query(
     `INSERT INTO report_preferences (
       condominium_id, enabled, daily_enabled, weekly_enabled, daily_cron, weekly_cron, timezone,
       include_financial, include_maintenance, include_charts, include_ai_insights,
-      from_email, from_name, ai_daily_request_limit, ai_monthly_token_limit
+      from_email, from_name, ai_daily_request_limit, ai_monthly_token_limit,
+      custom_start_date, custom_end_date
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
     ON CONFLICT (condominium_id)
     DO UPDATE SET
       enabled = EXCLUDED.enabled,
@@ -35,6 +59,8 @@ const upsertPreferences = async (condominiumId, data) => {
       from_name = EXCLUDED.from_name,
       ai_daily_request_limit = EXCLUDED.ai_daily_request_limit,
       ai_monthly_token_limit = EXCLUDED.ai_monthly_token_limit,
+      custom_start_date = EXCLUDED.custom_start_date,
+      custom_end_date = EXCLUDED.custom_end_date,
       updated_at = CURRENT_TIMESTAMP
     RETURNING *`,
     [
@@ -53,6 +79,8 @@ const upsertPreferences = async (condominiumId, data) => {
       data.from_name ? String(data.from_name).trim() : null,
       parseInt(data.ai_daily_request_limit || process.env.GEMINI_DAILY_REQUEST_LIMIT || '200', 10),
       parseInt(data.ai_monthly_token_limit || process.env.GEMINI_MONTHLY_TOKEN_LIMIT || '2000000', 10),
+      customRange.customStartDate,
+      customRange.customEndDate,
     ]
   );
   return result.rows[0];

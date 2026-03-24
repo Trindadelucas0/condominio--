@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS report_preferences (
   include_maintenance BOOLEAN NOT NULL DEFAULT TRUE,
   include_charts BOOLEAN NOT NULL DEFAULT TRUE,
   include_ai_insights BOOLEAN NOT NULL DEFAULT TRUE,
+  custom_start_date DATE NULL,
+  custom_end_date DATE NULL,
   from_email VARCHAR(255) NULL,
   from_name VARCHAR(120) NULL,
   ai_daily_request_limit INTEGER NOT NULL DEFAULT 200,
@@ -23,6 +25,8 @@ CREATE TABLE IF NOT EXISTS report_preferences (
 
 ALTER TABLE report_preferences ADD COLUMN IF NOT EXISTS from_email VARCHAR(255) NULL;
 ALTER TABLE report_preferences ADD COLUMN IF NOT EXISTS from_name VARCHAR(120) NULL;
+ALTER TABLE report_preferences ADD COLUMN IF NOT EXISTS custom_start_date DATE NULL;
+ALTER TABLE report_preferences ADD COLUMN IF NOT EXISTS custom_end_date DATE NULL;
 
 CREATE TABLE IF NOT EXISTS report_recipients (
   id SERIAL PRIMARY KEY,

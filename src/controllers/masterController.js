@@ -33,6 +33,28 @@ const parseRangeInt = (value, min, max, fieldLabel) => {
   return parsed;
 };
 
+const normalizeIsoDate = (value, fieldLabel) => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    throw new Error(`${fieldLabel} inválida. Use o formato AAAA-MM-DD.`);
+  }
+  return raw;
+};
+
+const parseCustomRange = (startValue, endValue) => {
+  const start = normalizeIsoDate(startValue, 'Data inicial');
+  const end = normalizeIsoDate(endValue, 'Data final');
+  if (!start && !end) return { start: null, end: null };
+  if (!start || !end) {
+    throw new Error('Para período personalizado, informe data inicial e final.');
+  }
+  if (start > end) {
+    throw new Error('Período personalizado inválido: data inicial maior que data final.');
+  }
+  return { start, end };
+};
+
 // Função para exibir dashboard master
 // GET /master/dashboard
 const showDashboard = async (req, res) => {
@@ -297,12 +319,17 @@ const updateCondominioReportPreferences = async (req, res) => {
       ai_daily_request_limit: req.body.ai_daily_request_limit,
       ai_monthly_token_limit: req.body.ai_monthly_token_limit,
     };
+    const customRange = parseCustomRange(req.body.custom_start_date, req.body.custom_end_date);
+    data.custom_start_date = customRange.start;
+    data.custom_end_date = customRange.end;
     await reportConfigService.upsertPreferences(condominiumId, data);
     console.log('[MASTER_REPORT_CONFIG] Preferências atualizadas', {
       condominiumId,
       dailyCron: data.daily_cron,
       weeklyCron: data.weekly_cron,
       timezone: data.timezone,
+      customStartDate: data.custom_start_date,
+      customEndDate: data.custom_end_date,
     });
     res.redirect(`/master/condominios/${condominiumId}/relatorios?success=preferences_updated`);
   } catch (error) {
@@ -354,12 +381,19 @@ const dispatchCondominioReportNow = async (req, res) => {
   try {
     const condominiumId = parseInt(req.params.id, 10);
     const reportType = req.body.reportType === 'WEEKLY' ? 'WEEKLY' : 'DAILY';
+    const customRange = parseCustomRange(req.body.custom_start_date, req.body.custom_end_date);
     console.log('[MASTER_REPORT_CONFIG] Disparo manual solicitado', {
       condominiumId,
       reportType,
       userId: req.user?.id,
+      customStartDate: customRange.start,
+      customEndDate: customRange.end,
     });
-    await dispatchCondominiumReport(condominiumId, reportType);
+    await dispatchCondominiumReport(condominiumId, reportType, {
+      startDate: customRange.start,
+      endDate: customRange.end,
+      source: 'MANUAL',
+    });
     console.log('[MASTER_REPORT_CONFIG] Disparo manual concluído', { condominiumId, reportType });
     res.redirect(`/master/condominios/${condominiumId}/relatorios?success=report_sent`);
   } catch (error) {

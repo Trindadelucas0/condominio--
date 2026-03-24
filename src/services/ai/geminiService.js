@@ -28,15 +28,95 @@ const extractUsage = (response) => {
   };
 };
 
-const generateJson = async ({ systemInstruction, prompt, schemaHint = null }) => {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-  const maxOutputTokens = parseInt(process.env.GEMINI_MAX_OUTPUT_TOKENS || '500', 10);
-  const temperature = parseFloat(process.env.GEMINI_TEMPERATURE || '0.2');
-  const timeoutMs = parseInt(process.env.GEMINI_TIMEOUT_MS || '15000', 10);
+const extractBalancedJsonObject = (text) => {
+  const value = String(text || '');
+  const start = value.indexOf('{');
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < value.length; i += 1) {
+    const ch = value[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '{') depth += 1;
+    if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) return value.slice(start, i + 1);
+    }
+  }
+  return null;
+};
+
+const normalizeJsonCandidates = (rawText) => {
+  const text = String(rawText || '').trim();
+  if (!text) return [];
+
+  const candidates = new Set();
+  candidates.add(text);
+
+  // Remove blocos markdown ```json ... ```
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch?.[1]) {
+    candidates.add(String(fenceMatch[1]).trim());
+  }
+
+  // Remove prefixos comuns como "Here is the JSON..."
+  const balanced = extractBalancedJsonObject(text);
+  if (balanced) {
+    candidates.add(String(balanced).trim());
+  }
+
+  return Array.from(candidates).filter(Boolean);
+};
+
+const parseJsonFromModelText = (rawText) => {
+  const candidates = normalizeJsonCandidates(rawText);
+  let lastError = null;
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('JSON inválido');
+};
+
+const generateJson = async ({
+  systemInstruction,
+  prompt,
+  schemaHint = null,
+  model: modelOverride = null,
+  maxOutputTokens: maxOutputTokensOverride = null,
+  temperature: temperatureOverride = null,
+  timeoutMs: timeoutMsOverride = null,
+}) => {
+  const model = modelOverride || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const maxOutputTokens =
+    maxOutputTokensOverride ?? parseInt(process.env.GEMINI_MAX_OUTPUT_TOKENS || '500', 10);
+  const temperature = temperatureOverride ?? parseFloat(process.env.GEMINI_TEMPERATURE || '0.2');
+  const timeoutMs = timeoutMsOverride ?? parseInt(process.env.GEMINI_TIMEOUT_MS || '15000', 10);
 
   const instruction = schemaHint
-    ? `${systemInstruction}\nResponda estritamente em JSON válido com o formato: ${schemaHint}`
-    : `${systemInstruction}\nResponda estritamente em JSON válido.`;
+    ? `${systemInstruction}\nResponda estritamente em JSON válido com o formato: ${schemaHint}\nNão adicione explicações, títulos, markdown ou bloco \`\`\`json.`
+    : `${systemInstruction}\nResponda estritamente em JSON válido.\nNão adicione explicações, títulos, markdown ou bloco \`\`\`json.`;
 
   const client = getClient();
   const startedAt = Date.now();
@@ -63,7 +143,7 @@ const generateJson = async ({ systemInstruction, prompt, schemaHint = null }) =>
   const text = response.text || '{}';
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = parseJsonFromModelText(text);
   } catch (error) {
     console.error('[GEMINI] Resposta não JSON', {
       elapsedMs: Date.now() - startedAt,

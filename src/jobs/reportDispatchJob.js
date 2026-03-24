@@ -42,8 +42,18 @@ const getZonedParts = (date, timezone) => {
     minute: parseInt(map.minute, 10),
     hour: parseInt(map.hour, 10),
     weekday: weekdayMap[map.weekday] ?? 0,
+    dateRef: `${map.year}-${map.month}-${map.day}`,
     minuteRef: `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}`,
   };
+};
+
+const isWithinCustomRange = (schedule, timezone, now = new Date()) => {
+  const start = String(schedule.custom_start_date || '').trim();
+  const end = String(schedule.custom_end_date || '').trim();
+  if (!start && !end) return true;
+  if (!start || !end) return false;
+  const zoned = getZonedParts(now, timezone);
+  return zoned.dateRef >= start && zoned.dateRef <= end;
 };
 
 const isCronMatch = (parsedCron, zoned) => {
@@ -78,6 +88,7 @@ const runDaily = async () => {
   for (const schedule of schedules) {
     if (schedule.enabled === false || schedule.daily_enabled === false) continue;
     const timezone = schedule.timezone || process.env.REPORT_DEFAULT_TZ || 'America/Sao_Paulo';
+    if (!isWithinCustomRange(schedule, timezone)) continue;
     const parsedCron = parseCron(
       schedule.daily_cron || process.env.REPORT_SCHEDULE_DAILY || '0 7 * * *',
       { minute: 0, hour: 7, weekday: '*' }
@@ -90,7 +101,7 @@ const runDaily = async () => {
     });
     if (!decision.run) continue;
     try {
-      await dispatchCondominiumReport(schedule.condominium_id, 'DAILY');
+      await dispatchCondominiumReport(schedule.condominium_id, 'DAILY', { source: 'AUTO' });
       sent += 1;
     } catch (error) {
       console.error('[REPORT_JOB] Falha no diário automático', {
@@ -110,6 +121,7 @@ const runWeekly = async () => {
   for (const schedule of schedules) {
     if (schedule.enabled === false || schedule.weekly_enabled === false) continue;
     const timezone = schedule.timezone || process.env.REPORT_DEFAULT_TZ || 'America/Sao_Paulo';
+    if (!isWithinCustomRange(schedule, timezone)) continue;
     const parsedCron = parseCron(
       schedule.weekly_cron || process.env.REPORT_SCHEDULE_WEEKLY || '30 7 * * 1',
       { minute: 30, hour: 7, weekday: 1 }
@@ -122,7 +134,7 @@ const runWeekly = async () => {
     });
     if (!decision.run) continue;
     try {
-      await dispatchCondominiumReport(schedule.condominium_id, 'WEEKLY');
+      await dispatchCondominiumReport(schedule.condominium_id, 'WEEKLY', { source: 'AUTO' });
       sent += 1;
     } catch (error) {
       console.error('[REPORT_JOB] Falha no semanal automático', {

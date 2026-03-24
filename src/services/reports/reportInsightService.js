@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const cacheService = require('../cacheService');
 const { generateJson } = require('../ai/geminiService');
 const { checkQuota, logUsage } = require('../ai/aiQuotaService');
+const { buildLocalInsight } = require('./reportLocalInsightService');
 
 const shouldUseAi = (payload) => {
   if (process.env.REPORT_AI_ENABLED === 'false') return false;
@@ -14,14 +15,54 @@ const shouldUseAi = (payload) => {
   return change >= threshold;
 };
 
+const compactWeeklyMetrics = (weekly) => {
+  const days = Array.isArray(weekly?.days) ? weekly.days : [];
+  const firstDays = days.slice(0, 7);
+  const lastDays = days.slice(-7);
+
+  const dayWithMaxExit = days.reduce(
+    (acc, day) => (Number(day?.exits || 0) > Number(acc?.exits || 0) ? day : acc),
+    days[0] || null
+  );
+  const dayWithMinBalance = days.reduce(
+    (acc, day) => (Number(day?.balance || 0) < Number(acc?.balance || 0) ? day : acc),
+    days[0] || null
+  );
+
+  return {
+    period: weekly?.period,
+    totals: weekly?.totals,
+    days_count: days.length,
+    first_7_days: firstDays,
+    last_7_days: lastDays,
+    worst_exit_day: dayWithMaxExit,
+    worst_balance_day: dayWithMinBalance,
+  };
+};
+
+const compactDailyMetrics = (daily) => ({
+  date: daily?.date || null,
+  period: daily?.period || null,
+  entries: daily?.entries || 0,
+  exits: daily?.exits || 0,
+  balance: daily?.balance || 0,
+  maintenances: daily?.maintenances || {},
+  top_categories: (daily?.categories || []).slice(0, 6),
+});
+
 const buildPrompt = (payload) => {
+  const metrics =
+    payload.reportType === 'WEEKLY'
+      ? compactWeeklyMetrics(payload.weekly)
+      : compactDailyMetrics(payload.daily);
+
   return JSON.stringify(
     {
       condominium_name: payload.condominiumName,
       report_type: payload.reportType,
       generated_at: payload.generatedAt,
       timezone: process.env.REPORT_DEFAULT_TZ || 'America/Sao_Paulo',
-      metrics: payload.reportType === 'WEEKLY' ? payload.weekly : payload.daily,
+      metrics,
       rules: [
         'Apontar 3 principais insights baseados nos números',
         'Listar 3 riscos objetivos e mensuráveis',
@@ -44,6 +85,26 @@ const SCHEMA_HINT = JSON.stringify({
 
 const systemInstruction =
   'Você é analista financeiro condominial. Use somente os dados fornecidos. Não invente números. Responda em português do Brasil, objetiva e profissional.';
+
+const tryGemini = async (payload) => {
+  const result = await generateJson({
+    systemInstruction,
+    prompt: buildPrompt(payload),
+    schemaHint: SCHEMA_HINT,
+    // Aumenta chance de JSON válido para relatórios maiores.
+    maxOutputTokens: Math.max(parseInt(process.env.GEMINI_MAX_OUTPUT_TOKENS || '220', 10), 700),
+    timeoutMs: Math.max(parseInt(process.env.GEMINI_TIMEOUT_MS || '12000', 10), 25000),
+    temperature: 0,
+  });
+  return {
+    enabled: true,
+    cached: false,
+    source: 'IA',
+    data: result.data,
+    usage: result.usage,
+    latencyMs: result.latencyMs,
+  };
+};
 
 const generateInsight = async (payload) => {
   console.log('[REPORT_INSIGHT] Avaliando geração de insight', {
@@ -76,52 +137,73 @@ const generateInsight = async (payload) => {
       reportType: payload.reportType,
       reason: quota.reason,
     });
-    return { enabled: false, reason: quota.reason };
+    const localInsight = buildLocalInsight(payload);
+    localInsight.reason = quota.reason;
+    cacheService.set(cacheKey, localInsight, 60 * 30);
+    return localInsight;
   }
 
   const feature = `${payload.reportType}_REPORT_INSIGHT`;
 
   try {
-    const result = await generateJson({
-      systemInstruction,
-      prompt: buildPrompt(payload),
-      schemaHint: SCHEMA_HINT,
-    });
+    let insight = await tryGemini(payload);
 
     await logUsage({
       condominiumId: payload.condominiumId,
       feature,
-      requestTokens: result.usage.requestTokens,
-      responseTokens: result.usage.responseTokens,
-      latencyMs: result.latencyMs,
+      requestTokens: insight.usage.requestTokens,
+      responseTokens: insight.usage.responseTokens,
+      latencyMs: insight.latencyMs,
       status: 'SUCCESS',
     });
-
-    const insight = {
-      enabled: true,
-      cached: false,
-      data: result.data,
-    };
     cacheService.set(cacheKey, insight, 60 * 60 * 8);
     console.log('[REPORT_INSIGHT] Insight gerado com sucesso', {
       condominiumId: payload.condominiumId,
       reportType: payload.reportType,
       confidence: insight.data?.confidence ?? null,
+      source: insight.source,
     });
     return insight;
   } catch (error) {
-    await logUsage({
-      condominiumId: payload.condominiumId,
-      feature,
-      status: 'ERROR',
-      errorMessage: error.message,
-    });
-    console.error('[REPORT_INSIGHT] Erro ao gerar insight', {
+    console.warn('[REPORT_INSIGHT] AI_RETRY: primeira tentativa falhou, tentando novamente', {
       condominiumId: payload.condominiumId,
       reportType: payload.reportType,
       message: error.message,
     });
-    return { enabled: false, reason: 'AI_ERROR', error: error.message };
+    try {
+      const retryInsight = await tryGemini(payload);
+      await logUsage({
+        condominiumId: payload.condominiumId,
+        feature,
+        requestTokens: retryInsight.usage.requestTokens,
+        responseTokens: retryInsight.usage.responseTokens,
+        latencyMs: retryInsight.latencyMs,
+        status: 'SUCCESS',
+      });
+      cacheService.set(cacheKey, retryInsight, 60 * 60 * 8);
+      console.log('[REPORT_INSIGHT] Insight gerado com sucesso (retry)', {
+        condominiumId: payload.condominiumId,
+        reportType: payload.reportType,
+        confidence: retryInsight.data?.confidence ?? null,
+        source: retryInsight.source,
+      });
+      return retryInsight;
+    } catch (retryError) {
+      await logUsage({
+        condominiumId: payload.condominiumId,
+        feature,
+        status: 'ERROR',
+        errorMessage: retryError.message,
+      });
+      console.error('[REPORT_INSIGHT] AI_FALLBACK_LOCAL: erro no Gemini, gerando análise local', {
+        condominiumId: payload.condominiumId,
+        reportType: payload.reportType,
+        message: retryError.message,
+      });
+      const localInsight = buildLocalInsight(payload);
+      cacheService.set(cacheKey, localInsight, 60 * 30);
+      return localInsight;
+    }
   }
 };
 

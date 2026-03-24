@@ -1,14 +1,28 @@
 const { query } = require('../../config/database');
 
 const formatDate = (value) => new Date(value).toISOString().slice(0, 10);
+const normalizeDate = (value) => String(value || '').trim().slice(0, 10);
+const resolvePeriod = ({ targetDate = null, startDate = null, endDate = null } = {}) => {
+  if (startDate || endDate) {
+    if (!startDate || !endDate) throw new Error('Período inválido: informe data inicial e final.');
+    const normalizedStart = normalizeDate(startDate);
+    const normalizedEnd = normalizeDate(endDate);
+    if (normalizedStart > normalizedEnd) {
+      throw new Error('Período inválido: data inicial maior que data final.');
+    }
+    return { startDate: normalizedStart, endDate: normalizedEnd };
+  }
+  const day = formatDate(targetDate || new Date());
+  return { startDate: day, endDate: day };
+};
 
 const getCondominiumName = async (condominiumId) => {
   const result = await query('SELECT name FROM condominiums WHERE id = $1', [condominiumId]);
   return result.rows[0]?.name || 'Condomínio';
 };
 
-const getDailyMetrics = async (condominiumId, targetDate = new Date()) => {
-  const day = formatDate(targetDate);
+const getDailyMetrics = async (condominiumId, options = {}) => {
+  const period = resolvePeriod(options);
 
   const entriesResult = await query(
     `SELECT COALESCE(SUM(amount), 0) AS total
@@ -16,8 +30,8 @@ const getDailyMetrics = async (condominiumId, targetDate = new Date()) => {
      WHERE condominium_id = $1
        AND received = TRUE
        AND deleted_at IS NULL
-       AND DATE(entry_date) = $2::date`,
-    [condominiumId, day]
+       AND DATE(entry_date) BETWEEN $2::date AND $3::date`,
+    [condominiumId, period.startDate, period.endDate]
   );
 
   const exitsResult = await query(
@@ -25,8 +39,8 @@ const getDailyMetrics = async (condominiumId, targetDate = new Date()) => {
      FROM financial_exits
      WHERE condominium_id = $1
        AND payment_status = 'PAID'
-       AND DATE(exit_date) = $2::date`,
-    [condominiumId, day]
+       AND DATE(exit_date) BETWEEN $2::date AND $3::date`,
+    [condominiumId, period.startDate, period.endDate]
   );
 
   const maintenanceResult = await query(
@@ -36,8 +50,8 @@ const getDailyMetrics = async (condominiumId, targetDate = new Date()) => {
       COUNT(*) FILTER (WHERE status = 'concluida') AS concluidas
      FROM maintenances
      WHERE condominium_id = $1
-       AND DATE(created_at) <= $2::date`,
-    [condominiumId, day]
+       AND DATE(created_at) BETWEEN $2::date AND $3::date`,
+    [condominiumId, period.startDate, period.endDate]
   );
 
   const categoriesResult = await query(
@@ -45,11 +59,11 @@ const getDailyMetrics = async (condominiumId, targetDate = new Date()) => {
      FROM financial_exits
      WHERE condominium_id = $1
        AND payment_status = 'PAID'
-       AND DATE(exit_date) = $2::date
+       AND DATE(exit_date) BETWEEN $2::date AND $3::date
      GROUP BY category
      ORDER BY total DESC
      LIMIT 8`,
-    [condominiumId, day]
+    [condominiumId, period.startDate, period.endDate]
   );
 
   const entries = parseFloat(entriesResult.rows[0]?.total || 0);
@@ -57,7 +71,8 @@ const getDailyMetrics = async (condominiumId, targetDate = new Date()) => {
   const maintenance = maintenanceResult.rows[0] || { pendentes: 0, em_andamento: 0, concluidas: 0 };
 
   return {
-    date: day,
+    date: period.startDate === period.endDate ? period.startDate : null,
+    period,
     entries,
     exits,
     balance: entries - exits,
@@ -73,12 +88,19 @@ const getDailyMetrics = async (condominiumId, targetDate = new Date()) => {
   };
 };
 
-const getWeeklyMetrics = async (condominiumId, referenceDate = new Date()) => {
-  const ref = new Date(referenceDate);
-  const weekStart = new Date(ref);
-  weekStart.setDate(ref.getDate() - 6);
-  const startDate = formatDate(weekStart);
-  const endDate = formatDate(ref);
+const getWeeklyMetrics = async (condominiumId, options = {}) => {
+  let period = null;
+  if (options.startDate || options.endDate) {
+    period = resolvePeriod(options);
+  } else {
+    const ref = new Date(options.referenceDate || new Date());
+    const weekStart = new Date(ref);
+    weekStart.setDate(ref.getDate() - 6);
+    period = {
+      startDate: formatDate(weekStart),
+      endDate: formatDate(ref),
+    };
+  }
 
   const rowsResult = await query(
     `SELECT d::date AS date,
@@ -100,7 +122,7 @@ const getWeeklyMetrics = async (condominiumId, referenceDate = new Date()) => {
        GROUP BY DATE(exit_date)
      ) x ON x.day = d::date
      ORDER BY d::date ASC`,
-    [condominiumId, startDate, endDate]
+    [condominiumId, period.startDate, period.endDate]
   );
 
   const days = rowsResult.rows.map((row) => {
@@ -125,31 +147,34 @@ const getWeeklyMetrics = async (condominiumId, referenceDate = new Date()) => {
   );
 
   return {
-    period: { startDate, endDate },
+    period,
     days,
     totals,
   };
 };
 
-const buildReportPayload = async (condominiumId, reportType = 'DAILY') => {
+const buildReportPayload = async (condominiumId, reportType = 'DAILY', options = {}) => {
   const condominiumName = await getCondominiumName(condominiumId);
+  const period = resolvePeriod(options);
   if (reportType === 'WEEKLY') {
-    const weekly = await getWeeklyMetrics(condominiumId);
+    const weekly = await getWeeklyMetrics(condominiumId, options);
     return {
       reportType,
       condominiumId,
       condominiumName,
       generatedAt: new Date().toISOString(),
+      period: weekly.period,
       weekly,
     };
   }
 
-  const daily = await getDailyMetrics(condominiumId);
+  const daily = await getDailyMetrics(condominiumId, options);
   return {
     reportType,
     condominiumId,
     condominiumName,
     generatedAt: new Date().toISOString(),
+    period,
     daily,
   };
 };

@@ -46,6 +46,11 @@
           <option value="DAILY">Diário</option>
           <option value="WEEKLY">Semanal</option>
         </select>
+        <div class="grid grid-cols-1 gap-2">
+          <input type="date" name="custom_start_date" value="<%= preferences?.custom_start_date || '' %>" class="w-full border rounded px-3 py-2" />
+          <input type="date" name="custom_end_date" value="<%= preferences?.custom_end_date || '' %>" class="w-full border rounded px-3 py-2" />
+        </div>
+        <p class="text-xs text-gray-500">Opcional: período personalizado para este disparo manual.</p>
         <button type="submit" class="w-full bg-blue-600 text-white rounded px-3 py-2 hover:bg-blue-700">
           Enviar agora
         </button>
@@ -113,6 +118,14 @@
         </select>
       </div>
       <div>
+        <label class="block text-sm text-gray-700 mb-1">Período personalizado - Data inicial</label>
+        <input type="date" name="custom_start_date" value="<%= preferences?.custom_start_date || '' %>" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-700 mb-1">Período personalizado - Data final</label>
+        <input type="date" name="custom_end_date" value="<%= preferences?.custom_end_date || '' %>" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
         <label class="block text-sm text-gray-700 mb-1">Limite IA diário (requisições)</label>
         <input type="number" name="ai_daily_request_limit" value="<%= preferences?.ai_daily_request_limit || 200 %>" class="w-full border rounded px-3 py-2" />
       </div>
@@ -134,6 +147,15 @@
         </p>
         <p class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-3 mt-2">
           Envio automático: o servidor verifica o horário configurado para este condomínio e dispara sozinho no minuto correspondente.
+        </p>
+        <p class="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-3 mt-2">
+          Período personalizado ativo:
+          <% if (preferences?.custom_start_date && preferences?.custom_end_date) { %>
+            <strong><%= preferences.custom_start_date %></strong> até <strong><%= preferences.custom_end_date %></strong>.
+            O automático só dispara dentro desse intervalo.
+          <% } else { %>
+            <strong>desativado</strong> (sem filtro de datas).
+          <% } %>
         </p>
       </div>
     </form>
