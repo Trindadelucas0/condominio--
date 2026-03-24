@@ -627,19 +627,25 @@ const initializeDatabase = async () => {
       console.error('Erro ao atualizar estados da FASE 22b:', error);
     }
 
-    // Correção: Garantir que tabelas da FASE 22 foram criadas (somente se necessário)
+    // Correção: Garantir que tabelas/colunas da FASE 22 existem (incl. idempotency_key em DBs legados)
     console.log('🔍 Verificando tabelas da FASE 22 (correção)...');
     try {
-      const maintenanceTableExists = await query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = 'public' AND table_name = 'maintenances'
-        )
+      const maintenanceFixNeeded = await query(`
+        SELECT (
+          NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'maintenances'
+          )
+          OR NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'maintenances' AND column_name = 'idempotency_key'
+          )
+        ) AS need_fix
       `);
 
-      if (!maintenanceTableExists.rows[0].exists) {
+      if (maintenanceFixNeeded.rows[0].need_fix) {
         await executeSQLFile(path.join(__dirname, 'fixPhase22Tables.sql'));
-        console.log('✅ Tabelas da FASE 22 verificadas/criadas');
+        console.log('✅ Tabelas/colunas da FASE 22 (maintenances) verificadas/corrigidas');
       } else {
         console.log('✅ Correção de tabelas da FASE 22 não necessária');
       }
