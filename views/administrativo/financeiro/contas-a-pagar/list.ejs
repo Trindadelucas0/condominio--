@@ -5,13 +5,13 @@
   <div class="container mx-auto px-4 py-8">
     <% var helpModalId = 'modalComoFunciona'; %>
     <% var helpTitle = 'Como funcionam os Boletos a pagar'; %>
-    <% var resumo = ['Aqui aparecem todos os boletos e compromissos a vencer: vindos de Contas (fornecedores) ou lançamentos avulsos.', 'Cadastre um boleto em "Nova Conta a Pagar" ou adicione boletos em cada Conta (fornecedor).', 'Quando pagar, use "Pagar": informe a data e anexe o comprovante; a despesa é gerada em Despesas.', 'Status: Vencida, Vence hoje, A vencer ou Pago.']; %>
-    <% var helpModalContent = '<p><strong>O que é Boletos a pagar?</strong> É a lista unificada de tudo que o condomínio precisa pagar: boletos de fornecedores cadastrados em Contas e itens avulsos.</p><p><strong>De onde vêm os itens?</strong> (1) Contas: em cada fornecedor você adiciona boletos; eles aparecem aqui. (2) Avulso: use "Nova Conta a Pagar" para um boleto avulso.</p><p><strong>Pagar:</strong> ao clicar em "Pagar", informe a data e anexe o comprovante. O sistema gera uma despesa em Despesas e marca o boleto como Pago.</p><p><strong>Status:</strong> Vencida, Vence hoje, A vencer ou Pago.</p>'; %>
+    <% var resumo = ['Aqui aparecem todos os boletos e compromissos a vencer: vindos de Contas (fornecedores) ou lançamentos avulsos.', 'Cadastre um boleto em "Nova Conta a Pagar" ou adicione boletos em cada Conta (fornecedor).', 'Quando pagar, use "Pagar": informe a data e anexe o comprovante se tiver; a despesa é gerada em Despesas.', 'Status: Vencida, Vence hoje, A vencer ou Pago.']; %>
+    <% var helpModalContent = '<p><strong>O que é Boletos a pagar?</strong> É a lista unificada de tudo que o condomínio precisa pagar: boletos de fornecedores cadastrados em Contas e itens avulsos.</p><p><strong>De onde vêm os itens?</strong> (1) Contas: em cada fornecedor você adiciona boletos; eles aparecem aqui. (2) Avulso: use "Nova Conta a Pagar" para um boleto avulso.</p><p><strong>Pagar:</strong> ao clicar em "Pagar", informe a data e anexe o comprovante se desejar. O sistema gera uma despesa em Despesas e marca o boleto como Pago.</p><p><strong>Status:</strong> Vencida, Vence hoje, A vencer ou Pago.</p>'; %>
     <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div class="flex flex-wrap items-center gap-3">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">Boletos a pagar</h1>
-          <p class="text-gray-600 mt-1">Lista de boletos e compromissos a vencer; pague e anexe o comprovante</p>
+          <p class="text-gray-600 mt-1">Lista de boletos e compromissos a vencer; pague e anexe o comprovante se desejar</p>
         </div>
         <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
@@ -25,7 +25,7 @@
     <% if (query.success === 'created') { %>
       <div class="mb-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-800 rounded-lg">
         <p class="font-semibold">Boleto cadastrado!</p>
-        <p class="text-sm mt-1">Ele aparece na lista abaixo. Quando for pagar, clique em <strong>Pagar</strong>, informe a data e anexe o comprovante; a despesa será registrada em Despesas.</p>
+        <p class="text-sm mt-1">Ele aparece na lista abaixo. Quando for pagar, clique em <strong>Pagar</strong>, informe a data e anexe o comprovante se tiver; a despesa será registrada em Despesas.</p>
       </div>
     <% } %>
     <% if (query.success === 'paid') { %>
