@@ -6,8 +6,8 @@
     <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Boletos a pagar', url: '/financeiro/contas-a-pagar' }, { label: 'Novo boleto', url: '' } ] }) %>
     <% var helpModalId = 'modalComoFunciona'; %>
     <% var helpTitle = 'Nova conta a pagar – como preencher'; %>
-    <% var resumo = ['Escolha a conta (fornecedor) se for boleto de uma conta cadastrada, ou deixe avulso.', 'Informe vencimento e valor. Ao salvar o item aparece em Boletos a pagar.', 'Quando pagar, use Pagar na lista e anexe o comprovante; a despesa é gerada em Despesas.']; %>
-    <% var helpModalContent = '<p>Conta opcional: vincule a um fornecedor em Contas ou deixe avulso. Preencha vencimento e valor. O item aparece em Boletos a pagar. Ao pagar, use a tela Boletos a pagar e clique em Pagar para registrar e anexar comprovante.</p>'; %>
+    <% var resumo = ['Escolha a conta (fornecedor) se for boleto de uma conta cadastrada, ou deixe avulso.', 'Informe vencimento e valor. Ao salvar o item aparece em Boletos a pagar.', 'Quando pagar, use Pagar na lista e anexe o comprovante se quiser; a despesa é gerada em Despesas.']; %>
+    <% var helpModalContent = '<p>Conta opcional: vincule a um fornecedor em Contas ou deixe avulso. Preencha vencimento e valor. O item aparece em Boletos a pagar. Ao pagar, use a tela Boletos a pagar e clique em Pagar para registrar e anexar comprovante se desejar.</p>'; %>
     <div class="mb-6 flex flex-wrap items-center gap-3">
       <div>
         <a href="/financeiro/contas-a-pagar" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors mb-2 w-fit">
