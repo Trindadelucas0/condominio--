@@ -82,8 +82,8 @@
   <div class="container mx-auto px-4 py-8">
     <% var helpModalId = 'modalComoFunciona'; %>
     <% var helpTitle = 'Como funcionam as Receitas'; %>
-    <% var resumo = ['Receitas são os valores que entram no caixa do condomínio: taxas, multas, aluguéis de áreas, etc.', 'Use "Nova receita" para lançar. Depois, quando o dinheiro entrar de fato, use "Receber" na linha e anexe o comprovante.', 'Receitas podem exigir aprovação do síndico; nesse caso aparecem em Aprovações até serem aprovadas.', 'Para ver o que foi excluído, use "Ver entradas excluídas".']; %>
-    <% var helpModalContent = '<p><strong>O que são Receitas?</strong> São todos os valores que entram no caixa do condomínio: taxas de condomínio pagas, multas, aluguéis de salão de festas, venda de itens, etc.</p><p><strong>Fluxo:</strong> (1) Cadastre uma receita com "Nova receita" (valor, descrição, categoria, centro de custo). (2) Se houver regra de aprovação, ela vai para Aprovações do síndico. (3) Quando o dinheiro entrar de fato, na lista use o botão "Receber" e anexe o comprovante. Só então o valor entra no saldo.</p><p><strong>Status:</strong> Pendente = ainda não recebido; Recebido = valor já entrou e consta no saldo. Receitas excluídas ficam na tela "Ver entradas excluídas".</p><p><strong>Dica:</strong> Use categorias e centros de custo para depois analisar relatórios por tipo de receita.</p>'; %>
+    <% var resumo = ['Receitas são os valores que entram no caixa do condomínio: taxas, multas, aluguéis de áreas, etc.', 'Use "Nova receita" para lançar. Depois, quando o dinheiro entrar de fato, use "Receber" na linha e anexe o comprovante se quiser.', 'Receitas podem exigir aprovação do síndico; nesse caso aparecem em Aprovações até serem aprovadas.', 'Para ver o que foi excluído, use "Ver entradas excluídas".']; %>
+    <% var helpModalContent = '<p><strong>O que são Receitas?</strong> São todos os valores que entram no caixa do condomínio: taxas de condomínio pagas, multas, aluguéis de salão de festas, venda de itens, etc.</p><p><strong>Fluxo:</strong> (1) Cadastre uma receita com "Nova receita" (valor, descrição, categoria, centro de custo). (2) Se houver regra de aprovação, ela vai para Aprovações do síndico. (3) Quando o dinheiro entrar de fato, na lista use o botão "Receber" e anexe o comprovante se desejar. O valor entra no saldo ao confirmar o recebimento.</p><p><strong>Status:</strong> Pendente = ainda não recebido; Recebido = valor já entrou e consta no saldo. Receitas excluídas ficam na tela "Ver entradas excluídas".</p><p><strong>Dica:</strong> Use categorias e centros de custo para depois analisar relatórios por tipo de receita.</p>'; %>
     <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Receitas', url: '' } ] }) %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
@@ -130,7 +130,7 @@
             </div>
             <div>
               <p class="font-semibold text-green-800">Receita salva!</p>
-              <p class="text-sm text-green-600">Quando o dinheiro entrar, use <strong>Receber</strong> nesta lista e anexe o comprovante. Se precisar de aprovação do síndico, ele aparecerá em Aprovações.</p>
+              <p class="text-sm text-green-600">Quando o dinheiro entrar, use <strong>Receber</strong> nesta lista e anexe o comprovante se quiser. Se precisar de aprovação do síndico, ele aparecerá em Aprovações.</p>
             </div>
           </div>
         </div>
