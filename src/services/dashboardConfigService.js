@@ -10,17 +10,18 @@ const dashboardConfigService = {
     { key: 'critical_alerts', title: 'Alertas Críticos', position: 2, visible: true },
     { key: 'warning_alerts', title: 'Alertas de Aviso', position: 3, visible: true },
     { key: 'balance', title: 'Saldo Financeiro', position: 4, visible: true },
-    { key: 'current_month_expenses', title: 'Gastos do Mês', position: 5, visible: true },
-    { key: 'delinquency_rate', title: 'Inadimplência', position: 6, visible: true },
-    { key: 'pending_expenses', title: 'Despesas Pendentes', position: 7, visible: true },
-    { key: 'contas_a_pagar', title: 'Contas a Pagar', position: 8, visible: true },
-    { key: 'overdue_tasks', title: 'Tarefas Atrasadas', position: 9, visible: true },
-    { key: 'open_occurrences', title: 'Ocorrências Abertas', position: 10, visible: true },
-    { key: 'pending_budgets', title: 'Orçamentos Pendentes', position: 11, visible: true },
-    { key: 'pending_entries', title: 'Entradas Pendentes', position: 12, visible: true },
-    { key: 'completed_maintenances', title: 'Manutenções Concluídas', position: 13, visible: false },
-    { key: 'pending_occurrences_approval', title: 'Ocorrências Aguardando Aprovação', position: 14, visible: false },
-    { key: 'monthly_comparison', title: 'Comparação Mensal', position: 15, visible: true },
+    { key: 'saldo_periodo', title: 'Saldo do Período', position: 5, visible: true },
+    { key: 'current_month_expenses', title: 'Gastos do Período', position: 6, visible: true },
+    { key: 'delinquency_rate', title: 'Inadimplência', position: 7, visible: true },
+    { key: 'pending_expenses', title: 'Despesas Pendentes', position: 8, visible: true },
+    { key: 'contas_a_pagar', title: 'Contas a Pagar', position: 9, visible: true },
+    { key: 'overdue_tasks', title: 'Tarefas Atrasadas', position: 10, visible: true },
+    { key: 'open_occurrences', title: 'Ocorrências Abertas', position: 11, visible: true },
+    { key: 'pending_budgets', title: 'Orçamentos Pendentes', position: 12, visible: true },
+    { key: 'pending_entries', title: 'Entradas Pendentes', position: 13, visible: true },
+    { key: 'completed_maintenances', title: 'Manutenções Concluídas', position: 14, visible: false },
+    { key: 'pending_occurrences_approval', title: 'Ocorrências Aguardando Aprovação', position: 15, visible: false },
+    { key: 'monthly_comparison', title: 'Comparação Mensal', position: 16, visible: true },
   ],
   
   // Obter configuração do dashboard do usuário
@@ -61,7 +62,7 @@ const dashboardConfigService = {
       }
       
       // Processar configuração
-      return result.rows.map(row => {
+      const merged = result.rows.map(row => {
         // Buscar título do widget padrão
         const defaultWidget = dashboardConfigService.defaultWidgets.find(w => w.key === row.widget_key);
         return {
@@ -73,6 +74,24 @@ const dashboardConfigService = {
           id: row.id
         };
       });
+      const keys = new Set(merged.map(w => w.key));
+      const maxPos = merged.reduce((m, w) => Math.max(m, w.position || 0), 0);
+      let add = 0;
+      for (const dw of dashboardConfigService.defaultWidgets) {
+        if (!keys.has(dw.key)) {
+          merged.push({
+            key: dw.key,
+            title: dw.title,
+            position: dw.position != null ? dw.position : maxPos + add + 1,
+            visible: dw.visible !== false,
+            config: {},
+            id: dw.key
+          });
+          add += 1;
+        }
+      }
+      merged.sort((a, b) => (a.position || 0) - (b.position || 0));
+      return merged;
     } catch (error) {
       console.error('Erro ao buscar configuração do dashboard:', error);
       // Retornar padrão em caso de erro

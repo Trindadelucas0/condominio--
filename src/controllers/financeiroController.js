@@ -29,7 +29,10 @@ const showDashboard = async (req, res) => {
     const payableService = require('../services/payableService');
     await payableService.checkAndNotifyOverduePayables(req.user.condominiumId);
 
-    const dashboardData = await financeiroService.getDashboardStats(req.user.condominiumId);
+    const dashboardData = await financeiroService.getDashboardStats(req.user.condominiumId, {
+      dataInicio: req.query.dataInicio,
+      dataFim: req.query.dataFim,
+    });
     const userRoles = req.user.roles || [];
     const criticalItemsData = await criticalItemsService.getCriticalItemsList(
       req.user.condominiumId,
@@ -50,7 +53,8 @@ const showDashboard = async (req, res) => {
       criticalItems: criticalItemsData.items || [],
       condominiumId: req.user.condominiumId,
       showGettingStarted: !!showGettingStarted,
-      reserveFund
+      reserveFund,
+      periodo: stats.periodo || null,
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard financeiro:', error);

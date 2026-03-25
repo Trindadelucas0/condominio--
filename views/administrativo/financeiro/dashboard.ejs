@@ -354,6 +354,25 @@
     </div>
     <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
+    <% var periodo = typeof periodo !== 'undefined' && periodo ? periodo : null; %>
+    <div class="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-end gap-4 animate-fade-in-up">
+      <form method="get" action="/financeiro/dashboard" class="flex flex-wrap items-end gap-3">
+        <div>
+          <label for="dash-data-inicio" class="block text-xs font-medium text-gray-600 mb-1">Data início</label>
+          <input id="dash-data-inicio" type="date" name="dataInicio" value="<%= periodo ? periodo.dataInicio : '' %>" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+        </div>
+        <div>
+          <label for="dash-data-fim" class="block text-xs font-medium text-gray-600 mb-1">Data fim</label>
+          <input id="dash-data-fim" type="date" name="dataFim" value="<%= periodo ? periodo.dataFim : '' %>" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+        </div>
+        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow">Aplicar período</button>
+        <a href="/financeiro/dashboard" class="text-sm font-medium text-gray-600 hover:text-green-700 py-2">Mês atual (padrão)</a>
+      </form>
+      <% if (periodo && periodo.label) { %>
+        <p class="text-sm text-gray-600 w-full sm:w-auto sm:ml-auto"><span class="font-semibold text-gray-800">Período dos KPIs:</span> <%= periodo.label %></p>
+      <% } %>
+    </div>
+
     <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
     <%- include('../../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>
 
@@ -416,12 +435,15 @@
         </div>
       </div>
 
-      <!-- Saldo do mês atual -->
+      <!-- Saldo do período -->
       <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= saldoMesAtual >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-100">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <p class="text-gray-500 text-sm font-medium mb-1">Saldo do mês atual</p>
+              <p class="text-gray-500 text-sm font-medium mb-1">Saldo do período</p>
+              <% if (typeof periodo !== 'undefined' && periodo && periodo.label) { %>
+                <p class="text-xs text-gray-500"><%= periodo.label %></p>
+              <% } %>
             </div>
             <div class="<%= saldoMesAtual >= 0 ? 'bg-green-100' : 'bg-red-100' %> rounded-lg p-3">
               <svg class="w-8 h-8 <%= saldoMesAtual >= 0 ? 'text-green-600' : 'text-red-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,17 +456,20 @@
               <span class="text-2xl font-semibold text-gray-500 mr-1">R$</span>
               <%= saldoMesAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
             </p>
-            <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês corrente</p>
+            <p class="text-xs text-gray-500 mt-1">Entradas recebidas − saídas (pagas ou aprovadas) no período</p>
           </div>
         </div>
       </div>
 
-      <!-- Saldo do mês passado -->
+      <!-- Saldo do período anterior -->
       <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= saldoMesPassado >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-200">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <p class="text-gray-500 text-sm font-medium mb-1">Saldo do mês passado</p>
+              <p class="text-gray-500 text-sm font-medium mb-1">Período anterior (comparação)</p>
+              <% if (typeof periodo !== 'undefined' && periodo && periodo.labelAnterior) { %>
+                <p class="text-xs text-gray-500"><%= periodo.labelAnterior %></p>
+              <% } %>
             </div>
             <div class="<%= saldoMesPassado >= 0 ? 'bg-green-100' : 'bg-red-100' %> rounded-lg p-3">
               <svg class="w-8 h-8 <%= saldoMesPassado >= 0 ? 'text-green-600' : 'text-red-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -457,7 +482,7 @@
               <span class="text-2xl font-semibold text-gray-500 mr-1">R$</span>
               <%= saldoMesPassado.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
             </p>
-            <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês anterior</p>
+            <p class="text-xs text-gray-500 mt-1">Mesma base do período selecionado, período imediatamente anterior</p>
           </div>
         </div>
       </div>

@@ -20,7 +20,10 @@ const showDashboard = async (req, res) => {
     }
 
     // Busca estatísticas do condomínio
-    const stats = await sindicoService.getDashboardStats(req.user.condominiumId);
+    const stats = await sindicoService.getDashboardStats(req.user.condominiumId, {
+      dataInicio: req.query.dataInicio,
+      dataFim: req.query.dataFim,
+    });
 
     // Buscar configuração do dashboard do usuário
     const dashboardConfig = await dashboardConfigService.getUserConfig(
@@ -81,7 +84,8 @@ const showDashboard = async (req, res) => {
       condominiumName: condominiumName,
       criticalItems: criticalItemsData.items || [],
       condominiumId: req.user.condominiumId,
-      showGettingStarted
+      showGettingStarted,
+      periodo: stats.periodo || null,
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard síndico:', error);

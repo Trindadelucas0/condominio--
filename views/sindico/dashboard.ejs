@@ -99,6 +99,25 @@
     </div>
     <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
+    <% var periodo = typeof periodo !== 'undefined' && periodo ? periodo : null; %>
+    <div class="mb-6 p-4 bg-white rounded-2xl border border-purple-100 shadow-sm flex flex-wrap items-end gap-4 animate-fade-in-up">
+      <form method="get" action="/sindico/dashboard" class="flex flex-wrap items-end gap-3">
+        <div>
+          <label for="sindico-dash-data-inicio" class="block text-xs font-medium text-gray-600 mb-1">Data início</label>
+          <input id="sindico-dash-data-inicio" type="date" name="dataInicio" value="<%= periodo ? periodo.dataInicio : '' %>" class="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+        </div>
+        <div>
+          <label for="sindico-dash-data-fim" class="block text-xs font-medium text-gray-600 mb-1">Data fim</label>
+          <input id="sindico-dash-data-fim" type="date" name="dataFim" value="<%= periodo ? periodo.dataFim : '' %>" class="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+        </div>
+        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow">Aplicar período</button>
+        <a href="/sindico/dashboard" class="text-sm font-medium text-gray-600 hover:text-purple-700 py-2">Mês atual (padrão)</a>
+      </form>
+      <% if (periodo && periodo.label) { %>
+        <p class="text-sm text-gray-600 w-full sm:w-auto sm:ml-auto"><span class="font-semibold text-gray-800">Período dos KPIs financeiros:</span> <%= periodo.label %></p>
+      <% } %>
+    </div>
+
     <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
     <%- include('../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>
 
@@ -154,18 +173,24 @@
           <% } %>
         </div>
         <div class="bg-gradient-to-r <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0) >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0) >= 0 ? 'border-green-500' : 'border-red-500' %>">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo do mês atual</p>
+          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo do período</p>
+          <% if (periodo && periodo.label) { %>
+            <p class="text-xs text-gray-500 mb-1"><%= periodo.label %></p>
+          <% } %>
           <p class="text-2xl font-bold <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0) >= 0 ? 'text-green-700' : 'text-red-700' %>">
             R$ <%= (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
           </p>
-          <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês corrente</p>
+          <p class="text-xs text-gray-500 mt-1">Entradas − saídas no período selecionado</p>
         </div>
         <div class="bg-gradient-to-r <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0) >= 0 ? 'from-green-50 to-emerald-50' : 'from-red-50 to-rose-50' %> rounded-xl p-4 border-l-4 <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0) >= 0 ? 'border-green-500' : 'border-red-500' %>">
-          <p class="text-xs font-semibold text-gray-600 mb-1">Saldo do mês passado</p>
+          <p class="text-xs font-semibold text-gray-600 mb-1">Período anterior (comparação)</p>
+          <% if (periodo && periodo.labelAnterior) { %>
+            <p class="text-xs text-gray-500 mb-1"><%= periodo.labelAnterior %></p>
+          <% } %>
           <p class="text-2xl font-bold <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0) >= 0 ? 'text-green-700' : 'text-red-700' %>">
             R$ <%= (typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
           </p>
-          <p class="text-xs text-gray-500 mt-1">Entradas − saídas do mês anterior</p>
+          <p class="text-xs text-gray-500 mt-1">Mesma duração, imediatamente antes do período</p>
         </div>
       </div>
     </div>
@@ -561,7 +586,8 @@
       { key: 'critical_alerts', title: 'Alertas Críticos', visible: true },
       { key: 'warning_alerts', title: 'Alertas de Aviso', visible: true },
       { key: 'balance', title: 'Saldo total do condomínio', visible: true },
-      { key: 'current_month_expenses', title: 'Gastos do Mês', visible: true },
+      { key: 'saldo_periodo', title: 'Saldo do período', visible: true },
+      { key: 'current_month_expenses', title: 'Gastos do período', visible: true },
       { key: 'delinquency_rate', title: 'Inadimplência', visible: true },
       { key: 'pending_expenses', title: 'Despesas Pendentes', visible: true },
       { key: 'overdue_tasks', title: 'Tarefas Atrasadas', visible: true },

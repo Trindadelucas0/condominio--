@@ -12,6 +12,7 @@ const path = require('path');
 const RESERVA_RECEITA = 'RECEITAS_FUNDO_RESERVA';
 const RESERVA_DESPESA = 'DESPESAS_FUNDO_RESERVA';
 const reserveFundService = require('./reserveFundService');
+const { resolveDashboardPeriod } = require('../utils/periodRange');
 
 const PROJECT_ROOT = path.join(__dirname, '../../');
 const PAYMENTS_UPLOAD_DIR = path.join(PROJECT_ROOT, 'uploads/payments');
@@ -1255,14 +1256,31 @@ const removeExitAttachment = async (exitId, condominiumId, userId, attachmentTyp
 };
 
 // Função para obter estatísticas do dashboard financeiro
-// Recebe: condominiumId
+// Recebe: condominiumId, options opcional { dataInicio, dataFim } (YYYY-MM-DD)
 // Retorna: estatísticas financeiras (KPIs, gráficos, etc)
-const getDashboardStats = async (condominiumId) => {
+const getDashboardStats = async (condominiumId, options = {}) => {
   try {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1; // 1-12
-    const currentDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+
+    const periodo = resolveDashboardPeriod(options.dataInicio, options.dataFim);
+    const {
+      dataInicio,
+      dataFim,
+      dataInicioAnterior,
+      dataFimAnterior,
+      label: periodoLabel,
+      labelAnterior: periodoLabelAnterior,
+    } = periodo;
+
+    const anchorEnd = new Date(
+      Number(dataFim.slice(0, 4)),
+      Number(dataFim.slice(5, 7)) - 1,
+      Number(dataFim.slice(8, 10))
+    );
+    const anchorYear = anchorEnd.getFullYear();
+    const anchorMonth = anchorEnd.getMonth() + 1;
 
     // Saldo financeiro (entradas recebidas - saídas pagas - saídas aprovadas mas não pagas)
     const entriesResult = await query(
@@ -1288,70 +1306,59 @@ const getDashboardStats = async (condominiumId) => {
 
     const balance = totalEntries - totalExitsPaid - totalExitsApproved;
 
-    // Entradas do mês atual
+    // Entradas do período selecionado
     const currentMonthEntriesResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
        WHERE condominium_id = $1 
-       AND EXTRACT(YEAR FROM entry_date) = $2 
-       AND EXTRACT(MONTH FROM entry_date) = $3
+       AND entry_date::date >= $2::date AND entry_date::date <= $3::date
        AND received = TRUE AND deleted_at IS NULL`,
-      [condominiumId, currentYear, currentMonth]
+      [condominiumId, dataInicio, dataFim]
     );
     const currentMonthEntries = parseFloat(currentMonthEntriesResult.rows[0].total);
 
-    // Saídas do mês atual
+    // Saídas do período selecionado
     const currentMonthExitsResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
        WHERE condominium_id = $1 
-       AND EXTRACT(YEAR FROM exit_date) = $2 
-       AND EXTRACT(MONTH FROM exit_date) = $3
+       AND exit_date::date >= $2::date AND exit_date::date <= $3::date
        AND payment_status IN ('PAID', 'APPROVED')`,
-      [condominiumId, currentYear, currentMonth]
+      [condominiumId, dataInicio, dataFim]
     );
     const currentMonthExits = parseFloat(currentMonthExitsResult.rows[0].total);
 
-    // Mês anterior
-    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-    const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-
-    // Entradas do mês anterior
+    // Período anterior (mesma duração)
     const prevMonthEntriesResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
        WHERE condominium_id = $1 
-       AND EXTRACT(YEAR FROM entry_date) = $2 
-       AND EXTRACT(MONTH FROM entry_date) = $3
+       AND entry_date::date >= $2::date AND entry_date::date <= $3::date
        AND received = TRUE AND deleted_at IS NULL`,
-      [condominiumId, prevYear, prevMonth]
+      [condominiumId, dataInicioAnterior, dataFimAnterior]
     );
     const prevMonthEntries = parseFloat(prevMonthEntriesResult.rows[0].total);
 
-    // Saídas do mês anterior
     const prevMonthExitsResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
        WHERE condominium_id = $1 
-       AND EXTRACT(YEAR FROM exit_date) = $2 
-       AND EXTRACT(MONTH FROM exit_date) = $3
+       AND exit_date::date >= $2::date AND exit_date::date <= $3::date
        AND payment_status IN ('PAID', 'APPROVED')`,
-      [condominiumId, prevYear, prevMonth]
+      [condominiumId, dataInicioAnterior, dataFimAnterior]
     );
     const prevMonthExits = parseFloat(prevMonthExitsResult.rows[0].total);
 
-    // Saldo do mês atual e do mês passado (entradas - saídas do mês)
     const saldoMesAtual = currentMonthEntries - currentMonthExits;
     const saldoMesPassado = prevMonthEntries - prevMonthExits;
 
-    // Variações percentuais
-    const entriesVariation = prevMonthEntries > 0 
-      ? ((currentMonthEntries - prevMonthEntries) / prevMonthEntries) * 100 
+    const entriesVariation = prevMonthEntries > 0
+      ? ((currentMonthEntries - prevMonthEntries) / prevMonthEntries) * 100
       : (currentMonthEntries > 0 ? 100 : 0);
-    const exitsVariation = prevMonthExits > 0 
-      ? ((currentMonthExits - prevMonthExits) / prevMonthExits) * 100 
+    const exitsVariation = prevMonthExits > 0
+      ? ((currentMonthExits - prevMonthExits) / prevMonthExits) * 100
       : (currentMonthExits > 0 ? 100 : 0);
 
-    // Dados dos últimos 6 meses
+    // Últimos 6 meses calendário terminando no mês de dataFim
     const last6Months = [];
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentYear, currentMonth - 1 - i, 1);
+      const date = new Date(anchorYear, anchorMonth - 1 - i, 1);
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
 
@@ -1387,11 +1394,10 @@ const getDashboardStats = async (condominiumId) => {
       });
     }
 
-    // Médias dos últimos 6 meses
     const avgEntries = last6Months.reduce((sum, m) => sum + m.entries, 0) / 6;
     const avgExits = last6Months.reduce((sum, m) => sum + m.exits, 0) / 6;
 
-    // Média de consumo por tipo de conta (últimos 6 meses)
+    // Média de consumo por tipo de conta (últimos 6 meses ancorados em dataFim)
     const avgConsumptionResult = await query(
       `SELECT 
         b.bill_type,
@@ -1399,9 +1405,9 @@ const getDashboardStats = async (condominiumId) => {
        FROM monthly_consumption mc
        INNER JOIN bills b ON mc.bill_id = b.id
        WHERE mc.condominium_id = $1
-       AND (mc.year * 100 + mc.month) >= ($2 * 100 + $3 - 600)
+       AND (mc.year * 12 + mc.month) >= ($2 * 12 + $3 - 5)
        GROUP BY b.bill_type`,
-      [condominiumId, currentYear, currentMonth]
+      [condominiumId, anchorYear, anchorMonth]
     );
     const avgConsumption = avgConsumptionResult.rows.map(row => ({
       billType: row.bill_type,
@@ -1484,6 +1490,10 @@ const getDashboardStats = async (condominiumId) => {
         balance: balance,
         saldoMesAtual,
         saldoMesPassado,
+        saldoPeriodo: saldoMesAtual,
+        saldoPeriodoAnterior: saldoMesPassado,
+        entradasPeriodo: currentMonthEntries,
+        saidasPeriodo: currentMonthExits,
         totalEntradas: totalEntries,
         totalSaidas: totalExitsPaid + totalExitsApproved,
         rejectedEntries,
@@ -1492,6 +1502,14 @@ const getDashboardStats = async (condominiumId) => {
         rejectedBudgets,
         payableOverdueCount,
         payableDueTodayCount,
+        periodo: {
+          dataInicio,
+          dataFim,
+          dataInicioAnterior,
+          dataFimAnterior,
+          label: periodoLabel,
+          labelAnterior: periodoLabelAnterior,
+        },
       },
       kpis: {
         currentMonth: {

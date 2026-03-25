@@ -39,7 +39,8 @@
     { key: 'critical_alerts', title: 'Alertas Críticos' },
     { key: 'warning_alerts', title: 'Alertas de Aviso' },
     { key: 'balance', title: 'Saldo Financeiro' },
-    { key: 'current_month_expenses', title: 'Gastos do Mês' },
+    { key: 'saldo_periodo', title: 'Saldo do Período' },
+    { key: 'current_month_expenses', title: 'Gastos do Período' },
     { key: 'delinquency_rate', title: 'Inadimplência' },
     { key: 'pending_expenses', title: 'Despesas Pendentes' },
     { key: 'contas_a_pagar', title: 'Contas a Pagar' },
@@ -160,18 +161,45 @@
       </div>
     <% } %>
 
+    <% if (widget.key === 'saldo_periodo') { %>
+      <!-- Saldo do período (entradas − saídas no intervalo do filtro) -->
+      <% var _sp = typeof stats.saldoPeriodo !== 'undefined' ? stats.saldoPeriodo : (typeof stats.saldoMesAtual !== 'undefined' ? stats.saldoMesAtual : 0); %>
+      <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 <%= _sp >= 0 ? 'border-green-500' : 'border-red-500' %> card-elevate animate-fade-in-up" style="animation-delay: <%= index * 0.1 %>s">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-600 mb-1">Saldo do período</p>
+            <% if (typeof periodo !== 'undefined' && periodo && periodo.label) { %>
+              <p class="text-xs text-gray-500 truncate" title="<%= periodo.label %>"><%= periodo.label %></p>
+            <% } %>
+            <p class="text-4xl font-bold bg-gradient-to-r <%= _sp >= 0 ? 'from-green-600 to-emerald-600' : 'from-red-600 to-red-700' %> bg-clip-text text-transparent mt-1">
+              R$ <%= _sp.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+            </p>
+            <p class="text-xs text-gray-500 mt-2">Entradas − saídas no período selecionado</p>
+          </div>
+          <div class="bg-gradient-to-br <%= _sp >= 0 ? 'from-green-500 to-emerald-600' : 'from-red-500 to-red-600' %> rounded-xl p-4 shadow-md flex-shrink-0">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    <% } %>
+
     <% if (widget.key === 'current_month_expenses') { %>
-      <!-- Gastos do Mês -->
+      <!-- Gastos do período -->
       <div class="stat-card rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 card-elevate animate-fade-in-up" style="animation-delay: <%= index * 0.1 %>s">
         <div class="flex items-center justify-between mb-4">
           <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Gastos do Mês</p>
+            <p class="text-sm font-semibold text-gray-600 mb-1">Gastos do período</p>
+            <% if (typeof periodo !== 'undefined' && periodo && periodo.label) { %>
+              <p class="text-xs text-gray-500 truncate"><%= periodo.label %></p>
+            <% } %>
             <p class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               R$ <%= typeof stats.currentMonthExpenses !== 'undefined' ? stats.currentMonthExpenses.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00' %>
             </p>
             <% if (typeof stats.expensesVariation !== 'undefined' && stats.expensesVariation !== 0) { %>
               <p class="text-xs font-semibold mt-2 <%= stats.expensesVariation > 0 ? 'text-red-600' : 'text-green-600' %>">
-                <%= stats.expensesVariation > 0 ? '+' : '' %><%= stats.expensesVariation.toFixed(1) %>% vs mês anterior
+                <%= stats.expensesVariation > 0 ? '+' : '' %><%= stats.expensesVariation.toFixed(1) %>% vs período anterior
               </p>
             <% } %>
           </div>

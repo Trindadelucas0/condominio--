@@ -5,14 +5,24 @@
 const { query } = require('../config/database'); // Conexão com banco
 const { logAction } = require('../utils/logger'); // Para logs de auditoria
 const cacheService = require('./cacheService'); // Service de cache
+const { resolveDashboardPeriod } = require('../utils/periodRange');
 
 // Função para obter estatísticas do condomínio do síndico
-// Recebe: condominiumId
+// Recebe: condominiumId, options opcional { dataInicio, dataFim }
 // Retorna: estatísticas (alertas críticos, aprovações pendentes, financeiro, etc)
-const getDashboardStats = async (condominiumId) => {
+const getDashboardStats = async (condominiumId, options = {}) => {
   try {
-    // Tentar obter do cache
-    const cacheKey = `dashboard:stats:${condominiumId}`;
+    const periodoResolved = resolveDashboardPeriod(options.dataInicio, options.dataFim);
+    const {
+      dataInicio,
+      dataFim,
+      dataInicioAnterior,
+      dataFimAnterior,
+      label: periodoLabel,
+      labelAnterior: periodoLabelAnterior,
+    } = periodoResolved;
+
+    const cacheKey = `dashboard:stats:${condominiumId}:${dataInicio}:${dataFim}`;
     const cachedStats = cacheService.get(cacheKey);
     if (cachedStats) {
       console.log('📦 Dashboard stats retornados do cache');
@@ -127,89 +137,71 @@ const getDashboardStats = async (condominiumId) => {
 
     const balance = totalEntries - totalExitsPaid - totalExitsApproved;
 
-    // Gastos do mês atual (consolidado)
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    
     const currentMonthExitsPaidResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
        WHERE condominium_id = $1 
-       AND EXTRACT(MONTH FROM exit_date) = $2 
-       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND exit_date::date >= $2::date AND exit_date::date <= $3::date 
        AND payment_status = 'PAID'`,
-      [condominiumId, currentMonth, currentYear]
+      [condominiumId, dataInicio, dataFim]
     );
     const currentMonthExitsPaid = parseFloat(currentMonthExitsPaidResult.rows[0].total);
 
     const currentMonthExitsApprovedResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
        WHERE condominium_id = $1 
-       AND EXTRACT(MONTH FROM exit_date) = $2 
-       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND exit_date::date >= $2::date AND exit_date::date <= $3::date 
        AND payment_status = 'APPROVED'`,
-      [condominiumId, currentMonth, currentYear]
+      [condominiumId, dataInicio, dataFim]
     );
     const currentMonthExitsApproved = parseFloat(currentMonthExitsApprovedResult.rows[0].total);
-    
+
     const currentMonthExpenses = currentMonthExitsPaid + currentMonthExitsApproved;
 
-    // Entradas recebidas do mês atual (para saldo do mês)
     const currentMonthEntriesResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
        WHERE condominium_id = $1 
-       AND EXTRACT(MONTH FROM entry_date) = $2 
-       AND EXTRACT(YEAR FROM entry_date) = $3 
+       AND entry_date::date >= $2::date AND entry_date::date <= $3::date 
        AND received = TRUE AND deleted_at IS NULL`,
-      [condominiumId, currentMonth, currentYear]
+      [condominiumId, dataInicio, dataFim]
     );
     const currentMonthEntries = parseFloat(currentMonthEntriesResult.rows[0].total);
 
-    // Gastos do mês anterior (para comparação)
-    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-
-    // Entradas recebidas do mês passado (para saldo do mês passado)
     const lastMonthEntriesResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_entries 
        WHERE condominium_id = $1 
-       AND EXTRACT(MONTH FROM entry_date) = $2 
-       AND EXTRACT(YEAR FROM entry_date) = $3 
+       AND entry_date::date >= $2::date AND entry_date::date <= $3::date 
        AND received = TRUE AND deleted_at IS NULL`,
-      [condominiumId, lastMonth, lastMonthYear]
+      [condominiumId, dataInicioAnterior, dataFimAnterior]
     );
     const lastMonthEntries = parseFloat(lastMonthEntriesResult.rows[0].total);
-    
+
     const lastMonthExitsPaidResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
        WHERE condominium_id = $1 
-       AND EXTRACT(MONTH FROM exit_date) = $2 
-       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND exit_date::date >= $2::date AND exit_date::date <= $3::date 
        AND payment_status = 'PAID'`,
-      [condominiumId, lastMonth, lastMonthYear]
+      [condominiumId, dataInicioAnterior, dataFimAnterior]
     );
     const lastMonthExitsPaid = parseFloat(lastMonthExitsPaidResult.rows[0].total);
 
     const lastMonthExitsApprovedResult = await query(
       `SELECT COALESCE(SUM(amount), 0) as total FROM financial_exits 
        WHERE condominium_id = $1 
-       AND EXTRACT(MONTH FROM exit_date) = $2 
-       AND EXTRACT(YEAR FROM exit_date) = $3 
+       AND exit_date::date >= $2::date AND exit_date::date <= $3::date 
        AND payment_status = 'APPROVED'`,
-      [condominiumId, lastMonth, lastMonthYear]
+      [condominiumId, dataInicioAnterior, dataFimAnterior]
     );
     const lastMonthExitsApproved = parseFloat(lastMonthExitsApprovedResult.rows[0].total);
-    
+
     const lastMonthExpenses = lastMonthExitsPaid + lastMonthExitsApproved;
 
-    // Saldo do mês atual e do mês passado (entradas recebidas - saídas pagas - saídas aprovadas do mês)
     const currentMonthExits = currentMonthExitsPaid + currentMonthExitsApproved;
     const lastMonthExits = lastMonthExitsPaid + lastMonthExitsApproved;
     const saldoMesAtual = currentMonthEntries - currentMonthExits;
     const saldoMesPassado = lastMonthEntries - lastMonthExits;
-    
-    // Comparativo com mês anterior (%)
-    const expensesVariation = lastMonthExpenses > 0 
-      ? ((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 
+
+    const expensesVariation = lastMonthExpenses > 0
+      ? ((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
       : 0;
 
     // Inadimplência (se existir tabela monthly_fees)
@@ -330,6 +322,9 @@ const getDashboardStats = async (condominiumId) => {
       balance,
       saldoMesAtual,
       saldoMesPassado,
+      saldoPeriodo: saldoMesAtual,
+      saldoPeriodoAnterior: saldoMesPassado,
+      periodExpenses: currentMonthExpenses,
       totalEntries,
       totalExitsPaid,
       overdueTasks,
@@ -347,6 +342,14 @@ const getDashboardStats = async (condominiumId) => {
       payableOverdueCount,
       payableDueTodayCount,
       pendingUnpayExits,
+      periodo: {
+        dataInicio,
+        dataFim,
+        dataInicioAnterior,
+        dataFimAnterior,
+        label: periodoLabel,
+        labelAnterior: periodoLabelAnterior,
+      },
     };
     
     // Salvar no cache (5 minutos)
