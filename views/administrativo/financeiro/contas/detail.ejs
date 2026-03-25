@@ -35,7 +35,7 @@
     <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <% if (query.success === 'boleto_added') { %>
-      <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">Boleto/vencimento adicionado. Ele aparece em <a href="/financeiro/contas-a-pagar" class="underline font-medium">Contas a pagar</a> para pagar e anexar comprovante.</div>
+      <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">Boleto/vencimento adicionado. Ele aparece em <a href="/financeiro/contas-a-pagar" class="underline font-medium">Contas a pagar</a> para pagar e, se quiser, anexar comprovante.</div>
     <% } %>
 
     <div class="bg-white rounded-xl shadow p-6 mb-6">
@@ -50,7 +50,7 @@
     <div class="bg-white rounded-xl shadow overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-lg font-bold text-gray-800">Vencimentos deste fornecedor</h2>
-        <p class="text-sm text-gray-500 mt-1">Clique em &quot;Pagar&quot; em Contas a pagar para anexar o comprovante e gerar a saída.</p>
+        <p class="text-sm text-gray-500 mt-1">Clique em &quot;Pagar&quot; em Contas a pagar para gerar a saída e anexar comprovante se desejar.</p>
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">

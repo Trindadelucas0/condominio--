@@ -49,8 +49,8 @@
   <div class="container mx-auto px-4 py-8">
     <% var helpModalId = 'modalComoFunciona'; %>
     <% var helpTitle = 'Nova receita – como preencher'; %>
-    <% var resumo = ['Preencha valor, descrição, categoria e centro de custo.', 'Se exigir aprovação, a receita vai para Aprovações. Depois use Receber na lista e anexe comprovante.', 'Categorias e centros de custo ajudam nos relatórios.']; %>
-    <% var helpModalContent = '<p>Preencha os campos obrigatórios. Se houver aprovação, a receita vai para Aprovações. Quando o valor entrar, use Receber na lista de Receitas e anexe o comprovante.</p>'; %>
+    <% var resumo = ['Preencha valor, descrição, categoria e centro de custo.', 'Se exigir aprovação, a receita vai para Aprovações. Depois use Receber na lista e anexe comprovante se quiser.', 'Categorias e centros de custo ajudam nos relatórios.']; %>
+    <% var helpModalContent = '<p>Preencha os campos obrigatórios. Se houver aprovação, a receita vai para Aprovações. Quando o valor entrar, use Receber na lista de Receitas e anexe o comprovante se desejar.</p>'; %>
     <%- include('../../../partials/breadcrumb', { items: [ { label: 'Início', url: '/financeiro/dashboard' }, { label: 'Receitas', url: '/financeiro/entradas' }, { label: entrada && entrada.id ? 'Editar receita' : 'Nova receita', url: '' } ] }) %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
