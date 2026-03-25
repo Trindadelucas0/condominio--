@@ -7,6 +7,7 @@
     "test": "node tests/testRunner.js",
     "test:all": "node tests/testRunner.js",
     "test:ai-email": "node scripts/test-ai-email.js",
+    "migrate": "node src/database/migrate.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "apply-corrections": "node src/database/applyCorrections.js"
@@ -24,6 +25,8 @@
     "ejs": "^3.1.9",
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "node-cache": "^5.1.2",

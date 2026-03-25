@@ -5,16 +5,17 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middlewares/auth');
+const { loginRateLimit, issueLoginCsrf, validateLoginCsrf } = require('../middlewares/authSecurity');
 
 // GET /auth/login
-router.get('/login', authController.showLogin);
+router.get('/login', issueLoginCsrf, authController.showLogin);
 
 // GET /auth/sem-acesso - página elegante quando área não está vinculada ao perfil
 router.get('/sem-acesso', authenticate, authController.showSemAcesso);
 
 // POST /auth/login
 // Processa tentativa de login (recebe username e senha)
-router.post('/login', authController.processLogin);
+router.post('/login', loginRateLimit, validateLoginCsrf, authController.processLogin);
 
 // POST /auth/logout
 // Processa logout (remove cookie e redireciona)

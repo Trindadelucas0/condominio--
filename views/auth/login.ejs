@@ -115,6 +115,7 @@
 
         <!-- Formulário de Login -->
         <form method="POST" action="/auth/login" class="flex items-center space-x-3">
+          <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
           <!-- Mensagem de erro (se houver) -->
           <% if (typeof error !== 'undefined' && error && typeof errorMessages !== 'undefined' && errorMessages[error]) { %>
             <div class="text-red-600 text-sm font-medium mr-2">
@@ -167,6 +168,7 @@
       <!-- Formulário Mobile (abaixo do navbar) - touch-friendly -->
       <div class="md:hidden pb-4 border-t border-gray-200 mt-2 pt-4">
         <form method="POST" action="/auth/login" class="space-y-4">
+          <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
           <% if (typeof error !== 'undefined' && error && typeof errorMessages !== 'undefined' && errorMessages[error]) { %>
             <div class="bg-red-50 border-2 border-red-200 rounded-lg p-3 text-red-700 text-sm font-medium">
               <%= errorMessages[error] %>

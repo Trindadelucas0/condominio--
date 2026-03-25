@@ -2,7 +2,7 @@
 // Contém lógica de negócio para gestão financeira
 // Acesso: FINANCEIRO, SINDICO
 
-const { query } = require('../config/database');
+const { query, getClient } = require('../config/database');
 const { logAction } = require('../utils/logger');
 const { validateFinancialAmount, validateDate } = require('../utils/validators');
 const { validateCondominiumOwnership, validateUserBelongsToCondominium } = require('../utils/queryHelper');
@@ -383,9 +383,12 @@ const updateExit = async (exitId, condominiumId, userId, data, userRoles, ipAddr
 // Recebe: exitId, condominiumId, userId, userRoles
 // Retorna: saída atualizada
 const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, userAgent) => {
+  const client = await getClient();
   try {
+    await client.query('BEGIN');
+
     // Busca saída atual com lock (SELECT FOR UPDATE)
-    const currentResult = await query(
+    const currentResult = await client.query(
       `SELECT * FROM financial_exits 
        WHERE id = $1 AND condominium_id = $2 
        FOR UPDATE`,
@@ -436,7 +439,7 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
     const exitAmount = parseFloat(current.amount);
     
     // Calcular saldo disponível
-    const entriesResult = await query(
+    const entriesResult = await client.query(
       `SELECT COALESCE(SUM(amount), 0) as total 
        FROM financial_entries 
        WHERE condominium_id = $1 AND received = TRUE`,
@@ -444,7 +447,7 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
     );
     const totalEntries = parseFloat(entriesResult.rows[0].total);
     
-    const exitsPaidResult = await query(
+    const exitsPaidResult = await client.query(
       `SELECT COALESCE(SUM(amount), 0) as total 
        FROM financial_exits 
        WHERE condominium_id = $1 AND payment_status = 'PAID'`,
@@ -453,7 +456,7 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
     const totalExitsPaid = parseFloat(exitsPaidResult.rows[0].total);
     
     // Saídas aprovadas mas não pagas (incluindo a atual se já estiver aprovada)
-    const exitsApprovedResult = await query(
+    const exitsApprovedResult = await client.query(
       `SELECT COALESCE(SUM(amount), 0) as total 
        FROM financial_exits 
        WHERE condominium_id = $1 
@@ -525,10 +528,11 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
       
       // Se foi rejeitada
       if (voteResult.status === 'REJECTED') {
-        await query(
+        await client.query(
           `UPDATE financial_exits SET payment_status = 'REJECTED' WHERE id = $1`,
           [exitId]
         );
+        await client.query('COMMIT');
         throw new Error('Saída rejeitada por multi-aprovação');
       }
       
@@ -541,7 +545,7 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
     cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
 
     // Atualiza status para aprovado
-    const updateResult = await query(
+    const updateResult = await client.query(
       `UPDATE financial_exits 
        SET payment_status = 'APPROVED', 
            approved_by = $1,
@@ -557,6 +561,7 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
     }
 
     const updated = updateResult.rows[0];
+    await client.query('COMMIT');
 
     // Registra no log
     await logAction({
@@ -574,8 +579,11 @@ const approveExit = async (exitId, condominiumId, userId, userRoles, ipAddress, 
 
     return updated;
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error('Erro ao aprovar saída financeira:', error);
     throw error;
+  } finally {
+    client.release();
   }
 };
 

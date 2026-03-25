@@ -48,11 +48,23 @@ const createInitialMasterUser = async () => {
 
     const masterRoleId = roleResult.rows[0].id;
 
-    // Configurações do usuário master
-    const username = 'admin';
-    const email = 'admin@condominio.com';
-    const password = 'admin123'; // ALTERE ISSO APÓS O PRIMEIRO LOGIN!
-    const fullName = 'Administrador Master';
+    const shouldBootstrap = process.env.BOOTSTRAP_SUPER_MASTER === 'true';
+    if (!shouldBootstrap) {
+      console.log('ℹ️  SUPER_MASTER ausente. Bootstrap automático desabilitado (BOOTSTRAP_SUPER_MASTER=false).');
+      return;
+    }
+
+    // Configurações seguras via variáveis de ambiente
+    const username = process.env.BOOTSTRAP_SUPER_MASTER_USERNAME;
+    const email = process.env.BOOTSTRAP_SUPER_MASTER_EMAIL;
+    const password = process.env.BOOTSTRAP_SUPER_MASTER_PASSWORD;
+    const fullName = process.env.BOOTSTRAP_SUPER_MASTER_FULL_NAME || 'Administrador Master';
+
+    if (!username || !email || !password) {
+      throw new Error(
+        'BOOTSTRAP_SUPER_MASTER=true exige BOOTSTRAP_SUPER_MASTER_USERNAME, BOOTSTRAP_SUPER_MASTER_EMAIL e BOOTSTRAP_SUPER_MASTER_PASSWORD'
+      );
+    }
 
     // Verifica se o username já existe (mesmo sem ser SUPER_MASTER)
     const existingUsername = await query(`
@@ -83,18 +95,12 @@ const createInitialMasterUser = async () => {
       VALUES ($1, $2)
     `, [newUser.id, masterRoleId]);
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('✅ Usuário SUPER_MASTER criado com sucesso!');
-    console.log('📋 Credenciais de acesso:');
-    console.log(`   Username: ${username}`);
-    console.log(`   Senha: ${password}`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('⚠️  IMPORTANTE: Altere a senha após o primeiro login!');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ Usuário SUPER_MASTER criado com sucesso via bootstrap seguro.');
+    console.log(`📋 Username inicial: ${username}`);
 
   } catch (error) {
     console.error('❌ Erro ao criar usuário master:', error.message);
-    // Não lança erro para não interromper a inicialização
+    throw error;
   }
 };
 

@@ -10,14 +10,13 @@ const PORT = process.env.PORT || 3000;
 // Função para iniciar o servidor
 async function startServer() {
   try {
-    // Inicializa o banco de dados (cria todas as tabelas e estruturas)
-    console.log('📦 Iniciando inicialização do banco de dados...');
-    const { initializeDatabase } = require('./database/init');
-    await initializeDatabase();
-    
-    // Verifica e aplica correções no banco de dados se necessário
-    const { ensureCorrectionsApplied } = require('./database/applyCorrections');
-    await ensureCorrectionsApplied();
+    if (process.env.RUN_DB_MIGRATIONS_ON_START === 'true') {
+      console.log('📦 RUN_DB_MIGRATIONS_ON_START=true: executando migrações antes do startup...');
+      const { runDatabaseMigrations } = require('./database/migrate');
+      await runDatabaseMigrations();
+    } else {
+      console.log('ℹ️  Startup sem migrações automáticas. Use "npm run migrate" no deploy.');
+    }
     
     // Inicia o servidor
     app.listen(PORT, () => {
@@ -28,6 +27,9 @@ async function startServer() {
       // Verifica se as variáveis de ambiente essenciais estão configuradas
       if (!process.env.JWT_SECRET) {
         console.warn('⚠️  AVISO: JWT_SECRET não configurado no .env');
+      }
+      if (process.env.NODE_ENV === 'production' && !process.env.JWT_REFRESH_SECRET) {
+        console.warn('⚠️  AVISO: JWT_REFRESH_SECRET não configurado no .env de produção');
       }
       
       if (!process.env.DB_USER && !process.env.DATABASE_URL) {

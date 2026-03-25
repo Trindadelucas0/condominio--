@@ -1,7 +1,7 @@
 // Service de multi-aprovação
 // Gerencia aprovações que requerem múltiplos aprovadores
 
-const { query } = require('../config/database');
+const { query, getClient } = require('../config/database');
 const { logAction } = require('../utils/logger');
 
 const multiApprovalService = {
@@ -93,9 +93,11 @@ const multiApprovalService = {
   
   // Votar em uma multi-aprovação
   vote: async (multiApprovalId, userId, vote, notes, ipAddress, userAgent) => {
+    const client = await getClient();
     try {
+      await client.query('BEGIN');
       // Buscar multi-aprovação com lock
-      const multiApprovalResult = await query(
+      const multiApprovalResult = await client.query(
         `SELECT * FROM multi_approvals WHERE id = $1 FOR UPDATE`,
         [multiApprovalId]
       );
@@ -107,7 +109,7 @@ const multiApprovalService = {
       const multiApproval = multiApprovalResult.rows[0];
       
       // Verificar se já votou
-      const existingVote = await query(
+      const existingVote = await client.query(
         `SELECT * FROM multi_approval_votes 
          WHERE multi_approval_id = $1 AND user_id = $2`,
         [multiApprovalId, userId]
@@ -118,7 +120,7 @@ const multiApprovalService = {
       }
       
       // Inserir voto
-      const voteResult = await query(
+      const voteResult = await client.query(
         `INSERT INTO multi_approval_votes (multi_approval_id, user_id, vote, notes, ip_address, user_agent)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
@@ -137,7 +139,7 @@ const multiApprovalService = {
       }
       
       // Atualizar status
-      const updateResult = await query(
+      const updateResult = await client.query(
         `UPDATE multi_approvals 
          SET current_approvals = $1, status = $2, updated_at = CURRENT_TIMESTAMP
          WHERE id = $3
@@ -145,6 +147,8 @@ const multiApprovalService = {
         [currentApprovals, status, multiApprovalId]
       );
       
+      await client.query('COMMIT');
+
       const updated = updateResult.rows[0];
       
       // Registrar no log de auditoria
@@ -169,8 +173,11 @@ const multiApprovalService = {
         remainingApprovals: requiredApprovals - currentApprovals
       };
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
       console.error('Erro ao votar em multi-aprovação:', error);
       throw error;
+    } finally {
+      client.release();
     }
   },
   

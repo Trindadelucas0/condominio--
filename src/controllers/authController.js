@@ -14,6 +14,7 @@ const showLogin = (req, res) => {
   // Passa mensagem de erro se houver
   res.render('auth/login', {
     error: error,
+    csrfToken: res.locals.csrfToken || null,
     // Mapeia códigos de erro para mensagens amigáveis
     errorMessages: {
       not_authenticated: 'Você precisa fazer login para acessar o sistema',
@@ -22,6 +23,7 @@ const showLogin = (req, res) => {
       user_inactive: 'Usuário inativo. Entre em contato com o administrador',
       condominium_inactive: 'Condomínio inativo. Entre em contato com o administrador do sistema',
       invalid_credentials: 'Usuário ou senha incorretos',
+      csrf_invalid: 'Sessão de segurança inválida. Atualize a página e tente novamente.',
       no_role: 'Seu usuário não possui perfil de acesso. Entre em contato com o administrador.',
     },
   });
@@ -38,6 +40,7 @@ const processLogin = async (req, res) => {
     if (!username || !password) {
       return res.render('auth/login', {
         error: 'invalid_credentials',
+        csrfToken: res.locals.csrfToken || req.cookies?.login_csrf_token || null,
         errorMessages: {
           invalid_credentials: 'Preencha usuário e senha',
         },
@@ -103,6 +106,7 @@ const processLogin = async (req, res) => {
     // Em caso de erro, renderiza login novamente com mensagem de erro
     return res.render('auth/login', {
       error: 'invalid_credentials',
+      csrfToken: res.locals.csrfToken || req.cookies?.login_csrf_token || null,
       errorMessages: {
         invalid_credentials: error.message || 'Erro ao fazer login',
       },

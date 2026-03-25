@@ -4,6 +4,8 @@
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const { query } = require('./config/database');
 require('dotenv').config();
 
 // Cria instância do Express
@@ -13,6 +15,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middlewares globais
+app.disable('x-powered-by');
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
 app.use(express.json()); // Parse JSON no body
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded
 app.use(cookieParser()); // Parse cookies
@@ -24,15 +31,18 @@ app.set('views', path.join(__dirname, '../views'));
 // Servir arquivos estáticos (CSS, JS, imagens)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Servir uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
 // Rotas públicas (autenticação)
 const authRoutes = require('./routes/authRoutes');
 app.use('/auth', authRoutes);
 
 // Middleware para verificar autenticação em rotas protegidas
 const { authenticate } = require('./middlewares/auth');
+
+// Uploads não ficam mais públicos: exigem autenticação
+app.use('/uploads', authenticate, express.static(path.join(__dirname, '../uploads'), {
+  dotfiles: 'deny',
+  index: false,
+}));
 
 // Rotas protegidas (requerem autenticação)
 const masterRoutes = require('./routes/masterRoutes');
@@ -67,6 +77,27 @@ app.use('/automation', automationRoutes);
 app.use('/assembleias', assemblyRoutes);
 app.use('/api/critical-items', criticalItemsRoutes);
 app.use('/report-config', reportConfigRoutes);
+
+// Endpoints de saúde para operação/deploy
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/ready', async (req, res) => {
+  try {
+    await query('SELECT 1');
+    return res.json({ status: 'ready' });
+  } catch (error) {
+    return res.status(503).json({
+      status: 'not_ready',
+      message: 'Banco de dados indisponível',
+    });
+  }
+});
 
 // Rota raiz - sempre redireciona para login
 // Após login bem-sucedido, o authController redireciona para o dashboard correto
