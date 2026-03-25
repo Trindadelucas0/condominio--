@@ -140,11 +140,6 @@ const markFeeAsPaid = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    // Comprovante em PDF é obrigatório (alinhado com receber entrada e pagar saída)
-    if (!req.file) {
-      return res.redirect('/financeiro/taxas/' + req.params.id + '/pagar?error=' + encodeURIComponent('Comprovante em PDF é obrigatório'));
-    }
-
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
     const path = require('path');

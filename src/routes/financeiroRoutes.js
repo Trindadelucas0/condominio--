@@ -358,18 +358,6 @@ router.post('/saidas/:id/pagar', async (req, res) => {
         ? attachments.notaFiscalFileName
         : (removeCurrentNotaFiscal ? null : currentNotaFiscalFileName);
 
-      if (!finalComprovantePath) {
-        return res.render('administrativo/financeiro/saidas/pagar', {
-          title: 'Marcar Saída como Paga',
-          user: req.user,
-          exit: exit,
-          categoryLabels: ALL_CATEGORY_LABELS,
-          req: req,
-          error: 'Comprovante em PDF é obrigatório para concluir o pagamento.',
-          formData: req.body,
-        });
-      }
-
       await financeiroService.markExitAsPaid(
         req.params.id,
         req.user.condominiumId,
@@ -726,18 +714,9 @@ router.post('/contas-a-pagar/:id/pagar', (req, res, next) => {
           req: req,
         });
       }
-      if (!req.file) {
-        const item = await payableService.getPayableItemById(req.params.id, req.user.condominiumId);
-        return res.render('administrativo/financeiro/contas-a-pagar/pagar', {
-          title: 'Pagar Conta',
-          user: req.user,
-          item,
-          error: 'Comprovante em PDF é obrigatório',
-          formData: req.body,
-          req: req,
-        });
-      }
-      const receiptPath = path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/');
+      const receiptPath = req.file
+        ? path.relative(path.join(__dirname, '../../'), req.file.path).replace(/\\/g, '/')
+        : null;
       await payableService.payPayableItem(
         req.params.id,
         req.user.condominiumId,

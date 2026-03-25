@@ -178,7 +178,7 @@ const createPayableItem = async (condominiumId, userId, data, ipAddress, userAge
  */
 const payPayableItem = async (itemId, condominiumId, userId, paymentData, ipAddress, userAgent) => {
   const { receiptPdfPath, paymentDetails, paymentMethod, paymentNotes } = paymentData || {};
-  if (!receiptPdfPath || !receiptPdfPath.trim()) throw new Error('Comprovante de pagamento é obrigatório');
+  const normalizedReceiptPdfPath = receiptPdfPath && receiptPdfPath.trim() ? receiptPdfPath.trim() : null;
 
   const item = await getPayableItemById(itemId, condominiumId);
   if (item.status === 'PAID') throw new Error('Este item já foi pago');
@@ -210,7 +210,7 @@ const payPayableItem = async (itemId, condominiumId, userId, paymentData, ipAddr
     condominiumId,
     userId,
     {
-      paymentReceiptPdfPath: receiptPdfPath.trim(),
+      paymentReceiptPdfPath: normalizedReceiptPdfPath,
       paymentDetails: paymentDetails || null,
       paymentMethod: paymentMethod || null,
       paymentNotes: paymentNotes || null,
@@ -223,7 +223,7 @@ const payPayableItem = async (itemId, condominiumId, userId, paymentData, ipAddr
     `UPDATE payable_items
      SET status = 'PAID', paid_at = CURRENT_TIMESTAMP, financial_exit_id = $1, receipt_pdf_path = $2, updated_at = CURRENT_TIMESTAMP
      WHERE id = $3 AND condominium_id = $4`,
-    [exit.id, receiptPdfPath.trim(), itemId, condominiumId]
+    [exit.id, normalizedReceiptPdfPath, itemId, condominiumId]
   );
 
   const updated = await getPayableItemById(itemId, condominiumId);

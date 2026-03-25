@@ -727,12 +727,9 @@ const markExitAsPaid = async (exitId, condominiumId, userId, paymentData, ipAddr
       throw new Error('Saída deve estar aprovada antes de ser marcada como paga');
     }
 
-    // Valida que tem comprovante
-    if (!paymentReceiptPdfPath || !paymentReceiptPdfPath.trim()) {
-      throw new Error('Comprovante de pagamento é obrigatório');
-    }
-
-    const nextPaymentReceiptPath = paymentReceiptPdfPath.trim();
+    const nextPaymentReceiptPath = paymentReceiptPdfPath && paymentReceiptPdfPath.trim()
+      ? paymentReceiptPdfPath.trim()
+      : null;
     const nextInvoicePath = invoicePath && invoicePath.trim() ? invoicePath.trim() : null;
     const nextInvoiceFileName = invoiceFileName && invoiceFileName.trim() ? invoiceFileName.trim() : null;
 
