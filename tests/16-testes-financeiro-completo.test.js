@@ -464,7 +464,7 @@ async function run(runner) {
       ).catch(() => {}); // Ignora erros
     }
 
-    // Marcar como paga (com comprovante simulado)
+    // Marcar como paga (com comprovante opcional)
     try {
       await financeiroService.markExitAsPaid(
         newExit.id,
@@ -479,12 +479,6 @@ async function run(runner) {
         'Test Runner'
       );
     } catch (error) {
-      // Se falhou por falta de comprovante, pode ser validação do service
-      if (error.message.includes('comprovante') || error.message.includes('obrigatório')) {
-        runner.logDetail(`⚠️  Comprovante obrigatório: ${error.message}`);
-        runner.logDetail('⚠️  Teste pulado - service requer comprovante real');
-        return;
-      }
       throw error;
     }
 
@@ -565,7 +559,7 @@ async function run(runner) {
     }
 
     // Marcar como paga
-    // Nota: O service exige comprovante (paymentReceiptPdfPath) como obrigatório
+    // Nota: comprovante é opcional neste fluxo, mas aqui enviamos um caminho para cobrir os dois cenários
     const paid = await financeiroService.markExitAsPaid(
       exit.id,
       testCondominiumId,
@@ -573,7 +567,7 @@ async function run(runner) {
       {
         paymentMethod: 'TRANSFERENCIA',
         paymentDetails: 'Banco Teste',
-        paymentReceiptPdfPath: `/uploads/receipts/test_receipt_${Date.now()}.pdf` // Comprovante obrigatório
+        paymentReceiptPdfPath: `/uploads/receipts/test_receipt_${Date.now()}.pdf` // Comprovante opcional
       },
       '127.0.0.1',
       'Test Runner'
@@ -598,6 +592,127 @@ async function run(runner) {
     if (actions.length < 3) {
       runner.logWarning(`Esperado pelo menos 3 logs (CREATE, APPROVE, PAY), encontrado: ${actions.length}`);
     }
+  });
+
+  // ========================================
+  // Consumo: analytics e fluxo conta → consumo
+  // ========================================
+  await runner.test('getConsumptionAnalytics: estrutura e filtros', async () => {
+    if (!testCondominiumId || !testFinanceiroUserId) {
+      runner.logWarning('Pulando teste - dados de teste não disponíveis');
+      return;
+    }
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const dataInicio = `${y}-${String(m).padStart(2, '0')}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const dataFim = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const analytics = await financeiroService.getConsumptionAnalytics(testCondominiumId, {
+      dataInicio,
+      dataFim,
+    });
+
+    if (typeof analytics.totalAmount !== 'number') {
+      throw new Error('getConsumptionAnalytics deve retornar totalAmount numérico');
+    }
+    if (!Array.isArray(analytics.series)) {
+      throw new Error('getConsumptionAnalytics deve retornar series como array');
+    }
+    if (!Array.isArray(analytics.recentRecords)) {
+      throw new Error('getConsumptionAnalytics deve retornar recentRecords como array');
+    }
+
+    const bill = await financeiroService.createAccount(
+      testCondominiumId,
+      testFinanceiroUserId,
+      {
+        name: `[TESTE QA] Conta consumo ${Date.now()}`,
+        billType: 'AGUA',
+      },
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    const filtered = await financeiroService.getConsumptionAnalytics(testCondominiumId, {
+      dataInicio,
+      dataFim,
+      consumoBillId: bill.id,
+      consumoBillType: 'AGUA',
+    });
+
+    if (filtered.filters.consumoBillId !== bill.id) {
+      throw new Error('Filtro consumoBillId deve ser aplicado quando a conta existe');
+    }
+    runner.logDetail(`✅ getConsumptionAnalytics OK (conta teste id=${bill.id})`);
+
+    if (!Array.isArray(analytics.seriesPorConta)) {
+      throw new Error('getConsumptionAnalytics deve retornar seriesPorConta como array');
+    }
+
+    const testMonth = m === 1 ? 2 : m - 1;
+    const testYear = m === 1 ? y - 1 : y;
+    const created = await financeiroService.createConsumption(
+      testCondominiumId,
+      testFinanceiroUserId,
+      {
+        billId: bill.id,
+        month: testMonth,
+        year: testYear,
+        consumptionValue: '10',
+        consumptionUnit: 'M3',
+        billAmount: '99.90',
+        dueDate: null,
+      },
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    await financeiroService.updateConsumption(
+      created.id,
+      testCondominiumId,
+      testFinanceiroUserId,
+      {
+        billId: bill.id,
+        month: testMonth,
+        year: testYear,
+        consumptionValue: '11',
+        consumptionUnit: 'M3',
+        billAmount: '100.00',
+        dueDate: null,
+      },
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    const listed = await financeiroService.listConsumption(testCondominiumId, {
+      billId: bill.id,
+      monthFromKey: testYear * 12 + testMonth,
+      monthToKey: testYear * 12 + testMonth,
+      limit: 50,
+    });
+    const found = listed.find((r) => r.id === created.id);
+    if (!found || parseFloat(found.bill_amount) !== 100) {
+      throw new Error('listConsumption com intervalo de meses deve incluir registro atualizado');
+    }
+
+    await financeiroService.deleteConsumption(
+      created.id,
+      testCondominiumId,
+      testFinanceiroUserId,
+      '127.0.0.1',
+      'Test Runner'
+    );
+
+    const gone = await financeiroService.getConsumptionById(created.id, testCondominiumId);
+    if (gone) {
+      throw new Error('deleteConsumption deve remover o registro');
+    }
+
+    await query('DELETE FROM bills WHERE id = $1', [bill.id]);
+    runner.logDetail('✅ CRUD consumo mensal + listConsumption por intervalo OK');
   });
 
   runner.logDetail('Testes completos do módulo Financeiro concluídos!');

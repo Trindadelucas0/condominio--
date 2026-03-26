@@ -1,15 +1,21 @@
 <%- include('../../../partials/header', { title: title }) %>
 <%- include('../../../partials/navbar', { user: user }) %>
 
+<% var isEdit = typeof editId !== 'undefined' && editId; %>
 <div class="container mx-auto px-4 py-8">
   <% var helpModalId = 'modalComoFunciona'; %>
-  <% var helpTitle = 'Registrar consumo mensal'; %>
-  <% var resumo = ['Registre valor e consumo (se aplicável) da conta no mês.', 'Serve para histórico e comparação; o pagamento é em Boletos a pagar/Despesas.', 'Selecione conta, mês, ano e preencha os valores.']; %>
-  <% var helpModalContent = '<p>Escolha a conta, mês e ano. Informe o valor e o consumo quando fizer sentido. Este registro é para histórico e análise; o pagamento em si é feito em Boletos a pagar.</p>'; %>
+  <% var helpTitle = isEdit ? 'Editar consumo mensal' : 'Registrar consumo mensal'; %>
+  <% var resumo = [
+    'Cadastre antes a conta recorrente (água, luz, gás, internet) em Contas — o tipo classifica relatórios e sugere a unidade de consumo.',
+    'Aqui você registra leitura/consumo (se houver) e o valor em R$ da fatura naquele mês — é histórico para comparar evolução.',
+    'O pagamento da fatura é feito em Boletos a pagar / Despesas; o consumo mensal não substitui esse lançamento.',
+    'Use o dashboard financeiro e a lista de consumo para gráficos e filtros por período e conta.'
+  ]; %>
+  <% var helpModalContent = '<div class="space-y-4"><section><h3 class="font-bold text-gray-900 mb-2">O que é este registro?</h3><p>É o espelho do que veio na conta (valor em reais e, quando existir, o consumo: m³, kWh, etc.) para um <strong>mês/ano</strong> e uma <strong>conta</strong> já cadastrada.</p></section><section><h3 class="font-bold text-gray-900 mb-2">Fluxo recomendado</h3><ol class="list-decimal pl-5 space-y-2"><li><strong>Cadastrar conta</strong> em Financeiro → Contas (nome, tipo Água/Luz/Gás/Internet…). Se ainda não existir, use <strong>Cadastrar nova conta</strong> abaixo ou o atalho rápido.</li><li><strong>Registrar consumo mensal</strong> aqui: escolha a conta, mês, ano, valor da fatura e consumo se aplicável.</li><li><strong>Pagar a fatura</strong> pelo fluxo financeiro normal: Boletos a pagar ou Despesas — esse é o registro de caixa.</li></ol></section><section><h3 class="font-bold text-gray-900 mb-2">Onde acompanhar</h3><p>No <strong>dashboard financeiro</strong> há KPIs e gráfico de consumo por período; na <strong>lista de consumo</strong> você filtra por ano, mês e conta.</p></section></div>'; %>
   <!-- Cabeçalho -->
   <div class="mb-6 flex flex-wrap items-center gap-3">
     <div>
-      <h1 class="text-3xl font-bold text-gray-800">Registrar Consumo Mensal</h1>
+      <h1 class="text-3xl font-bold text-gray-800"><%= isEdit ? 'Editar consumo mensal' : 'Registrar Consumo Mensal' %></h1>
       <p class="text-gray-600 mt-2">Registre o consumo e valor das contas (água, energia, gás, etc.)</p>
     </div>
     <%- include('../../../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
@@ -23,14 +29,39 @@
     </div>
   <% } %>
 
+  <% if (!isEdit && typeof duplicateEditUrl !== 'undefined' && duplicateEditUrl) { %>
+    <div class="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded mb-4 space-y-2">
+      <p class="font-medium">Já existe um registro para esta conta neste mês/ano.</p>
+      <p class="text-sm">
+        <a href="<%= duplicateEditUrl %>" class="text-indigo-700 font-semibold hover:underline">Editar o registro existente</a>
+        <% if (typeof duplicateListUrl !== 'undefined' && duplicateListUrl) { %>
+          <span class="mx-2 text-amber-700">·</span>
+          <a href="<%= duplicateListUrl %>" class="text-indigo-700 font-semibold hover:underline">Ver na lista filtrada</a>
+        <% } %>
+      </p>
+    </div>
+  <% } %>
+
   <!-- Formulário -->
   <div class="bg-white rounded-lg shadow-lg p-6">
-    <form method="POST" action="/financeiro/consumo">
+    <form id="mainConsumoForm" method="POST" action="<%= isEdit ? '/financeiro/consumo/' + editId : '/financeiro/consumo' %>">
       <!-- Conta -->
       <div class="mb-4">
-        <label for="billId" class="block text-sm font-medium text-gray-700 mb-2">
-          Conta <span class="text-red-500">*</span>
-        </label>
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <label for="billId" class="block text-sm font-medium text-gray-700">
+            Conta <span class="text-red-500">*</span>
+          </label>
+          <div class="flex flex-wrap gap-3 items-center">
+            <button type="button" id="btnNovaContaModal" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+              Nova conta (rápido)
+            </button>
+            <a
+              href="/financeiro/contas/nova?returnTo=consumo"
+              class="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >Cadastrar nova conta (página completa)</a>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">O tipo da conta (água, gás, internet…) aparece nos relatórios e ajuda a sugerir a unidade de consumo.</p>
         <select
           id="billId"
           name="billId"
@@ -39,7 +70,8 @@
         >
           <option value="">Selecione uma conta...</option>
           <% bills.forEach(bill => { %>
-            <option value="<%= bill.id %>" <%= consumo && consumo.billId == bill.id ? 'selected' : '' %>>
+            <% var isSel = (consumo && (consumo.billId == bill.id || String(consumo.billId) === String(bill.id))) || (typeof selectedBillId !== 'undefined' && selectedBillId === bill.id); %>
+            <option value="<%= bill.id %>" data-bill-type="<%= bill.bill_type %>" <%= isSel ? 'selected' : '' %>>
               <%= bill.name %> (<%= bill.bill_type %>)
             </option>
           <% }); %>
@@ -96,7 +128,7 @@
             name="consumptionValue"
             step="0.01"
             min="0"
-            value="<%= consumo && consumo.consumptionValue ? consumo.consumptionValue : '' %>"
+            value="<%= consumo && consumo.consumptionValue != null && consumo.consumptionValue !== '' ? consumo.consumptionValue : '' %>"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ex: 150.50"
           />
@@ -128,7 +160,7 @@
           name="billAmount"
           step="0.01"
           min="0"
-          value="<%= consumo && consumo.billAmount ? consumo.billAmount : '' %>"
+          value="<%= consumo && consumo.billAmount != null && consumo.billAmount !== '' ? consumo.billAmount : '' %>"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="0.00"
           required
@@ -149,23 +181,153 @@
         />
       </div>
 
-      <!-- Botões -->
-      <div class="flex justify-end space-x-4">
+    </form>
+
+    <div class="flex flex-wrap justify-between gap-4 items-center mt-6 pt-4 border-t border-gray-100">
+      <div class="flex flex-wrap gap-3 items-center">
         <a
-          href="/financeiro/dashboard"
+          href="/financeiro/consumo"
           class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
         >
-          Cancelar
+          Voltar à lista
         </a>
-        <button
-          type="submit"
-          class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-        >
-          Registrar Consumo
-        </button>
+        <% if (isEdit) { %>
+          <form method="POST" action="/financeiro/consumo/<%= editId %>/excluir" class="inline" onsubmit="return confirm('Excluir este registro de consumo? Esta ação não pode ser desfeita.');">
+            <button type="submit" class="px-6 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 transition">
+              Excluir
+            </button>
+          </form>
+        <% } %>
+      </div>
+      <button
+        type="submit"
+        form="mainConsumoForm"
+        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+      >
+        <%= isEdit ? 'Salvar alterações' : 'Registrar consumo' %>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nova conta -->
+<div id="modalNovaConta" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4" aria-hidden="true" role="dialog" aria-labelledby="modalNovaContaTitulo">
+  <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+    <h2 id="modalNovaContaTitulo" class="text-lg font-bold text-gray-900 mb-4">Nova conta recorrente</h2>
+    <form id="formModalNovaConta" class="space-y-4">
+      <div>
+        <label for="modalContaNome" class="block text-sm font-medium text-gray-700 mb-1">Nome <span class="text-red-500">*</span></label>
+        <input type="text" id="modalContaNome" name="name" required class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Ex.: Água" />
+      </div>
+      <div>
+        <label for="modalContaTipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo <span class="text-red-500">*</span></label>
+        <select id="modalContaTipo" name="billType" required class="w-full border border-gray-300 rounded-md px-3 py-2">
+          <option value="AGUA">Água</option>
+          <option value="LUZ">Energia</option>
+          <option value="GAS">Gás</option>
+          <option value="TELEFONE">Telefone</option>
+          <option value="INTERNET">Internet</option>
+          <option value="OUTRA">Outra</option>
+        </select>
+      </div>
+      <p id="modalContaErro" class="text-sm text-red-600 hidden"></p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" id="modalContaCancelar" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancelar</button>
+        <button type="submit" id="modalContaSalvar" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Salvar e selecionar</button>
       </div>
     </form>
   </div>
 </div>
+
+<script>
+(function () {
+  var billSelect = document.getElementById('billId');
+  var unitSelect = document.getElementById('consumptionUnit');
+  if (!billSelect || !unitSelect) return;
+  var map = { AGUA: 'M3', GAS: 'M3', LUZ: 'KWH', TELEFONE: 'UNIDADE', INTERNET: 'UNIDADE', OUTRA: 'UNIDADE' };
+  var postedWithError = <%= consumo ? 'true' : 'false' %>;
+  var isEdit = <%= isEdit ? 'true' : 'false' %>;
+  function applySuggestedUnit() {
+    var opt = billSelect.options[billSelect.selectedIndex];
+    var bt = opt && opt.getAttribute('data-bill-type');
+    if (!bt || !map[bt]) return;
+    unitSelect.value = map[bt];
+  }
+  billSelect.addEventListener('change', applySuggestedUnit);
+  if (!postedWithError && !isEdit) applySuggestedUnit();
+
+  var modal = document.getElementById('modalNovaConta');
+  var btnOpen = document.getElementById('btnNovaContaModal');
+  var btnCancel = document.getElementById('modalContaCancelar');
+  var formModal = document.getElementById('formModalNovaConta');
+  var errEl = document.getElementById('modalContaErro');
+  if (btnOpen && modal) {
+    btnOpen.addEventListener('click', function () {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+  }
+  function fecharModal() {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+    if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+  }
+  if (btnCancel) btnCancel.addEventListener('click', fecharModal);
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) fecharModal();
+    });
+  }
+  if (formModal) {
+    formModal.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var nome = document.getElementById('modalContaNome');
+      var tipo = document.getElementById('modalContaTipo');
+      if (!nome || !tipo) return;
+      var payload = { name: nome.value.trim(), billType: tipo.value };
+      if (!payload.name) return;
+      var btn = document.getElementById('modalContaSalvar');
+      if (btn) btn.disabled = true;
+      fetch('/financeiro/api/contas-json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin'
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+        .then(function (res) {
+          if (btn) btn.disabled = false;
+          if (!res.ok || !res.body.ok || !res.body.account) {
+            if (errEl) {
+              errEl.textContent = (res.body && res.body.error) ? res.body.error : 'Não foi possível criar a conta.';
+              errEl.classList.remove('hidden');
+            }
+            return;
+          }
+          var acc = res.body.account;
+          var opt = document.createElement('option');
+          opt.value = String(acc.id);
+          opt.setAttribute('data-bill-type', acc.bill_type);
+          opt.textContent = acc.name + ' (' + acc.bill_type + ')';
+          opt.selected = true;
+          billSelect.appendChild(opt);
+          fecharModal();
+          nome.value = '';
+          applySuggestedUnit();
+        })
+        .catch(function () {
+          if (btn) btn.disabled = false;
+          if (errEl) {
+            errEl.textContent = 'Erro de rede. Tente novamente.';
+            errEl.classList.remove('hidden');
+          }
+        });
+    });
+  }
+})();
+</script>
 
 <%- include('../../../partials/footer') %>

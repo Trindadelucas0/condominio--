@@ -1540,6 +1540,318 @@ const getDashboardStats = async (condominiumId, options = {}) => {
   }
 };
 
+const ALLOWED_CONSUMO_BILL_TYPES = ['AGUA', 'LUZ', 'GAS', 'TELEFONE', 'INTERNET', 'OUTRA'];
+
+/**
+ * Análise de consumo mensal de contas (monthly_consumption) alinhada ao período do dashboard.
+ * @param {number} condominiumId
+ * @param {{ dataInicio?: string, dataFim?: string, consumoBillId?: number|string, consumoBillType?: string }} options
+ */
+const getConsumptionAnalytics = async (condominiumId, options = {}) => {
+  const periodo = resolveDashboardPeriod(options.dataInicio, options.dataFim);
+  const { dataInicio, dataFim, dataInicioAnterior, dataFimAnterior } = periodo;
+
+  const parseYmd = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso).trim());
+    if (!m) return null;
+    return { y: parseInt(m[1], 10), mo: parseInt(m[2], 10) };
+  };
+
+  const empty = () => ({
+    periodo: {
+      dataInicio,
+      dataFim,
+      dataInicioAnterior,
+      dataFimAnterior,
+      label: periodo.label,
+      labelAnterior: periodo.labelAnterior,
+    },
+    filters: { consumoBillId: null, consumoBillType: null },
+    totalAmount: 0,
+    countRecords: 0,
+    monthsInPeriod: 0,
+    avgMonthlyAmount: 0,
+    prevTotalAmount: 0,
+    variationPct: 0,
+    lastMonthLabel: null,
+    series: [],
+    seriesPorConta: [],
+    seriesConsumption: null,
+    consumptionUnitLabel: null,
+    recentRecords: [],
+  });
+
+  const start = parseYmd(dataInicio);
+  const end = parseYmd(dataFim);
+  const prevStart = parseYmd(dataInicioAnterior);
+  const prevEnd = parseYmd(dataFimAnterior);
+  if (!start || !end || !prevStart || !prevEnd) {
+    return empty();
+  }
+
+  let consumoBillId =
+    options.consumoBillId != null && options.consumoBillId !== ''
+      ? parseInt(options.consumoBillId, 10)
+      : null;
+  if (consumoBillId != null && Number.isNaN(consumoBillId)) consumoBillId = null;
+
+  let consumoBillType =
+    options.consumoBillType && String(options.consumoBillType).trim()
+      ? String(options.consumoBillType).trim()
+      : null;
+  if (consumoBillType && !ALLOWED_CONSUMO_BILL_TYPES.includes(consumoBillType)) {
+    consumoBillType = null;
+  }
+
+  if (consumoBillId != null) {
+    const billCheck = await query(
+      `SELECT id FROM bills WHERE id = $1 AND condominium_id = $2`,
+      [consumoBillId, condominiumId]
+    );
+    if (billCheck.rows.length === 0) consumoBillId = null;
+  }
+
+  const buildFilteredSql = (selectAgg) => {
+    let sql = `
+      ${selectAgg}
+      FROM monthly_consumption mc
+      INNER JOIN bills b ON mc.bill_id = b.id
+      WHERE mc.condominium_id = $1
+      AND (mc.year * 12 + mc.month) >= ($2 * 12 + $3)
+      AND (mc.year * 12 + mc.month) <= ($4 * 12 + $5)`;
+    const params = [condominiumId, start.y, start.mo, end.y, end.mo];
+    let pc = 6;
+    if (consumoBillId != null) {
+      sql += ` AND mc.bill_id = $${pc++}`;
+      params.push(consumoBillId);
+    }
+    if (consumoBillType) {
+      sql += ` AND b.bill_type = $${pc++}`;
+      params.push(consumoBillType);
+    }
+    return { sql, params };
+  };
+
+  const sumSql = buildFilteredSql(`SELECT COALESCE(SUM(mc.bill_amount), 0) as total, COUNT(*)::int as cnt`);
+  const sumRes = await query(sumSql.sql, sumSql.params);
+  const totalAmount = parseFloat(sumRes.rows[0].total) || 0;
+  const countRecords = parseInt(sumRes.rows[0].cnt, 10) || 0;
+
+  const buildPrevSql = (selectAgg) => {
+    let sql = `
+      ${selectAgg}
+      FROM monthly_consumption mc
+      INNER JOIN bills b ON mc.bill_id = b.id
+      WHERE mc.condominium_id = $1
+      AND (mc.year * 12 + mc.month) >= ($2 * 12 + $3)
+      AND (mc.year * 12 + mc.month) <= ($4 * 12 + $5)`;
+    const params = [condominiumId, prevStart.y, prevStart.mo, prevEnd.y, prevEnd.mo];
+    let pc = 6;
+    if (consumoBillId != null) {
+      sql += ` AND mc.bill_id = $${pc++}`;
+      params.push(consumoBillId);
+    }
+    if (consumoBillType) {
+      sql += ` AND b.bill_type = $${pc++}`;
+      params.push(consumoBillType);
+    }
+    return { sql, params };
+  };
+
+  const prevSql = buildPrevSql(`SELECT COALESCE(SUM(mc.bill_amount), 0) as total`);
+  const prevRes = await query(prevSql.sql, prevSql.params);
+  const prevTotalAmount = parseFloat(prevRes.rows[0].total) || 0;
+
+  const monthsInPeriod = end.y * 12 + end.mo - (start.y * 12 + start.mo) + 1;
+  const avgMonthlyAmount = monthsInPeriod > 0 ? totalAmount / monthsInPeriod : 0;
+
+  let variationPct = 0;
+  if (prevTotalAmount > 0) {
+    variationPct = ((totalAmount - prevTotalAmount) / prevTotalAmount) * 100;
+  } else if (totalAmount > 0) {
+    variationPct = 100;
+  }
+
+  const seriesSql = buildFilteredSql(
+    `SELECT mc.year, mc.month, COALESCE(SUM(mc.bill_amount), 0) as total_amount`
+  );
+  const seriesQuery = `${seriesSql.sql} GROUP BY mc.year, mc.month ORDER BY mc.year, mc.month`;
+  const seriesRes = await query(seriesQuery, seriesSql.params);
+
+  const byKey = new Map();
+  seriesRes.rows.forEach((row) => {
+    const k = `${row.year}-${row.month}`;
+    byKey.set(k, parseFloat(row.total_amount) || 0);
+  });
+
+  const monthShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const series = [];
+  let y = start.y;
+  let m = start.mo;
+  while (y * 12 + m <= end.y * 12 + end.mo) {
+    const k = `${y}-${m}`;
+    series.push({
+      year: y,
+      month: m,
+      label: `${monthShort[m - 1]}/${y}`,
+      totalAmount: byKey.get(k) || 0,
+    });
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+
+  let lastMonthLabel = null;
+  for (let i = series.length - 1; i >= 0; i--) {
+    if (series[i].totalAmount > 0) {
+      lastMonthLabel = series[i].label;
+      break;
+    }
+  }
+
+  /** Uma linha por conta (quando não há filtro de conta única) — para o gráfico multi-série */
+  let seriesPorConta = [];
+  if (consumoBillId == null) {
+    const perBillSql = buildFilteredSql(
+      `SELECT mc.bill_id, b.name as bill_name, mc.year, mc.month, mc.bill_amount`
+    );
+    const perBillQuery = `${perBillSql.sql} ORDER BY b.name ASC, mc.year ASC, mc.month ASC`;
+    const perBillRes = await query(perBillQuery, perBillSql.params);
+    const billMaps = new Map();
+    perBillRes.rows.forEach((row) => {
+      const bid = row.bill_id;
+      if (!billMaps.has(bid)) {
+        billMaps.set(bid, { billName: row.bill_name, amounts: new Map() });
+      }
+      const k = `${row.year}-${row.month}`;
+      billMaps.get(bid).amounts.set(k, parseFloat(row.bill_amount) || 0);
+    });
+    billMaps.forEach((data, bid) => {
+      const points = [];
+      let yy = start.y;
+      let mm = start.mo;
+      while (yy * 12 + mm <= end.y * 12 + end.mo) {
+        const key = `${yy}-${mm}`;
+        points.push({
+          year: yy,
+          month: mm,
+          label: `${monthShort[mm - 1]}/${yy}`,
+          totalAmount: data.amounts.get(key) || 0,
+        });
+        mm += 1;
+        if (mm > 12) {
+          mm = 1;
+          yy += 1;
+        }
+      }
+      seriesPorConta.push({ billId: bid, billName: data.billName, points });
+    });
+  }
+
+  /** Segundo eixo: consumo físico (só se uma unidade distinta no período filtrado) */
+  let seriesConsumption = null;
+  let consumptionUnitLabel = null;
+  const buildUnitDistinctQuery = () => {
+    let sql = `SELECT DISTINCT NULLIF(TRIM(mc.consumption_unit), '') AS u
+      FROM monthly_consumption mc
+      INNER JOIN bills b ON mc.bill_id = b.id
+      WHERE mc.condominium_id = $1
+      AND (mc.year * 12 + mc.month) >= ($2 * 12 + $3)
+      AND (mc.year * 12 + mc.month) <= ($4 * 12 + $5)
+      AND mc.consumption_value IS NOT NULL
+      AND NULLIF(TRIM(mc.consumption_unit), '') IS NOT NULL`;
+    const params = [condominiumId, start.y, start.mo, end.y, end.mo];
+    let pc = 6;
+    if (consumoBillId != null) {
+      sql += ` AND mc.bill_id = $${pc++}`;
+      params.push(consumoBillId);
+    }
+    if (consumoBillType) {
+      sql += ` AND b.bill_type = $${pc++}`;
+      params.push(consumoBillType);
+    }
+    return { sql, params };
+  };
+  const uq = buildUnitDistinctQuery();
+  const unitRes = await query(uq.sql, uq.params);
+  const distinctUnits = unitRes.rows.map((r) => r.u).filter(Boolean);
+  if (distinctUnits.length === 1) {
+    consumptionUnitLabel = distinctUnits[0];
+    const consAggSql = buildFilteredSql(
+      `SELECT mc.year, mc.month, COALESCE(SUM(mc.consumption_value), 0) AS total_cv`
+    );
+    const consAggQuery = `${consAggSql.sql} GROUP BY mc.year, mc.month ORDER BY mc.year, mc.month`;
+    const consRes = await query(consAggQuery, consAggSql.params);
+    const consByKey = new Map();
+    consRes.rows.forEach((row) => {
+      consByKey.set(`${row.year}-${row.month}`, parseFloat(row.total_cv) || 0);
+    });
+    seriesConsumption = [];
+    let cy = start.y;
+    let cm = start.mo;
+    while (cy * 12 + cm <= end.y * 12 + end.mo) {
+      const ck = `${cy}-${cm}`;
+      seriesConsumption.push({
+        year: cy,
+        month: cm,
+        label: `${monthShort[cm - 1]}/${cy}`,
+        totalConsumption: consByKey.get(ck) || 0,
+      });
+      cm += 1;
+      if (cm > 12) {
+        cm = 1;
+        cy += 1;
+      }
+    }
+  }
+
+  const recentSql = buildFilteredSql(
+    `SELECT mc.id, mc.month, mc.year, mc.bill_amount, mc.consumption_value, mc.consumption_unit,
+            b.name as bill_name, b.bill_type`
+  );
+  const recentQuery = `${recentSql.sql} ORDER BY mc.year DESC, mc.month DESC, b.name ASC LIMIT 5000`;
+  const recentRes = await query(recentQuery, recentSql.params);
+  const recentRecords = recentRes.rows.map((row) => ({
+    id: row.id,
+    billName: row.bill_name,
+    billType: row.bill_type,
+    month: row.month,
+    year: row.year,
+    billAmount: parseFloat(row.bill_amount) || 0,
+    consumptionValue: row.consumption_value != null ? parseFloat(row.consumption_value) : null,
+    consumptionUnit: row.consumption_unit,
+  }));
+
+  return {
+    periodo: {
+      dataInicio,
+      dataFim,
+      dataInicioAnterior,
+      dataFimAnterior,
+      label: periodo.label,
+      labelAnterior: periodo.labelAnterior,
+    },
+    filters: {
+      consumoBillId,
+      consumoBillType,
+    },
+    totalAmount,
+    countRecords,
+    monthsInPeriod,
+    avgMonthlyAmount,
+    prevTotalAmount,
+    variationPct,
+    lastMonthLabel,
+    series,
+    seriesPorConta,
+    seriesConsumption,
+    consumptionUnitLabel,
+    recentRecords,
+  };
+};
+
 // Função para criar entrada financeira
 // Recebe: condominiumId, userId, dados da entrada
 // Retorna: entrada criada
@@ -2380,6 +2692,147 @@ const createConsumption = async (condominiumId, userId, data, ipAddress, userAge
   }
 };
 
+const findConsumptionIdByBillPeriod = async (condominiumId, billId, month, year) => {
+  const result = await query(
+    `SELECT id FROM monthly_consumption
+     WHERE condominium_id = $1 AND bill_id = $2 AND month = $3 AND year = $4
+     LIMIT 1`,
+    [condominiumId, billId, month, year]
+  );
+  return result.rows[0] ? result.rows[0].id : null;
+};
+
+const getConsumptionById = async (consumptionId, condominiumId) => {
+  const result = await query(
+    `SELECT mc.*, b.name as bill_name, b.bill_type
+     FROM monthly_consumption mc
+     INNER JOIN bills b ON mc.bill_id = b.id
+     WHERE mc.id = $1 AND mc.condominium_id = $2`,
+    [consumptionId, condominiumId]
+  );
+  return result.rows[0] || null;
+};
+
+const updateConsumption = async (consumptionId, condominiumId, userId, data, ipAddress, userAgent) => {
+  try {
+    const current = await getConsumptionById(consumptionId, condominiumId);
+    if (!current) {
+      throw new Error('Registro de consumo não encontrado');
+    }
+
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    const billId = data.billId != null ? parseInt(data.billId, 10) : current.bill_id;
+    const month = data.month != null ? parseInt(data.month, 10) : current.month;
+    const year = data.year != null ? parseInt(data.year, 10) : current.year;
+    const consumptionValue = data.consumptionValue !== undefined ? data.consumptionValue : current.consumption_value;
+    const consumptionUnit = data.consumptionUnit !== undefined ? data.consumptionUnit : current.consumption_unit;
+    const billAmount = data.billAmount !== undefined ? data.billAmount : current.bill_amount;
+    const dueDate = data.dueDate !== undefined ? data.dueDate : current.due_date;
+
+    const billResult = await query(`SELECT id FROM bills WHERE id = $1 AND condominium_id = $2`, [billId, condominiumId]);
+    if (billResult.rows.length === 0) {
+      throw new Error('Conta não encontrada ou não pertence a este condomínio');
+    }
+
+    const amountValidation = validateFinancialAmount(billAmount, {
+      allowZero: false,
+      allowNegative: false,
+      maxValue: 10000000,
+      fieldName: 'Valor da conta',
+    });
+    if (!amountValidation.valid) {
+      throw new Error(amountValidation.error);
+    }
+    const amountValue = amountValidation.value;
+
+    const dup = await query(
+      `SELECT id FROM monthly_consumption
+       WHERE condominium_id = $1 AND bill_id = $2 AND month = $3 AND year = $4 AND id <> $5`,
+      [condominiumId, billId, month, year, consumptionId]
+    );
+    if (dup.rows.length > 0) {
+      throw new Error('Já existe consumo registrado para esta conta neste período');
+    }
+
+    const updatedResult = await query(
+      `UPDATE monthly_consumption
+       SET bill_id = $1, month = $2, year = $3, consumption_value = $4, consumption_unit = $5,
+           bill_amount = $6, due_date = $7, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $8 AND condominium_id = $9
+       RETURNING *`,
+      [
+        billId,
+        month,
+        year,
+        consumptionValue === '' || consumptionValue == null ? null : consumptionValue,
+        consumptionUnit || 'UNIDADE',
+        amountValue,
+        dueDate || null,
+        consumptionId,
+        condominiumId,
+      ]
+    );
+
+    const updated = updatedResult.rows[0];
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'UPDATE',
+      module: 'FINANCIAL',
+      entityType: 'monthly_consumption',
+      entityId: consumptionId,
+      beforeData: current,
+      afterData: updated,
+      ipAddress,
+      userAgent,
+    });
+
+    return updated;
+  } catch (error) {
+    console.error('Erro ao atualizar consumo:', error);
+    throw error;
+  }
+};
+
+const deleteConsumption = async (consumptionId, condominiumId, userId, ipAddress, userAgent) => {
+  try {
+    const current = await getConsumptionById(consumptionId, condominiumId);
+    if (!current) {
+      throw new Error('Registro de consumo não encontrado');
+    }
+
+    const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
+    if (!userBelongs) {
+      throw new Error('Usuário não pertence a este condomínio');
+    }
+
+    await query(`DELETE FROM monthly_consumption WHERE id = $1 AND condominium_id = $2`, [consumptionId, condominiumId]);
+
+    await logAction({
+      userId,
+      condominiumId,
+      action: 'DELETE',
+      module: 'FINANCIAL',
+      entityType: 'monthly_consumption',
+      entityId: consumptionId,
+      beforeData: current,
+      afterData: null,
+      ipAddress,
+      userAgent,
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Erro ao excluir consumo:', error);
+    throw error;
+  }
+};
+
 // Função para listar consumo mensal
 // Recebe: condominiumId, filtros
 // Retorna: lista de consumo
@@ -2410,8 +2863,18 @@ const listConsumption = async (condominiumId, filters = {}) => {
       params.push(filters.month);
     }
 
-    sql += ` ORDER BY mc.year DESC, mc.month DESC LIMIT $${paramCount}`;
-    params.push(filters.limit || 100);
+    if (filters.billType && ALLOWED_CONSUMO_BILL_TYPES.includes(String(filters.billType))) {
+      sql += ` AND b.bill_type = $${paramCount++}`;
+      params.push(filters.billType);
+    }
+
+    if (filters.monthFromKey != null && filters.monthToKey != null) {
+      sql += ` AND (mc.year * 12 + mc.month) >= $${paramCount++} AND (mc.year * 12 + mc.month) <= $${paramCount++}`;
+      params.push(filters.monthFromKey, filters.monthToKey);
+    }
+
+    sql += ` ORDER BY mc.year DESC, mc.month DESC, b.name ASC LIMIT $${paramCount}`;
+    params.push(filters.limit || 500);
 
     const result = await query(sql, params);
     return result.rows;
@@ -2993,6 +3456,7 @@ module.exports = {
   updateExitAttachments,
   removeExitAttachment,
   getDashboardStats,
+  getConsumptionAnalytics,
   createEntry,
   getEntryById,
   updateEntry,
@@ -3012,6 +3476,10 @@ module.exports = {
   getAccountById,
    updateAccount,
   createConsumption,
+  findConsumptionIdByBillPeriod,
+  getConsumptionById,
+  updateConsumption,
+  deleteConsumption,
   listConsumption,
   createCostCenter,
   listCostCenters,

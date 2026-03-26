@@ -355,7 +355,14 @@
     <%- include('../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
 
     <% var periodo = typeof periodo !== 'undefined' && periodo ? periodo : null; %>
-    <div class="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-end gap-4 animate-fade-in-up">
+    <% var cq = typeof consumoQuery !== 'undefined' && consumoQuery ? consumoQuery : { consumoBillId: '', consumoBillType: '' }; %>
+    <% var billsCF = typeof billsForConsumptionFilter !== 'undefined' && billsForConsumptionFilter ? billsForConsumptionFilter : []; %>
+    <details id="dash-financeiro-filtros" class="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm animate-fade-in-up group">
+      <summary class="md:hidden cursor-pointer list-none font-semibold text-gray-800 flex justify-between items-center py-1">
+        <span>Período e filtros (KPIs e consumo)</span>
+        <span aria-hidden="true" class="text-gray-500 text-xs">▼</span>
+      </summary>
+      <div class="mt-3 md:mt-0 flex flex-wrap items-end gap-4">
       <form method="get" action="/financeiro/dashboard" class="flex flex-wrap items-end gap-3">
         <div>
           <label for="dash-data-inicio" class="block text-xs font-medium text-gray-600 mb-1">Data início</label>
@@ -365,13 +372,46 @@
           <label for="dash-data-fim" class="block text-xs font-medium text-gray-600 mb-1">Data fim</label>
           <input id="dash-data-fim" type="date" name="dataFim" value="<%= periodo ? periodo.dataFim : '' %>" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
         </div>
+        <div>
+          <label for="dash-consumo-tipo" class="block text-xs font-medium text-gray-600 mb-1">Consumo: tipo</label>
+          <select id="dash-consumo-tipo" name="consumoBillType" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 min-w-[140px]">
+            <option value="" <%= !cq.consumoBillType ? 'selected' : '' %>>Todos</option>
+            <option value="AGUA" <%= cq.consumoBillType === 'AGUA' ? 'selected' : '' %>>Água</option>
+            <option value="LUZ" <%= cq.consumoBillType === 'LUZ' ? 'selected' : '' %>>Energia</option>
+            <option value="GAS" <%= cq.consumoBillType === 'GAS' ? 'selected' : '' %>>Gás</option>
+            <option value="TELEFONE" <%= cq.consumoBillType === 'TELEFONE' ? 'selected' : '' %>>Telefone</option>
+            <option value="INTERNET" <%= cq.consumoBillType === 'INTERNET' ? 'selected' : '' %>>Internet</option>
+            <option value="OUTRA" <%= cq.consumoBillType === 'OUTRA' ? 'selected' : '' %>>Outra</option>
+          </select>
+        </div>
+        <div>
+          <label for="dash-consumo-conta" class="block text-xs font-medium text-gray-600 mb-1">Consumo: conta</label>
+          <select id="dash-consumo-conta" name="consumoBillId" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 min-w-[180px] max-w-[240px]">
+            <option value="" <%= !cq.consumoBillId ? 'selected' : '' %>>Todas</option>
+            <% billsCF.forEach(function(b) { %>
+              <option value="<%= b.id %>" <%= String(cq.consumoBillId) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
+            <% }); %>
+          </select>
+        </div>
         <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow">Aplicar período</button>
         <a href="/financeiro/dashboard" class="text-sm font-medium text-gray-600 hover:text-green-700 py-2">Mês atual (padrão)</a>
       </form>
       <% if (periodo && periodo.label) { %>
         <p class="text-sm text-gray-600 w-full sm:w-auto sm:ml-auto"><span class="font-semibold text-gray-800">Período dos KPIs:</span> <%= periodo.label %></p>
       <% } %>
-    </div>
+      </div>
+    </details>
+    <script>
+      (function () {
+        var d = document.getElementById('dash-financeiro-filtros');
+        if (!d || !window.matchMedia) return;
+        function sync() {
+          if (window.matchMedia('(min-width: 768px)').matches) d.open = true;
+        }
+        sync();
+        window.matchMedia('(min-width: 768px)').addEventListener('change', sync);
+      })();
+    </script>
 
     <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
     <%- include('../../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>
@@ -707,9 +747,8 @@
       <% } %>
     </div>
 
-    <!-- Gráficos Limpos -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- Gráfico de Evolução (Últimos 6 meses) -->
+    <!-- Evolução financeira -->
+    <div class="grid grid-cols-1 gap-6 mb-8">
       <div class="bg-white rounded-xl p-6 shadow-lg animate-fade-in-up delay-200">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold text-gray-900">
@@ -721,85 +760,114 @@
           <canvas id="evolutionChart"></canvas>
         </div>
       </div>
-
-      <!-- Gráfico de Consumo de Contas -->
-      <div class="bg-white rounded-xl p-6 shadow-lg animate-fade-in-up delay-300">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-gray-900">
-            Consumo de Contas
-          </h2>
-          <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">Média</span>
-        </div>
-        <div class="chart-container" style="position: relative; height: 300px;">
-          <canvas id="consumptionChart"></canvas>
-        </div>
-      </div>
     </div>
 
-    <!-- Tabela de Consumo Mensal Limpa -->
-    <div class="bg-white rounded-xl p-6 shadow-lg mb-8 animate-fade-in-up delay-400">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold text-gray-900">
-          Consumo Mensal de Contas
-        </h2>
-        <a href="/financeiro/consumo/novo" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 flex items-center text-sm">
+    <% var ca = typeof consumptionAnalytics !== 'undefined' && consumptionAnalytics ? consumptionAnalytics : null; %>
+    <!-- Análise de consumo de contas (período e filtros no topo) -->
+    <div class="bg-white rounded-xl p-6 shadow-lg mb-8 animate-fade-in-up delay-300 border border-indigo-100">
+      <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Consumo de contas</h2>
+          <p class="text-sm text-gray-600 mt-1">
+            Valor das faturas registradas em <strong>Consumo mensal</strong>, no período dos filtros acima.
+            <% if (ca && ca.periodo && ca.periodo.label) { %>
+              <span class="text-gray-500">(<%= ca.periodo.label %>)</span>
+            <% } %>
+          </p>
+        </div>
+        <a href="/financeiro/consumo/novo" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors duration-200 flex items-center text-sm shrink-0">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
           </svg>
-          Registrar Consumo
+          Registrar consumo
         </a>
       </div>
-      <div class="overflow-x-auto">
+
+      <% if (ca) { %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="rounded-xl bg-indigo-50 border border-indigo-100 p-4">
+          <p class="text-xs font-medium text-indigo-800 uppercase tracking-wide">Total no período</p>
+          <p class="text-2xl font-bold text-indigo-900 mt-1">R$ <%= ca.totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %></p>
+        </div>
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-4">
+          <p class="text-xs font-medium text-slate-600 uppercase tracking-wide">Média mensal (R$)</p>
+          <p class="text-2xl font-bold text-slate-900 mt-1">R$ <%= ca.avgMonthlyAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %></p>
+          <p class="text-xs text-slate-500 mt-1"><%= ca.monthsInPeriod %> mês(es) no intervalo</p>
+        </div>
+        <div class="rounded-xl bg-amber-50 border border-amber-100 p-4">
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            <p class="text-xs font-medium text-amber-900 uppercase tracking-wide">vs. período anterior</p>
+            <% if (Math.abs(ca.variationPct) >= 5) { %>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full <%= ca.variationPct > 0 ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900' %>" title="Variação igual ou acima de 5% em relação ao período anterior">
+                <%= ca.variationPct > 0 ? 'Atenção: alta' : 'Queda relevante' %>
+              </span>
+            <% } %>
+          </div>
+          <p class="text-2xl font-bold <%= ca.variationPct >= 0 ? 'text-amber-800' : 'text-green-700' %> mt-1">
+            <%= ca.variationPct >= 0 ? '+' : '' %><%= ca.variationPct.toLocaleString('pt-BR', { minimumFractionDigits: 1 }) %>%
+          </p>
+          <p class="text-xs text-amber-800/80 mt-1">Anterior: R$ <%= ca.prevTotalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %></p>
+        </div>
+        <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
+          <p class="text-xs font-medium text-emerald-800 uppercase tracking-wide">Registros / último mês c/ dado</p>
+          <p class="text-2xl font-bold text-emerald-900 mt-1"><%= ca.countRecords %></p>
+          <p class="text-xs text-emerald-700 mt-1"><%= ca.lastMonthLabel ? ca.lastMonthLabel : '—' %></p>
+        </div>
+      </div>
+
+      <p class="sr-only" id="consumption-chart-summary">
+        <% if (ca) { %>
+          Resumo consumo: total R$ <%= ca.totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %> no período.
+          Variação versus período anterior: <%= ca.variationPct >= 0 ? '+' : '' %><%= ca.variationPct.toLocaleString('pt-BR', { minimumFractionDigits: 1 }) %> por cento.
+        <% } %>
+      </p>
+      <% if (ca.seriesPorConta && ca.seriesPorConta.length > 12) { %>
+        <p class="text-sm text-gray-600 mb-2" aria-live="polite">Mostrando <%= ca.seriesPorConta.length %> contas no gráfico — use a legenda com rolagem ou filtre por conta/tipo.</p>
+      <% } %>
+      <div class="chart-container mb-8" style="position: relative; height: 380px;">
+        <canvas id="consumptionTimeSeriesChart" aria-describedby="consumption-chart-summary" role="img"></canvas>
+      </div>
+      <% } %>
+
+      <h3 class="text-lg font-semibold text-gray-900 mb-3">Registros no período</h3>
+      <div class="overflow-x-auto max-h-[min(60vh,28rem)] overflow-y-auto rounded-lg border border-gray-200">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Conta</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tipo</th>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Mês/Ano</th>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Consumo</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Valor</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Valor (R$)</th>
+              <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <% if (typeof kpis !== 'undefined' && kpis.consumption && kpis.consumption.length > 0) { %>
-              <% kpis.consumption.forEach((cons, index) => { %>
+            <% if (ca && ca.recentRecords && ca.recentRecords.length > 0) { %>
+              <% ca.recentRecords.forEach(function(row) { %>
                 <tr class="hover:bg-gray-50 transition-colors duration-150">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="font-medium text-gray-900"><%= cons.billName %></span>
-                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900"><%= row.billName %></td>
+                  <td class="px-6 py-4 whitespace-nowrap text-gray-600 text-sm"><%= row.billType %></td>
+                  <td class="px-6 py-4 whitespace-nowrap text-gray-600"><%= row.month %>/<%= row.year %></td>
                   <td class="px-6 py-4 whitespace-nowrap text-gray-600">
-                    <%= cons.month %>/<%= cons.year %>
+                    <%= row.consumptionValue != null ? row.consumptionValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' ' + (row.consumptionUnit || '') : '—' %>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-600">
-                    <%= cons.consumptionValue ? cons.consumptionValue.toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ' ' + cons.consumptionUnit : '-' %>
+                  <td class="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">
+                    R$ <%= row.billAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="font-semibold text-gray-900">
-                      R$ <%= cons.billAmount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Registrado
-                    </span>
+                  <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <% if (row.id) { %>
+                      <a href="/financeiro/consumo/<%= row.id %>/editar" class="text-indigo-600 font-medium hover:underline text-sm">Editar</a>
+                    <% } else { %>
+                      <span class="text-gray-400 text-sm">—</span>
+                    <% } %>
                   </td>
                 </tr>
               <% }); %>
             <% } else { %>
               <tr>
-                <td colspan="5" class="px-6 py-12 text-center">
-                  <div class="flex flex-col items-center">
-                    <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <p class="text-gray-500 mb-2">Nenhum consumo registrado ainda.</p>
-                    <a href="/financeiro/consumo/novo" class="text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200 flex items-center text-sm">
-                      <span>Registre o primeiro consumo</span>
-                      <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                      </svg>
-                    </a>
-                  </div>
+                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                  Nenhum registro de consumo neste período e filtros. <a href="/financeiro/consumo/novo" class="text-indigo-600 font-medium hover:underline">Registrar consumo</a>
                 </td>
               </tr>
             <% } %>
@@ -876,7 +944,10 @@
 <script>
   // Dados para gráficos
   const last6MonthsData = <%- JSON.stringify(typeof kpis !== 'undefined' && kpis.last6Months ? kpis.last6Months : []) %>;
-  const consumptionData = <%- JSON.stringify(typeof kpis !== 'undefined' && kpis.avgConsumption ? kpis.avgConsumption : []) %>;
+  const consumptionSeries = <%- JSON.stringify((typeof consumptionAnalytics !== 'undefined' && consumptionAnalytics && consumptionAnalytics.series) ? consumptionAnalytics.series : []) %>;
+  const consumptionSeriesPorConta = <%- JSON.stringify((typeof consumptionAnalytics !== 'undefined' && consumptionAnalytics && consumptionAnalytics.seriesPorConta) ? consumptionAnalytics.seriesPorConta : []) %>;
+  const consumptionSeriesPhysical = <%- JSON.stringify((typeof consumptionAnalytics !== 'undefined' && consumptionAnalytics && consumptionAnalytics.seriesConsumption) ? consumptionAnalytics.seriesConsumption : null) %>;
+  const consumptionUnitLabel = <%- JSON.stringify((typeof consumptionAnalytics !== 'undefined' && consumptionAnalytics && consumptionAnalytics.consumptionUnitLabel) ? consumptionAnalytics.consumptionUnitLabel : null) %>;
 
   // Gráfico de Evolução - Design Moderno
   const evolutionCtx = document.getElementById('evolutionChart');
@@ -1037,267 +1108,128 @@
     });
   }
 
-  // Gráfico de Consumo - Design Moderno com Gradientes
-  const consumptionCtx = document.getElementById('consumptionChart');
-  if (consumptionCtx && consumptionData.length > 0) {
-    const gradients = [
-      consumptionCtx.getContext('2d').createLinearGradient(0, 0, 0, 400),
-      consumptionCtx.getContext('2d').createLinearGradient(0, 0, 0, 400),
-      consumptionCtx.getContext('2d').createLinearGradient(0, 0, 0, 400),
-      consumptionCtx.getContext('2d').createLinearGradient(0, 0, 0, 400),
-      consumptionCtx.getContext('2d').createLinearGradient(0, 0, 0, 400),
-      consumptionCtx.getContext('2d').createLinearGradient(0, 0, 0, 400)
-    ];
-
-    const colors = [
-      { start: '#22c55e', end: '#16a34a' },
-      { start: '#3b82f6', end: '#2563eb' },
-      { start: '#8b5cf6', end: '#7c3aed' },
-      { start: '#f59e0b', end: '#d97706' },
-      { start: '#ef4444', end: '#dc2626' },
-      { start: '#06b6d4', end: '#0891b2' }
-    ];
-
-    colors.forEach((color, index) => {
-      gradients[index].addColorStop(0, color.start);
-      gradients[index].addColorStop(1, color.end);
+  const consumptionTimeCtx = document.getElementById('consumptionTimeSeriesChart');
+  if (consumptionTimeCtx && consumptionSeries.length > 0) {
+    const hasAnyR = consumptionSeries.some(function (p) { return p.totalAmount > 0; });
+    const hasAnyMulti = Array.isArray(consumptionSeriesPorConta) && consumptionSeriesPorConta.some(function (s) {
+      return s.points && s.points.some(function (p) { return p.totalAmount > 0; });
     });
-
-    new Chart(consumptionCtx, {
-      type: 'bar',
-      data: {
-        labels: consumptionData.map(d => {
-          const types = {
-            'AGUA': 'Água',
-            'LUZ': 'Energia',
-            'GAS': 'Gás',
-            'TELEFONE': 'Telefone',
-            'INTERNET': 'Internet',
-            'OUTRA': 'Outra'
-          };
-          return types[d.billType] || d.billType;
-        }),
-        datasets: [
-          {
-            label: 'Média de Valor (R$)',
-            data: consumptionData.map(d => d.avgAmount),
-            backgroundColor: consumptionData.map((d, i) => gradients[i % gradients.length]),
-            borderColor: '#ffffff',
-            borderWidth: 3,
-            borderRadius: 12,
-            borderSkipped: false,
-            maxBarThickness: 60
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          intersect: false,
-          mode: 'index'
-        },
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            padding: 15,
-            titleFont: {
-              size: 14,
-              weight: 'bold'
-            },
-            bodyFont: {
-              size: 13
-            },
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            borderWidth: 1,
-            cornerRadius: 12,
-            callbacks: {
-              label: function(context) {
-                return 'Média: R$ ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: {
-              display: false
-            },
-            ticks: {
-              font: {
-                size: 11,
-                weight: 'bold'
-              },
-              color: '#6b7280'
-            }
-          },
-          y: {
-            beginAtZero: true,
-            grid: {
-              color: 'rgba(0, 0, 0, 0.05)',
-              drawBorder: false
-            },
-            max: function(context) {
-              const values = context.chart.data.datasets.flatMap(d => d.data);
-              const max = Math.max(...values);
-              return max > 0 ? max * 1.1 : 1000;
-            },
-            ticks: {
-              callback: function(value) {
-                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-              },
-              font: {
-                size: 11,
-                weight: 'bold'
-              },
-              color: '#6b7280'
-            }
-          }
-        },
-        animation: {
-          duration: 2000,
-          easing: 'easeInOutQuart'
-        }
-      }
-    });
-  }
-
-  // Gráfico de Comparação de Consumo (Água e Energia)
-  const consumptionComparisonCtx = document.getElementById('consumptionComparisonChart');
-  if (consumptionComparisonCtx) {
-    // Buscar dados de consumo para comparação
-    fetch('/financeiro/api/consumption-comparison')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.length > 0) {
-          // Agrupa por período (mês/ano)
-          const periodsMap = new Map();
-          data.forEach(d => {
-            const key = `${d.year}-${String(d.month).padStart(2, '0')}`;
-            if (!periodsMap.has(key)) {
-              periodsMap.set(key, { month: d.month, year: d.year, agua: null, energia: null });
-            }
-            const period = periodsMap.get(key);
-            if (d.billType === 'AGUA') {
-              period.agua = d.billAmount;
-            } else if (d.billType === 'LUZ') {
-              period.energia = d.billAmount;
-            }
+    const hasAny = hasAnyR || hasAnyMulti;
+    if (hasAny) {
+      const palette = [
+        'rgb(79, 70, 229)', 'rgb(16, 185, 129)', 'rgb(245, 158, 11)', 'rgb(236, 72, 153)',
+        'rgb(59, 130, 246)', 'rgb(139, 92, 246)', 'rgb(239, 68, 68)', 'rgb(20, 184, 166)',
+        'rgb(234, 179, 8)', 'rgb(168, 85, 247)', 'rgb(14, 165, 233)', 'rgb(217, 119, 6)'
+      ];
+      var labels = consumptionSeries.map(function (d) { return d.label; });
+      var datasets = [];
+      if (consumptionSeriesPorConta && consumptionSeriesPorConta.length > 0) {
+        consumptionSeriesPorConta.forEach(function (bill, idx) {
+          var pts = bill.points || [];
+          if (!labels.length && pts.length) labels = pts.map(function (p) { return p.label; });
+          datasets.push({
+            label: bill.billName || ('Conta ' + bill.billId),
+            data: pts.map(function (p) { return p.totalAmount; }),
+            borderColor: palette[idx % palette.length],
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            tension: 0.35,
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            yAxisID: 'y'
           });
-
-          // Ordena por período
-          const sortedPeriods = Array.from(periodsMap.values()).sort((a, b) => {
-            if (a.year !== b.year) return b.year - a.year;
-            return b.month - a.month;
-          });
-
-          const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-          const labels = sortedPeriods.map(p => `${monthNames[p.month - 1]}/${p.year}`);
-          const aguaData = sortedPeriods.map(p => p.agua || 0);
-          const energiaData = sortedPeriods.map(p => p.energia || 0);
-
-          new Chart(consumptionComparisonCtx, {
-            type: 'line',
-            data: {
-              labels: labels,
-              datasets: [
-                {
-                  label: 'Água (R$)',
-                  data: aguaData,
-                  borderColor: 'rgb(59, 130, 246)',
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  tension: 0.4,
-                  fill: true
-                },
-                {
-                  label: 'Energia (R$)',
-                  data: energiaData,
-                  borderColor: 'rgb(251, 191, 36)',
-                  backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                  tension: 0.4,
-                  fill: true
-                }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: true,
-              aspectRatio: 2.5,
-              plugins: {
-                legend: {
-                  position: 'top',
-                }
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  max: function(context) {
-                    const values = context.chart.data.datasets.flatMap(d => d.data);
-                    const max = Math.max(...values);
-                    return max > 0 ? max * 1.1 : 1000;
-                  },
-                  ticks: {
-                    callback: function(value) {
-                      return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-                    }
-                  }
-                }
-              }
-            }
-          });
-        } else {
-          consumptionComparisonCtx.parentElement.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhum dado de consumo disponível para comparação</p>';
-        }
-      })
-      .catch(err => {
-        console.error('Erro ao carregar dados de comparação:', err);
-        consumptionComparisonCtx.parentElement.innerHTML = '<p class="text-gray-500">Erro ao carregar dados de comparação</p>';
-      });
-  }
-
-  // Carregar projeções
-  fetch('/financeiro/api/projections')
-    .then(res => res.json())
-    .then(data => {
-      const container = document.getElementById('projectionsContainer');
-      if (data && data.months && data.months.length > 0) {
-        let html = '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">';
-        data.months.forEach(month => {
-          html += `
-            <div class="border border-gray-200 rounded-lg p-4">
-              <h3 class="font-bold text-lg text-gray-800 mb-3">${month.label}</h3>
-              <div class="space-y-2">
-                <div class="flex justify-between">
-                  <span class="text-sm text-gray-600">Entradas Previstas:</span>
-                  <span class="font-semibold text-green-600">R$ ${month.projectedEntries.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-sm text-gray-600">Saídas Previstas:</span>
-                  <span class="font-semibold text-red-600">R$ ${month.projectedExits.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                </div>
-                <div class="flex justify-between border-t pt-2">
-                  <span class="text-sm font-medium text-gray-800">Saldo Projetado:</span>
-                  <span class="font-bold ${month.projectedBalance >= 0 ? 'text-green-600' : 'text-red-600'}">
-                    R$ ${month.projectedBalance.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                  </span>
-                </div>
-              </div>
-            </div>
-          `;
         });
-        html += '</div>';
-        container.innerHTML = html;
       } else {
-        container.innerHTML = '<p class="text-gray-500">Nenhuma projeção disponível. Configure entradas e saídas recorrentes para ver projeções.</p>';
+        datasets.push({
+          label: 'Valor da conta (R$)',
+          data: consumptionSeries.map(function (d) { return d.totalAmount; }),
+          borderColor: 'rgb(79, 70, 229)',
+          backgroundColor: 'rgba(79, 70, 229, 0.12)',
+          borderWidth: 2,
+          tension: 0.35,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          yAxisID: 'y'
+        });
       }
-    })
-    .catch(err => {
-      console.error('Erro ao carregar projeções:', err);
-      document.getElementById('projectionsContainer').innerHTML = '<p class="text-red-500">Erro ao carregar projeções</p>';
-    });
+      var scales = {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 }, color: '#6b7280' }
+        },
+        y: {
+          id: 'y',
+          position: 'left',
+          beginAtZero: true,
+          grid: { color: 'rgba(0, 0, 0, 0.05)' },
+          ticks: {
+            callback: function (value) {
+              return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            }
+          }
+        }
+      };
+      if (consumptionSeriesPhysical && consumptionSeriesPhysical.length && consumptionUnitLabel) {
+        datasets.push({
+          label: 'Consumo (' + consumptionUnitLabel + ')',
+          data: consumptionSeriesPhysical.map(function (d) { return d.totalConsumption; }),
+          borderColor: 'rgb(100, 116, 139)',
+          backgroundColor: 'rgba(100, 116, 139, 0.08)',
+          borderWidth: 2,
+          tension: 0.35,
+          fill: false,
+          pointRadius: 3,
+          yAxisID: 'y1'
+        });
+        scales.y1 = {
+          id: 'y1',
+          position: 'right',
+          beginAtZero: true,
+          grid: { drawOnChartArea: false },
+          ticks: {
+            callback: function (value) {
+              return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' ' + consumptionUnitLabel;
+            }
+          }
+        };
+      }
+      new Chart(consumptionTimeCtx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              maxHeight: consumptionSeriesPorConta && consumptionSeriesPorConta.length > 8 ? 120 : undefined
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  var v = context.parsed.y;
+                  if (context.dataset.yAxisID === 'y1') {
+                    return (context.dataset.label || 'Consumo') + ': ' + (v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0');
+                  }
+                  return (context.dataset.label ? context.dataset.label + ': ' : '') + 'R$ ' + (v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0');
+                }
+              }
+            }
+          },
+          scales: scales
+        }
+      });
+    } else {
+      consumptionTimeCtx.parentElement.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhum valor de consumo registrado neste período (filtros acima).</p>';
+    }
+  }
 </script>
 
 <%- include('../../partials/footer') %>

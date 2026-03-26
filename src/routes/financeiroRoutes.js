@@ -775,51 +775,119 @@ router.get('/contas-a-pagar', async (req, res) => {
   }
 });
 
-// Consumo
+// Consumo (rotas específicas antes de GET /consumo)
+const ALLOWED_CONSUMO_BILL_TYPES = ['AGUA', 'LUZ', 'GAS', 'TELEFONE', 'INTERNET', 'OUTRA'];
+const { resolveDashboardPeriod } = require('../utils/periodRange');
+
+function buildConsumptionListFilters(query) {
+  const parseYmd = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso).trim());
+    if (!m) return null;
+    return { y: parseInt(m[1], 10), mo: parseInt(m[2], 10) };
+  };
+
+  const filters = {};
+  let useDateRange = false;
+  let periodoResolved = null;
+
+  if (query.dataInicio && query.dataFim) {
+    periodoResolved = resolveDashboardPeriod(query.dataInicio, query.dataFim);
+    const start = parseYmd(periodoResolved.dataInicio);
+    const end = parseYmd(periodoResolved.dataFim);
+    if (start && end) {
+      filters.monthFromKey = start.y * 12 + start.mo;
+      filters.monthToKey = end.y * 12 + end.mo;
+      useDateRange = true;
+    }
+  }
+
+  if (!useDateRange) {
+    filters.year = query.year ? parseInt(query.year, 10) : new Date().getFullYear();
+    if (query.month) filters.month = parseInt(query.month, 10);
+  }
+
+  if (query.billId) {
+    const bid = parseInt(query.billId, 10);
+    if (!Number.isNaN(bid)) filters.billId = bid;
+  }
+
+  const bt = query.consumoBillType || query.billType;
+  if (bt && ALLOWED_CONSUMO_BILL_TYPES.includes(String(bt))) {
+    filters.billType = String(bt);
+  }
+
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const dashboardParams = new URLSearchParams();
+  if (useDateRange && periodoResolved) {
+    dashboardParams.set('dataInicio', periodoResolved.dataInicio);
+    dashboardParams.set('dataFim', periodoResolved.dataFim);
+  } else {
+    const y = filters.year || new Date().getFullYear();
+    const m = filters.month;
+    if (m) {
+      const lastDay = new Date(y, m, 0).getDate();
+      dashboardParams.set('dataInicio', `${y}-${pad2(m)}-01`);
+      dashboardParams.set('dataFim', `${y}-${pad2(m)}-${pad2(lastDay)}`);
+    } else {
+      dashboardParams.set('dataInicio', `${y}-01-01`);
+      dashboardParams.set('dataFim', `${y}-12-31`);
+    }
+  }
+  if (filters.billId) dashboardParams.set('consumoBillId', String(filters.billId));
+  if (filters.billType) dashboardParams.set('consumoBillType', filters.billType);
+
+  const dashboardConsumoUrl = `/financeiro/dashboard?${dashboardParams.toString()}`;
+
+  const filtersForForm = {
+    dataInicio: useDateRange && periodoResolved ? periodoResolved.dataInicio : (query.dataInicio || ''),
+    dataFim: useDateRange && periodoResolved ? periodoResolved.dataFim : (query.dataFim || ''),
+    year: filters.year,
+    month: filters.month,
+    billId: filters.billId,
+    consumoBillType: filters.billType || '',
+    useDateRange,
+  };
+
+  return { filters, filtersForForm, dashboardConsumoUrl };
+}
+
 router.get('/consumo/novo', financeiroController.showCreateConsumption);
+router.get('/consumo/:id/editar', financeiroController.showEditConsumption);
+router.post('/consumo/:id/excluir', financeiroController.deleteConsumption);
+router.post('/consumo/:id', financeiroController.updateConsumption);
 router.post('/consumo', financeiroController.createConsumption);
+router.post('/api/contas-json', financeiroController.createAccountJson);
 router.get('/consumo', async (req, res) => {
   try {
     const financeiroService = require('../services/financeiroService');
-    
-    // Extrai filtros dos query parameters
-    const filters = {
-      year: req.query.year ? parseInt(req.query.year) : new Date().getFullYear(),
-      month: req.query.month ? parseInt(req.query.month) : undefined,
-      billId: req.query.billId ? parseInt(req.query.billId) : undefined,
-    };
-    
-    // Busca contas para o filtro
+    const { filters, filtersForForm, dashboardConsumoUrl } = buildConsumptionListFilters(req.query);
+
     const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
-    
-    // Busca consumo com filtros
+
     const consumption = await financeiroService.listConsumption(req.user.condominiumId, filters).catch(() => []);
-    
+
     res.render('administrativo/financeiro/consumo/list', {
       title: 'Consumo Mensal',
       user: req.user,
       consumption: consumption || [],
       bills: bills || [],
-      filters: filters,
+      filters: filtersForForm,
+      dashboardConsumoUrl,
       query: req.query,
       req: req,
     });
   } catch (error) {
     console.error('Erro ao listar consumo:', error);
-    // Em caso de erro, ainda renderiza a página com valores padrão
     const financeiroService = require('../services/financeiroService');
-    const filters = {
-      year: req.query.year ? parseInt(req.query.year) : new Date().getFullYear(),
-      month: req.query.month ? parseInt(req.query.month) : undefined,
-      billId: req.query.billId ? parseInt(req.query.billId) : undefined,
-    };
+    const { filters, filtersForForm, dashboardConsumoUrl } = buildConsumptionListFilters(req.query);
     const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
     res.render('administrativo/financeiro/consumo/list', {
       title: 'Consumo Mensal',
       user: req.user,
       consumption: [],
       bills: bills || [],
-      filters: filters,
+      filters: filtersForForm,
+      dashboardConsumoUrl,
       query: req.query,
       req: req,
       error: 'Erro ao carregar consumo. Tente novamente.',

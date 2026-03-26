@@ -33,6 +33,17 @@ const showDashboard = async (req, res) => {
       dataInicio: req.query.dataInicio,
       dataFim: req.query.dataFim,
     });
+    const consumptionAnalytics = await financeiroService
+      .getConsumptionAnalytics(req.user.condominiumId, {
+        dataInicio: req.query.dataInicio,
+        dataFim: req.query.dataFim,
+        consumoBillId: req.query.consumoBillId,
+        consumoBillType: req.query.consumoBillType,
+      })
+      .catch(() => null);
+    const billsForConsumptionFilter = await financeiroService
+      .listAccounts(req.user.condominiumId, { active: true })
+      .catch(() => []);
     const userRoles = req.user.roles || [];
     const criticalItemsData = await criticalItemsService.getCriticalItemsList(
       req.user.condominiumId,
@@ -50,11 +61,17 @@ const showDashboard = async (req, res) => {
       user: req.user,
       stats,
       kpis: dashboardData.kpis,
+      consumptionAnalytics: consumptionAnalytics || null,
+      billsForConsumptionFilter: billsForConsumptionFilter || [],
       criticalItems: criticalItemsData.items || [],
       condominiumId: req.user.condominiumId,
       showGettingStarted: !!showGettingStarted,
       reserveFund,
       periodo: stats.periodo || null,
+      consumoQuery: {
+        consumoBillId: req.query.consumoBillId || '',
+        consumoBillType: req.query.consumoBillType || '',
+      },
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard financeiro:', error);
@@ -262,6 +279,7 @@ const showCreateAccount = async (req, res) => {
       user: req.user,
       conta: null,
       costCenters,
+      returnTo: req.query.returnTo === 'consumo' ? 'consumo' : null,
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de conta:', error);
@@ -288,7 +306,11 @@ const createAccount = async (req, res) => {
       costCenterId: req.body.costCenterId || null,
     };
 
-    await financeiroService.createAccount(req.user.condominiumId, req.user.id, data, ipAddress, userAgent);
+    const account = await financeiroService.createAccount(req.user.condominiumId, req.user.id, data, ipAddress, userAgent);
+
+    if (req.body.returnTo === 'consumo' && account && account.id) {
+      return res.redirect(`/financeiro/consumo/novo?billId=${account.id}`);
+    }
 
     res.redirect('/financeiro/contas?success=created');
   } catch (error) {
@@ -299,6 +321,7 @@ const createAccount = async (req, res) => {
       user: req.user,
       conta: req.body,
       costCenters,
+      returnTo: req.body.returnTo === 'consumo' ? 'consumo' : null,
       error: getErrorMessage(error),
     });
   }
@@ -423,6 +446,9 @@ const showCreateConsumption = async (req, res) => {
 
     const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
     const now = new Date();
+    const billIdQ = req.query.billId ? parseInt(req.query.billId, 10) : null;
+    const selectedBillId =
+      billIdQ && !Number.isNaN(billIdQ) && bills.some((b) => b.id === billIdQ) ? billIdQ : null;
 
     res.render('administrativo/financeiro/consumo/form', {
       title: 'Registrar Consumo Mensal',
@@ -431,6 +457,7 @@ const showCreateConsumption = async (req, res) => {
       bills,
       currentMonth: now.getMonth() + 1,
       currentYear: now.getFullYear(),
+      selectedBillId,
     });
   } catch (error) {
     console.error('Erro ao exibir formulário de consumo:', error);
@@ -466,6 +493,29 @@ const createConsumption = async (req, res) => {
     console.error('Erro ao criar consumo:', error);
     const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
     const now = new Date();
+    const billIdQ = req.query.billId ? parseInt(req.query.billId, 10) : null;
+    const selectedBillId =
+      billIdQ && !Number.isNaN(billIdQ) && bills.some((b) => b.id === billIdQ)
+        ? billIdQ
+        : req.body.billId
+          ? parseInt(req.body.billId, 10)
+          : null;
+
+    let duplicateEditUrl = null;
+    let duplicateListUrl = null;
+    if (error.message && error.message.includes('Já existe consumo') && req.body.billId && req.body.month && req.body.year) {
+      const bid = parseInt(req.body.billId, 10);
+      const mo = parseInt(req.body.month, 10);
+      const yr = parseInt(req.body.year, 10);
+      const dupId = await financeiroService
+        .findConsumptionIdByBillPeriod(req.user.condominiumId, bid, mo, yr)
+        .catch(() => null);
+      if (dupId) duplicateEditUrl = `/financeiro/consumo/${dupId}/editar`;
+      const pad = (n) => String(n).padStart(2, '0');
+      const lastD = new Date(yr, mo, 0).getDate();
+      duplicateListUrl = `/financeiro/consumo?dataInicio=${yr}-${pad(mo)}-01&dataFim=${yr}-${pad(mo)}-${pad(lastD)}&billId=${bid}`;
+    }
+
     res.render('administrativo/financeiro/consumo/form', {
       title: 'Registrar Consumo Mensal',
       user: req.user,
@@ -473,8 +523,165 @@ const createConsumption = async (req, res) => {
       bills,
       currentMonth: now.getMonth() + 1,
       currentYear: now.getFullYear(),
+      selectedBillId,
+      duplicateEditUrl,
+      duplicateListUrl,
       error: getErrorMessage(error),
     });
+  }
+};
+
+// GET /financeiro/consumo/:id/editar
+const showEditConsumption = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const row = await financeiroService.getConsumptionById(req.params.id, req.user.condominiumId);
+    if (!row) {
+      return renderError(res, 404, 'Registro de consumo não encontrado');
+    }
+
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true });
+    const due = row.due_date ? String(row.due_date).slice(0, 10) : '';
+
+    const consumo = {
+      billId: row.bill_id,
+      month: row.month,
+      year: row.year,
+      consumptionValue: row.consumption_value,
+      consumptionUnit: row.consumption_unit,
+      billAmount: row.bill_amount,
+      dueDate: due,
+    };
+
+    res.render('administrativo/financeiro/consumo/form', {
+      title: 'Editar Consumo Mensal',
+      user: req.user,
+      consumo,
+      bills,
+      editId: row.id,
+      currentMonth: row.month,
+      currentYear: row.year,
+      selectedBillId: row.bill_id,
+    });
+  } catch (error) {
+    console.error('Erro ao exibir edição de consumo:', error);
+    renderError(res, 500, 'Erro ao carregar formulário', error);
+  }
+};
+
+// POST /financeiro/consumo/:id
+const updateConsumption = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      billId: req.body.billId,
+      month: parseInt(req.body.month, 10),
+      year: parseInt(req.body.year, 10),
+      consumptionValue: req.body.consumptionValue || null,
+      consumptionUnit: req.body.consumptionUnit || 'UNIDADE',
+      billAmount: req.body.billAmount,
+      dueDate: req.body.dueDate || null,
+    };
+
+    await financeiroService.updateConsumption(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      data,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/consumo?success=updated');
+  } catch (error) {
+    console.error('Erro ao atualizar consumo:', error);
+    const bills = await financeiroService.listAccounts(req.user.condominiumId, { active: true }).catch(() => []);
+    const row = await financeiroService.getConsumptionById(req.params.id, req.user.condominiumId).catch(() => null);
+    res.render('administrativo/financeiro/consumo/form', {
+      title: 'Editar Consumo Mensal',
+      user: req.user,
+      consumo: req.body,
+      bills,
+      editId: req.params.id,
+      currentMonth: req.body.month ? parseInt(req.body.month, 10) : row?.month,
+      currentYear: req.body.year ? parseInt(req.body.year, 10) : row?.year,
+      selectedBillId: req.body.billId ? parseInt(req.body.billId, 10) : row?.bill_id,
+      error: getErrorMessage(error),
+    });
+  }
+};
+
+// POST /financeiro/consumo/:id/excluir
+const deleteConsumption = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await financeiroService.deleteConsumption(
+      req.params.id,
+      req.user.condominiumId,
+      req.user.id,
+      ipAddress,
+      userAgent
+    );
+
+    res.redirect('/financeiro/consumo?success=deleted');
+  } catch (error) {
+    console.error('Erro ao excluir consumo:', error);
+    renderError(res, 500, 'Erro ao excluir consumo', error);
+  }
+};
+
+// POST /financeiro/api/contas-json — cria conta e retorna JSON (modal consumo)
+const createAccountJson = async (req, res) => {
+  try {
+    if (!req.user.condominiumId) {
+      return res.status(400).json({ ok: false, error: 'Condomínio não associado' });
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const data = {
+      name: req.body.name,
+      billType: req.body.billType,
+      provider: req.body.provider || null,
+      accountNumber: req.body.accountNumber || null,
+      costCenterId: req.body.costCenterId || null,
+    };
+
+    const account = await financeiroService.createAccount(
+      req.user.condominiumId,
+      req.user.id,
+      data,
+      ipAddress,
+      userAgent
+    );
+
+    res.json({
+      ok: true,
+      account: {
+        id: account.id,
+        name: account.name,
+        bill_type: account.bill_type,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao criar conta (JSON):', error);
+    res.status(400).json({ ok: false, error: getErrorMessage(error) });
   }
 };
 
@@ -1077,6 +1284,10 @@ module.exports = {
   updateAccount,
   showCreateConsumption,
   createConsumption,
+  showEditConsumption,
+  updateConsumption,
+  deleteConsumption,
+  createAccountJson,
   showFechamentoMensal,
   closeFechamentoMensal,
   reopenFechamentoMensal,
