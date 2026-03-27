@@ -7,17 +7,8 @@
 <% if (_resumo.length > 0 || _helpTitle) { %>
   <div class="mb-6">
     <% if (_resumo.length > 0) { %>
-      <div class="p-5 rounded-xl bg-white border border-blue-100 shadow-sm">
-        <p class="text-sm font-semibold text-gray-800 mb-3">Resumo rápido</p>
-        <ul class="text-sm text-gray-700 space-y-2 list-none">
-          <% _resumo.forEach(function(item, i) { %>
-            <li class="flex items-start gap-2"><span class="text-blue-500 font-bold"><%= i + 1 %>.</span> <%= item %></li>
-          <% }); %>
-        </ul>
-        <% if (_helpTitle && _helpModalContent) { %>
-          <p class="text-xs text-gray-500 mt-3">Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> ao lado do título.</p>
-        <% } %>
-      </div>
+      <% var _footnoteResumo = (_helpTitle && _helpModalContent) ? 'Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> ao lado do título.' : ''; %>
+      <%- include('help-resumo-rapido-card', { resumo: _resumo, footnoteHtml: _footnoteResumo }) %>
     <% } %>
   </div>
 <% } %>

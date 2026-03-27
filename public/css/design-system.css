@@ -733,3 +733,9 @@ input, select, textarea, button {
     flex-direction: column;
   }
 }
+
+
+/* Resumo rápido (ajuda): acordeão — chevron alinhado ao estado aberto */
+details.help-resumo-details[open] .help-resumo-chevron {
+  transform: rotate(180deg);
+}

@@ -18,15 +18,14 @@
     </div>
 
     <!-- Resumo rápido para o leigo -->
-    <div class="mb-6 p-5 rounded-xl bg-white border border-blue-100 shadow-sm">
-      <p class="text-sm font-semibold text-gray-800 mb-3">Resumo rápido</p>
-      <ul class="text-sm text-gray-700 space-y-2 list-none">
-        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">1.</span> <strong>Fechar o mês</strong> = você “trava” o mês: ninguém altera mais receitas e despesas daquele mês. Use quando tiver fechado as contas no papel.</li>
-        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">2.</span> <strong>Comanda</strong> = cada registro de fechamento. O mesmo mês pode ter mais de uma comanda (ex.: fechamento normal e depois uma revisão).</li>
-        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">3.</span> <strong>Abrir mês</strong> = se fechou por engano ou precisa corrigir algo, você reabre; aí pode editar de novo. O motivo é obrigatório.</li>
-        <li class="flex items-start gap-2"><span class="text-blue-500 font-bold">4.</span> <strong>Meses reabertos (anteriores)</strong> = meses antigos que foram reabertos para correção. Quando terminar, use “Fechar novamente” neles.</li>
-      </ul>
-      <p class="text-xs text-gray-500 mt-3">Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> acima.</p>
+    <% var resumoFechamento = [
+      '<strong>Fechar o mês</strong> = você “trava” o mês: ninguém altera mais receitas e despesas daquele mês. Use quando tiver fechado as contas no papel.',
+      '<strong>Comanda</strong> = cada registro de fechamento. O mesmo mês pode ter mais de uma comanda (ex.: fechamento normal e depois uma revisão).',
+      '<strong>Abrir mês</strong> = se fechou por engano ou precisa corrigir algo, você reabre; aí pode editar de novo. O motivo é obrigatório.',
+      '<strong>Meses reabertos (anteriores)</strong> = meses antigos que foram reabertos para correção. Quando terminar, use “Fechar novamente” neles.'
+    ]; %>
+    <div class="mb-6">
+      <%- include('../../partials/help-resumo-rapido-card', { resumo: resumoFechamento, footnoteHtml: 'Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> acima.' }) %>
     </div>
 
     <% if (typeof req !== 'undefined' && req.query && req.query.success) { %>
