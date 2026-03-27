@@ -81,7 +81,37 @@ const shouldSendType = (preference, reportType) => {
 const formatCurrency = (value) =>
   Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const createPdfReport = async (payload, insight) => {
+const DS_PDF = {
+  header: '#111827',
+  accent: '#22a329',
+  accentLight: '#f0fdf4',
+  border: '#e5e7eb',
+  textMuted: '#6b7280',
+  text: '#1f2937',
+  danger: '#dc2626',
+  success: '#16a34a',
+};
+
+const resolveReportLayout = (preference) => ({
+  includeFinancial: preference?.include_financial !== false,
+  includeMaintenance: preference?.include_maintenance !== false,
+  includeCharts: preference?.include_charts !== false,
+  includeAiInsights: preference?.include_ai_insights !== false,
+});
+
+const bufferFromRasterDataUri = (dataUri) => {
+  if (!dataUri || typeof dataUri !== 'string') return null;
+  const m = /^data:image\/(png|jpeg|jpg);base64,(.+)$/i.exec(dataUri.trim());
+  if (!m) return null;
+  try {
+    return Buffer.from(m[2], 'base64');
+  } catch {
+    return null;
+  }
+};
+
+const createPdfReport = async (payload, insight, { reportLayout, chart } = {}) => {
+  const layout = reportLayout || resolveReportLayout(null);
   const fileName = `relatorio_${payload.reportType.toLowerCase()}_${payload.condominiumId}_${Date.now()}.pdf`;
   const filePath = path.join(reportsDir, fileName);
   const periodLabel = payload?.period
@@ -94,143 +124,239 @@ const createPdfReport = async (payload, insight) => {
     doc.pipe(stream);
     const pageWidth = doc.page.width - 100;
 
-    const drawCard = ({ x, y, w, h, label, value }) => {
-      doc.roundedRect(x, y, w, h, 8).fillAndStroke('#ffffff', '#e5e7eb');
-      doc.fillColor('#6b7280').fontSize(9).text(label, x + 10, y + 8, { width: w - 20 });
-      doc.fillColor('#111827').fontSize(14).text(value, x + 10, y + 24, { width: w - 20 });
+    const drawCard = ({ x, y, w, h, label, value, valueColor = '#111827' }) => {
+      doc.roundedRect(x, y, w, h, 8).fillAndStroke('#ffffff', DS_PDF.border);
+      doc.fillColor(DS_PDF.textMuted).fontSize(8).text(label, x + 10, y + 8, { width: w - 20 });
+      doc.fillColor(valueColor).fontSize(13).text(value, x + 10, y + 22, { width: w - 20 });
     };
 
-    doc.roundedRect(50, 50, pageWidth, 74, 10).fill('#0f172a');
-    doc.fillColor('#f8fafc').fontSize(18).text(
+    doc.rect(50, 50, pageWidth, 4).fill(DS_PDF.accent);
+    doc.roundedRect(50, 54, pageWidth, 72, 10).fill(DS_PDF.header);
+    doc.fillColor('#f9fafb').fontSize(17).text(
       `Relatório ${payload.reportType === 'WEEKLY' ? 'Semanal' : 'Diário'}`,
       64,
       68
     );
-    doc.fillColor('#cbd5e1').fontSize(12).text(payload.condominiumName, 64, 91);
-    doc.fillColor('#cbd5e1').fontSize(10).text(`Período: ${periodLabel}`, 64, 108);
-    doc.fillColor('#ffffff').fontSize(9).text(
+    doc.fillColor('#d1d5db').fontSize(11).text(payload.condominiumName, 64, 90);
+    doc.fillColor('#d1d5db').fontSize(9).text(`Período: ${periodLabel}`, 64, 106);
+    doc.fillColor('#9ca3af').fontSize(8).text(
       `Gerado em ${new Date(payload.generatedAt).toLocaleString('pt-BR')}`,
       50,
       68,
       { width: pageWidth - 12, align: 'right' }
     );
 
-    const baseMetrics = payload.reportType === 'WEEKLY' ? payload.weekly.totals : payload.daily;
-    const cardY = 138;
+    let cursorY = 138;
     const gap = 10;
-    const cardW = (pageWidth - gap * 3) / 4;
-    drawCard({
-      x: 50,
-      y: cardY,
-      w: cardW,
-      h: 58,
-      label: 'Entradas',
-      value: formatCurrency(baseMetrics.entries),
-    });
-    drawCard({
-      x: 50 + cardW + gap,
-      y: cardY,
-      w: cardW,
-      h: 58,
-      label: 'Saídas',
-      value: formatCurrency(baseMetrics.exits),
-    });
-    drawCard({
-      x: 50 + (cardW + gap) * 2,
-      y: cardY,
-      w: cardW,
-      h: 58,
-      label: 'Saldo',
-      value: formatCurrency(baseMetrics.balance),
-    });
-    drawCard({
-      x: 50 + (cardW + gap) * 3,
-      y: cardY,
-      w: cardW,
-      h: 58,
-      label: payload.reportType === 'WEEKLY' ? 'Dias no período' : 'Manut. pendentes',
-      value:
-        payload.reportType === 'WEEKLY'
-          ? String(payload.weekly.days.length || 0)
-          : String(payload.daily?.maintenances?.pendentes || 0),
-    });
-    let cursorY = 214;
+    const isWeekly = payload.reportType === 'WEEKLY';
+    const baseMetrics = isWeekly ? payload.weekly.totals : payload.daily;
 
-    if (payload.reportType === 'WEEKLY') {
-      const totals = payload.weekly.totals;
-      doc.fillColor('#0f172a').fontSize(13).text('Resumo do período', 50, cursorY);
-      cursorY += 22;
-      doc.fillColor('#1f2937').fontSize(10).text(
-        `Entradas ${formatCurrency(totals.entries)} | Saídas ${formatCurrency(totals.exits)} | Saldo ${formatCurrency(totals.balance)}`,
-        50,
-        cursorY
-      );
-      cursorY += 24;
-      doc.fillColor('#0f172a').fontSize(12).text('Série diária (entradas x saídas)', 50, cursorY);
-      cursorY += 18;
-      payload.weekly.days.forEach((day) => {
-        doc.fillColor('#334155').fontSize(10).text(
-          `${day.date} | E: ${formatCurrency(day.entries)} | S: ${formatCurrency(day.exits)} | Saldo: ${formatCurrency(day.balance)}`
-          ,
+    if (layout.includeFinancial) {
+      const cardW = (pageWidth - gap * 3) / 4;
+      const bal = Number(baseMetrics.balance || 0);
+      const balColor = bal >= 0 ? DS_PDF.success : DS_PDF.danger;
+      drawCard({
+        x: 50,
+        y: cursorY,
+        w: cardW,
+        h: 56,
+        label: 'Entradas',
+        value: formatCurrency(baseMetrics.entries),
+      });
+      drawCard({
+        x: 50 + cardW + gap,
+        y: cursorY,
+        w: cardW,
+        h: 56,
+        label: 'Saídas',
+        value: formatCurrency(baseMetrics.exits),
+      });
+      drawCard({
+        x: 50 + (cardW + gap) * 2,
+        y: cursorY,
+        w: cardW,
+        h: 56,
+        label: 'Saldo',
+        value: formatCurrency(baseMetrics.balance),
+        valueColor: balColor,
+      });
+      drawCard({
+        x: 50 + (cardW + gap) * 3,
+        y: cursorY,
+        w: cardW,
+        h: 56,
+        label: isWeekly ? 'Dias no período' : 'Manut. pendentes',
+        value:
+          isWeekly
+            ? String(payload.weekly.days.length || 0)
+            : String(payload.daily?.maintenances?.pendentes || 0),
+      });
+      cursorY = 206;
+    } else if (!isWeekly && layout.includeMaintenance) {
+      const cardW = (pageWidth - gap * 2) / 3;
+      const m = payload.daily?.maintenances || {};
+      drawCard({ x: 50, y: cursorY, w: cardW, h: 56, label: 'Pendentes', value: String(m.pendentes || 0) });
+      drawCard({
+        x: 50 + cardW + gap,
+        y: cursorY,
+        w: cardW,
+        h: 56,
+        label: 'Em andamento',
+        value: String(m.emAndamento || 0),
+      });
+      drawCard({
+        x: 50 + (cardW + gap) * 2,
+        y: cursorY,
+        w: cardW,
+        h: 56,
+        label: 'Concluídas',
+        value: String(m.concluidas || 0),
+      });
+      cursorY = 206;
+    }
+
+    if (layout.includeCharts && chart?.dataUri) {
+      const imgBuf = bufferFromRasterDataUri(chart.dataUri);
+      if (imgBuf) {
+        doc.fillColor(DS_PDF.text).fontSize(11).text(chart.title || 'Gráfico', 50, cursorY);
+        cursorY += 16;
+        try {
+          doc.image(imgBuf, 50, cursorY, { width: pageWidth, fit: [pageWidth, 200] });
+          cursorY += 210;
+        } catch {
+          doc.fillColor(DS_PDF.textMuted).fontSize(9).text('(Não foi possível embutir o gráfico no PDF.)', 50, cursorY);
+          cursorY += 20;
+        }
+      } else {
+        doc
+          .roundedRect(50, cursorY, pageWidth, 36, 6)
+          .fillAndStroke(DS_PDF.accentLight, DS_PDF.border);
+        doc.fillColor(DS_PDF.textMuted).fontSize(9).text(
+          `Gráfico "${chart.title || 'período'}": visualização disponível no e-mail HTML (formato SVG).`,
+          58,
+          cursorY + 10,
+          { width: pageWidth - 16 }
+        );
+        cursorY += 46;
+      }
+    }
+
+    if (isWeekly) {
+      if (layout.includeFinancial) {
+        const totals = payload.weekly.totals;
+        doc.fillColor(DS_PDF.header).fontSize(12).text('Resumo do período', 50, cursorY);
+        cursorY += 18;
+        doc.fillColor(DS_PDF.text).fontSize(9).text(
+          `Entradas ${formatCurrency(totals.entries)} | Saídas ${formatCurrency(totals.exits)} | Saldo ${formatCurrency(totals.balance)}`,
           50,
           cursorY
         );
-        cursorY += 14;
-      });
+        cursorY += 22;
+        doc.fillColor(DS_PDF.header).fontSize(11).text('Série diária', 50, cursorY);
+        cursorY += 16;
+        payload.weekly.days.forEach((day) => {
+          if (cursorY > 720) {
+            doc.addPage();
+            cursorY = 50;
+          }
+          doc.fillColor(DS_PDF.text).fontSize(9).text(
+            `${day.date} | E: ${formatCurrency(day.entries)} | S: ${formatCurrency(day.exits)} | Saldo: ${formatCurrency(day.balance)}`,
+            50,
+            cursorY
+          );
+          cursorY += 13;
+        });
+      } else {
+        doc.fillColor(DS_PDF.textMuted).fontSize(10).text(
+          'Bloco financeiro omitido conforme preferências. Período: ' + periodLabel,
+          50,
+          cursorY,
+          { width: pageWidth }
+        );
+        cursorY += 36;
+      }
     } else {
       const daily = payload.daily;
-      doc.fillColor('#0f172a').fontSize(13).text('Resumo do período', 50, cursorY);
-      cursorY += 22;
-      doc.fillColor('#1f2937').fontSize(10).text(`Entradas recebidas: ${formatCurrency(daily.entries)}`, 50, cursorY);
-      cursorY += 14;
-      doc.text(`Saídas pagas: ${formatCurrency(daily.exits)}`, 50, cursorY);
-      cursorY += 14;
-      doc.text(`Saldo do período: ${formatCurrency(daily.balance)}`, 50, cursorY);
-      cursorY += 14;
-      doc.text(
-        `Manutenções: ${daily.maintenances.pendentes} pendentes, ${daily.maintenances.emAndamento} em andamento, ${daily.maintenances.concluidas} concluídas`
-        ,
-        50,
-        cursorY
-      );
-      cursorY += 22;
-      doc.fillColor('#0f172a').fontSize(12).text('Top categorias de saída', 50, cursorY);
-      cursorY += 16;
-      daily.categories.forEach((item) => {
-        doc.fillColor('#334155').fontSize(10).text(`${item.category}: ${formatCurrency(item.total)}`, 50, cursorY);
+      if (layout.includeFinancial) {
+        doc.fillColor(DS_PDF.header).fontSize(12).text('Resumo do período', 50, cursorY);
+        cursorY += 18;
+        doc.fillColor(DS_PDF.text).fontSize(9).text(`Entradas recebidas: ${formatCurrency(daily.entries)}`, 50, cursorY);
+        cursorY += 12;
+        doc.text(`Saídas pagas: ${formatCurrency(daily.exits)}`, 50, cursorY);
+        cursorY += 12;
+        doc.text(`Saldo do período: ${formatCurrency(daily.balance)}`, 50, cursorY);
         cursorY += 14;
-      });
+      }
+      if (layout.includeMaintenance) {
+        doc.fillColor(DS_PDF.text).fontSize(9).text(
+          `Manutenções: ${daily.maintenances.pendentes} pendentes, ${daily.maintenances.emAndamento} em andamento, ${daily.maintenances.concluidas} concluídas`,
+          50,
+          cursorY
+        );
+        cursorY += 18;
+      }
+      if (layout.includeFinancial) {
+        doc.fillColor(DS_PDF.header).fontSize(11).text('Top categorias de saída', 50, cursorY);
+        cursorY += 14;
+        (daily.categories || []).forEach((item) => {
+          if (cursorY > 720) {
+            doc.addPage();
+            cursorY = 50;
+          }
+          doc.fillColor(DS_PDF.text).fontSize(9).text(`${item.category}: ${formatCurrency(item.total)}`, 50, cursorY);
+          cursorY += 12;
+        });
+      }
+      if (!layout.includeFinancial && !layout.includeMaintenance) {
+        doc.fillColor(DS_PDF.textMuted).fontSize(10).text(
+          'Nenhum detalhe de período exibido (conforme preferências).',
+          50,
+          cursorY,
+          { width: pageWidth }
+        );
+        cursorY += 28;
+      }
     }
 
-    if (insight?.enabled && insight.data) {
+    if (layout.includeAiInsights && insight?.enabled && insight.data) {
       doc.addPage();
       const sourceLabel = insight?.source === 'LOCAL_FALLBACK' ? 'Fallback local' : 'IA (Gemini)';
-      doc.roundedRect(50, 50, pageWidth, 52, 8).fill('#eff6ff');
-      doc.fillColor('#1e40af').fontSize(15).text('Análise do período', 64, 68);
-      doc.fillColor('#1d4ed8').fontSize(10).text(`Origem: ${sourceLabel} | Confiança: ${insight.data.confidence ?? 0}%`, 64, 86);
-      let aiY = 124;
-      doc.fillColor('#0f172a').fontSize(11).text('Resumo executivo', 50, aiY);
-      aiY += 16;
-      doc.fillColor('#334155').fontSize(10).text(insight.data.executive_summary || '-', 50, aiY, { width: pageWidth, lineGap: 3 });
-      aiY = doc.y + 12;
-      doc.fillColor('#0f172a').fontSize(11).text('Principais insights', 50, aiY);
+      doc.rect(50, 50, pageWidth, 4).fill(DS_PDF.accent);
+      doc.roundedRect(50, 54, pageWidth, 48, 8).fill(DS_PDF.accentLight);
+      doc.fillColor(DS_PDF.header).fontSize(14).text('Análise do período', 64, 68);
+      doc.fillColor(DS_PDF.textMuted).fontSize(9).text(`Origem: ${sourceLabel} | Confiança: ${insight.data.confidence ?? 0}%`, 64, 88);
+      let aiY = 118;
+      doc.fillColor(DS_PDF.header).fontSize(10).text('Resumo executivo', 50, aiY);
       aiY += 14;
+      doc.fillColor(DS_PDF.text).fontSize(9).text(insight.data.executive_summary || '-', 50, aiY, { width: pageWidth, lineGap: 2 });
+      aiY = doc.y + 10;
+      doc.fillColor(DS_PDF.accent).fontSize(10).text('Principais insights', 50, aiY);
+      aiY += 12;
       (insight.data.top_insights || []).forEach((line) => {
-        doc.fillColor('#334155').fontSize(10).text(`- ${line}`, 58, aiY, { width: pageWidth - 8 });
-        aiY = doc.y + 4;
+        doc.fillColor(DS_PDF.text).fontSize(9).text(`• ${line}`, 58, aiY, { width: pageWidth - 8 });
+        aiY = doc.y + 3;
       });
-      doc.fillColor('#0f172a').fontSize(11).text('Riscos', 50, aiY + 4);
-      aiY = doc.y + 10;
+      aiY += 6;
+      doc.fillColor(DS_PDF.accent).fontSize(10).text('Riscos', 50, aiY);
+      aiY += 12;
       (insight.data.risks || []).forEach((line) => {
-        doc.fillColor('#334155').fontSize(10).text(`- ${line}`, 58, aiY, { width: pageWidth - 8 });
-        aiY = doc.y + 4;
+        doc.fillColor(DS_PDF.text).fontSize(9).text(`• ${line}`, 58, aiY, { width: pageWidth - 8 });
+        aiY = doc.y + 3;
       });
-      doc.fillColor('#0f172a').fontSize(11).text('Ações recomendadas', 50, aiY + 4);
-      aiY = doc.y + 10;
+      aiY += 6;
+      doc.fillColor(DS_PDF.accent).fontSize(10).text('Ações recomendadas', 50, aiY);
+      aiY += 12;
       (insight.data.recommended_actions || []).forEach((line) => {
-        doc.fillColor('#334155').fontSize(10).text(`- ${line}`, 58, aiY, { width: pageWidth - 8 });
-        aiY = doc.y + 4;
+        doc.fillColor(DS_PDF.text).fontSize(9).text(`• ${line}`, 58, aiY, { width: pageWidth - 8 });
+        aiY = doc.y + 3;
       });
+    } else if (!layout.includeAiInsights) {
+      doc.fillColor(DS_PDF.textMuted).fontSize(9).text(
+        'Análise IA desativada nas preferências.',
+        50,
+        cursorY + 8,
+        { width: pageWidth }
+      );
     }
 
     doc.end();
@@ -304,7 +430,10 @@ const dispatchCondominiumReport = async (condominiumId, reportType = 'DAILY', op
       startDate: reportRange.startDate,
       endDate: reportRange.endDate,
     });
-    const insight = await generateInsight(payload);
+    const reportLayout = resolveReportLayout(preference);
+    const insight = reportLayout.includeAiInsights
+      ? await generateInsight(payload, reportLayout)
+      : { enabled: false, reason: 'DISABLED_BY_PREFERENCE' };
     console.log('[REPORT_DISPATCH] Insight processado', {
       condominiumId,
       reportType,
@@ -312,19 +441,21 @@ const dispatchCondominiumReport = async (condominiumId, reportType = 'DAILY', op
       reason: insight?.reason || null,
     });
     let chart = null;
-    try {
-      chart = buildReportChart(payload);
-      console.log('[REPORT_DISPATCH] Gráfico processado', {
-        condominiumId,
-        reportType,
-        enabled: Boolean(chart?.dataUri),
-      });
-    } catch (chartError) {
-      console.warn('[REPORT_DISPATCH] Falha ao gerar gráfico, seguindo sem gráfico', {
-        condominiumId,
-        reportType,
-        message: chartError.message,
-      });
+    if (reportLayout.includeCharts) {
+      try {
+        chart = buildReportChart(payload);
+        console.log('[REPORT_DISPATCH] Gráfico processado', {
+          condominiumId,
+          reportType,
+          enabled: Boolean(chart?.dataUri),
+        });
+      } catch (chartError) {
+        console.warn('[REPORT_DISPATCH] Falha ao gerar gráfico, seguindo sem gráfico', {
+          condominiumId,
+          reportType,
+          message: chartError.message,
+        });
+      }
     }
 
     const subject =
@@ -336,8 +467,9 @@ const dispatchCondominiumReport = async (condominiumId, reportType = 'DAILY', op
       insight,
       chart,
       timezone: preference?.timezone || process.env.REPORT_DEFAULT_TZ || 'America/Sao_Paulo',
+      reportLayout,
     });
-    const pdf = await createPdfReport(payload, insight);
+    const pdf = await createPdfReport(payload, insight, { reportLayout, chart });
     const content = fs.readFileSync(pdf.filePath).toString('base64');
 
     await sendEmail({

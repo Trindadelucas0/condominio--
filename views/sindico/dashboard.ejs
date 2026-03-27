@@ -97,26 +97,74 @@
         </button>
       </div>
     </div>
-    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
-
     <% var periodo = typeof periodo !== 'undefined' && periodo ? periodo : null; %>
-    <div class="mb-6 p-4 bg-white rounded-2xl border border-purple-300 shadow-sm flex flex-wrap items-end gap-4 animate-fade-in-up">
-      <form method="get" action="/sindico/dashboard" class="flex flex-wrap items-end gap-3">
-        <div>
-          <label for="sindico-dash-data-inicio" class="block text-xs font-medium text-gray-600 mb-1">Data início</label>
-          <input id="sindico-dash-data-inicio" type="date" name="dataInicio" value="<%= periodo ? periodo.dataInicio : '' %>" class="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+    <% var footnoteResumoSindico = (helpTitle && helpModalContent) ? 'Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> ao lado do título.' : ''; %>
+    <% var resumoIaTeaserSindico = ''; %>
+    <% if (typeof stats !== 'undefined' && stats) { %>
+    <% 
+      var _sBits = ['Aqui você acompanha finanças, aprovações e alertas do condomínio num só lugar.'];
+      if ((stats.pendingApprovals || 0) > 0) { _sBits.push('Há ' + stats.pendingApprovals + ' aprovação(ões) aguardando sua análise.'); }
+      if (typeof criticalItems !== 'undefined' && criticalItems && criticalItems.length > 0) { _sBits.push('A tabela de itens críticos destaca o que precisa de atenção imediata.'); }
+      if (periodo && periodo.label) { _sBits.push('Os valores e gráficos consideram o período selecionado (' + periodo.label + ').'); }
+      resumoIaTeaserSindico = _sBits.join(' ');
+    %>
+    <% } %>
+    <div class="mb-6 grid grid-cols-1 lg:grid-cols-[minmax(0,40%)_minmax(0,60%)] gap-4 lg:gap-5 items-start animate-fade-in-up">
+      <div class="min-w-0 w-full lg:max-w-xl">
+        <%- include('../partials/help-resumo-rapido-card', { resumo: resumo, footnoteHtml: footnoteResumoSindico, resumoIaTeaser: resumoIaTeaserSindico }) %>
+      </div>
+      <div class="min-w-0 flex w-full">
+        <div class="w-full rounded-xl border border-purple-200/90 bg-white shadow-md overflow-hidden flex flex-col ring-1 ring-purple-500/10">
+          <div class="bg-gradient-to-r from-purple-600 via-purple-600 to-pink-600 px-4 py-3 sm:px-5">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15">
+                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <h3 id="sindico-periodo-heading" class="text-base sm:text-lg font-bold text-white leading-snug">Período da análise financeira</h3>
+                <p class="text-xs sm:text-sm text-purple-100/95 leading-snug mt-0.5">Tudo o que aparece abaixo — números e gráficos — usa este intervalo de datas.</p>
+              </div>
+            </div>
+          </div>
+          <form method="get" action="/sindico/dashboard" class="p-4 sm:p-5 flex flex-col gap-3.5" aria-labelledby="sindico-periodo-heading">
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 sm:gap-3 items-end">
+              <div class="space-y-1">
+                <label for="sindico-dash-data-inicio" class="block text-sm font-medium text-gray-700">De</label>
+                <input id="sindico-dash-data-inicio" type="date" name="dataInicio" value="<%= periodo ? periodo.dataInicio : '' %>" autocomplete="off" class="w-full min-h-[44px] border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-gray-50/80 hover:bg-white focus:bg-white focus:ring-2 focus:ring-purple-500/35 focus:border-purple-500 transition-colors shadow-sm" />
+              </div>
+              <div class="hidden sm:flex items-center justify-center pb-2 text-gray-300" aria-hidden="true">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              </div>
+              <div class="space-y-1">
+                <label for="sindico-dash-data-fim" class="block text-sm font-medium text-gray-700">Até</label>
+                <input id="sindico-dash-data-fim" type="date" name="dataFim" value="<%= periodo ? periodo.dataFim : '' %>" autocomplete="off" class="w-full min-h-[44px] border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-gray-50/80 hover:bg-white focus:bg-white focus:ring-2 focus:ring-purple-500/35 focus:border-purple-500 transition-colors shadow-sm" />
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row flex-wrap gap-2.5">
+              <button type="submit" class="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold shadow-md hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:ring-offset-2 transition-all">
+                <svg class="w-4 h-4 shrink-0 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Atualizar o painel
+              </button>
+              <a href="/sindico/dashboard" class="inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl border-2 border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-purple-300 hover:bg-purple-50/60 hover:text-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-400/40 transition-colors" title="Volta ao mês corrente e limpa datas personalizadas">
+                Usar o mês atual
+              </a>
+            </div>
+            <% if (periodo && periodo.label) { %>
+            <div class="rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50/95 to-pink-50/70 px-3 py-2.5 flex gap-3 items-start" role="status" aria-live="polite">
+              <svg class="h-5 w-5 shrink-0 text-purple-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              <div class="min-w-0 leading-snug">
+                <span class="text-sm font-semibold text-purple-900">Você está vendo o período:</span>
+                <p class="text-sm sm:text-base font-medium text-gray-900 mt-1"><%= periodo.label %></p>
+              </div>
+            </div>
+            <% } %>
+          </form>
         </div>
-        <div>
-          <label for="sindico-dash-data-fim" class="block text-xs font-medium text-gray-600 mb-1">Data fim</label>
-          <input id="sindico-dash-data-fim" type="date" name="dataFim" value="<%= periodo ? periodo.dataFim : '' %>" class="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
-        </div>
-        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow">Aplicar período</button>
-        <a href="/sindico/dashboard" class="text-sm font-medium text-gray-600 hover:text-purple-700 py-2">Mês atual (padrão)</a>
-      </form>
-      <% if (periodo && periodo.label) { %>
-        <p class="text-sm text-gray-600 w-full sm:w-auto sm:ml-auto"><span class="font-semibold text-gray-800">Período dos KPIs financeiros:</span> <%= periodo.label %></p>
-      <% } %>
+      </div>
     </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId, omitResumo: true }) %>
 
     <!-- Tabela de itens críticos (com "OK" para marcar como visualizado) -->
     <%- include('../partials/critical-items-table', { criticalItems: typeof criticalItems !== 'undefined' ? criticalItems : [], condominiumId: typeof condominiumId !== 'undefined' ? condominiumId : null }) %>

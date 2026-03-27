@@ -1,0 +1,28 @@
+<%#
+  Cartão lateral no mesmo estilo visual do "Período da análise" do síndico (cabeçalho roxo/rosa).
+  Parâmetros:
+  - dicaSidebarTitle: título opcional (default: "O que você faz aqui")
+  - dicaSidebarSubtitle: linha abaixo do título no cabeçalho (opcional)
+  - dicaSidebarBody: texto principal (plain text; use <%= no include pai se escapar HTML)
+%>
+<% var _dst = typeof dicaSidebarTitle !== 'undefined' && dicaSidebarTitle ? dicaSidebarTitle : 'O que você faz aqui'; %>
+<% var _dss = typeof dicaSidebarSubtitle !== 'undefined' && dicaSidebarSubtitle ? dicaSidebarSubtitle : 'Em uma frase: o objetivo desta área.'; %>
+<% var _dsb = typeof dicaSidebarBody !== 'undefined' ? dicaSidebarBody : ''; %>
+<div class="w-full rounded-xl border border-purple-200/90 bg-white shadow-md overflow-hidden flex flex-col ring-1 ring-purple-500/10">
+  <div class="bg-gradient-to-r from-purple-600 via-purple-600 to-pink-600 px-4 py-3 sm:px-5">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15">
+        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+        </svg>
+      </div>
+      <div class="min-w-0">
+        <h3 class="text-base sm:text-lg font-bold text-white leading-snug"><%= _dst %></h3>
+        <p class="text-xs sm:text-sm text-purple-100/95 leading-snug mt-0.5"><%= _dss %></p>
+      </div>
+    </div>
+  </div>
+  <div class="p-4 sm:p-5 text-sm text-gray-800 leading-relaxed space-y-2">
+    <%- _dsb %>
+  </div>
+</div>

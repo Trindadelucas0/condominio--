@@ -45,7 +45,8 @@ class TestRunner {
       '09-fluxos-completos.test.js',
       '10-testes-operacionais.test.js',
       '11-testes-financeiro-operacional.test.js',
-      '13-performance.test.js'
+      '13-performance.test.js',
+      '17-report-template-email.test.js'
     ];
 
     for (const file of testFiles) {

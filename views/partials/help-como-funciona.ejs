@@ -3,12 +3,14 @@
 <% var _resumo = typeof resumo !== 'undefined' && Array.isArray(resumo) ? resumo : []; %>
 <% var _helpModalContent = typeof helpModalContent !== 'undefined' ? helpModalContent : ''; %>
 <% var _modalId = typeof helpModalId !== 'undefined' ? helpModalId : 'modalComoFunciona'; %>
+<% var _omitResumo = typeof omitResumo !== 'undefined' && omitResumo; %>
+<% var _resumoIaTeaser = typeof resumoIaTeaser !== 'undefined' ? resumoIaTeaser : null; %>
 
-<% if (_resumo.length > 0 || _helpTitle) { %>
+<% if (!_omitResumo && (_resumo.length > 0 || _helpTitle)) { %>
   <div class="mb-6">
     <% if (_resumo.length > 0) { %>
       <% var _footnoteResumo = (_helpTitle && _helpModalContent) ? 'Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> ao lado do título.' : ''; %>
-      <%- include('help-resumo-rapido-card', { resumo: _resumo, footnoteHtml: _footnoteResumo }) %>
+      <%- include('help-resumo-rapido-card', { resumo: _resumo, footnoteHtml: _footnoteResumo, resumoIaTeaser: _resumoIaTeaser }) %>
     <% } %>
   </div>
 <% } %>

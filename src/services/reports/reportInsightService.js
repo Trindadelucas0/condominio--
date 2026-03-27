@@ -4,9 +4,17 @@ const { generateJson } = require('../ai/geminiService');
 const { checkQuota, logUsage } = require('../ai/aiQuotaService');
 const { buildLocalInsight } = require('./reportLocalInsightService');
 
-const shouldUseAi = (payload) => {
+const shouldUseAi = (payload, insightOptions = {}) => {
   if (process.env.REPORT_AI_ENABLED === 'false') return false;
   if (payload.reportType === 'WEEKLY') return true;
+  const fin = insightOptions.includeFinancial !== false;
+  const maint = insightOptions.includeMaintenance !== false;
+  if (!fin && !maint) return true;
+  if (!fin && maint) {
+    const m = payload?.daily?.maintenances || {};
+    const act = (m.pendentes || 0) + (m.emAndamento || 0) + (m.concluidas || 0);
+    if (act > 0) return true;
+  }
   const threshold = parseFloat(process.env.REPORT_AI_MIN_ANOMALY_PERCENT || '15');
   const entries = payload?.daily?.entries || 0;
   const exits = payload?.daily?.exits || 0;
@@ -50,28 +58,90 @@ const compactDailyMetrics = (daily) => ({
   top_categories: (daily?.categories || []).slice(0, 6),
 });
 
-const buildPrompt = (payload, mode = 'FULL') => {
-  const metrics =
-    payload.reportType === 'WEEKLY'
-      ? compactWeeklyMetrics(payload.weekly)
-      : compactDailyMetrics(payload.daily);
+const buildPrompt = (payload, mode = 'FULL', insightOptions = {}) => {
+  const includeFinancial = insightOptions.includeFinancial !== false;
+  const includeMaintenance = insightOptions.includeMaintenance !== false;
+
+  const fullWeekly =
+    payload.reportType === 'WEEKLY' ? compactWeeklyMetrics(payload.weekly) : null;
+  const fullDaily =
+    payload.reportType !== 'WEEKLY' ? compactDailyMetrics(payload.daily) : null;
+
+  let metrics;
+  if (payload.reportType === 'WEEKLY') {
+    if (!includeFinancial) {
+      metrics = {
+        period: fullWeekly.period,
+        days_count: fullWeekly.days_count,
+        note: 'bloco_financeiro_desativado_no_relatorio',
+      };
+    } else {
+      metrics = fullWeekly;
+    }
+  } else {
+    if (!includeFinancial) {
+      metrics = {
+        period: fullDaily.period,
+        date: fullDaily.date,
+        note: 'bloco_financeiro_desativado_no_relatorio',
+      };
+      if (includeMaintenance) {
+        metrics.maintenances = fullDaily.maintenances;
+      }
+    } else {
+      metrics = { ...fullDaily };
+      if (!includeMaintenance) {
+        delete metrics.maintenances;
+      }
+    }
+  }
+
   const compactMetrics =
     payload.reportType === 'WEEKLY'
-      ? {
-          period: metrics.period,
-          totals: metrics.totals,
-          days_count: metrics.days_count,
-          worst_exit_day: metrics.worst_exit_day,
-          worst_balance_day: metrics.worst_balance_day,
-        }
-      : {
-          period: metrics.period,
-          entries: metrics.entries,
-          exits: metrics.exits,
-          balance: metrics.balance,
-          maintenances: metrics.maintenances,
-          top_categories: metrics.top_categories,
-        };
+      ? !includeFinancial
+        ? {
+            period: metrics.period,
+            days_count: metrics.days_count,
+            note: metrics.note,
+          }
+        : {
+            period: metrics.period,
+            totals: metrics.totals,
+            days_count: metrics.days_count,
+            worst_exit_day: metrics.worst_exit_day,
+            worst_balance_day: metrics.worst_balance_day,
+          }
+      : !includeFinancial
+        ? {
+            period: metrics.period,
+            date: metrics.date,
+            maintenances: metrics.maintenances,
+            note: metrics.note,
+          }
+        : {
+            period: metrics.period,
+            entries: metrics.entries,
+            exits: metrics.exits,
+            balance: metrics.balance,
+            maintenances: includeMaintenance ? metrics.maintenances : undefined,
+            top_categories: metrics.top_categories,
+          };
+
+  const rules = [
+    'Apontar 3 principais insights alinhados aos dados fornecidos',
+    'Listar 3 riscos objetivos e mensuráveis',
+    'Recomendar 3 ações práticas priorizadas',
+    'Nao inventar dados ausentes',
+  ];
+  if (!includeFinancial) {
+    rules.push(
+      'Nao mencionar valores monetarios, entradas, saidas, saldo nem categorias de despesa, pois o destinatario optou por omitir o bloco financeiro'
+    );
+    rules.push('Se nao houver metricas, oferecer orientacao operacional geral para gestao condominial');
+  }
+  if (!includeMaintenance && payload.reportType === 'DAILY') {
+    rules.push('Nao mencionar manutencoes ou chamados tecnicos');
+  }
 
   return JSON.stringify(
     {
@@ -79,6 +149,10 @@ const buildPrompt = (payload, mode = 'FULL') => {
       report_type: payload.reportType,
       generated_at: payload.generatedAt,
       timezone: process.env.REPORT_DEFAULT_TZ || 'America/Sao_Paulo',
+      sections_included: {
+        financial: includeFinancial,
+        maintenance: includeMaintenance,
+      },
       metrics: mode === 'COMPACT' ? compactMetrics : metrics,
       output_rules: {
         max_summary_words: mode === 'COMPACT' ? 35 : 50,
@@ -86,12 +160,7 @@ const buildPrompt = (payload, mode = 'FULL') => {
         short_sentences: true,
         max_words_per_item: mode === 'COMPACT' ? 10 : 14,
       },
-      rules: [
-        'Apontar 3 principais insights baseados nos números',
-        'Listar 3 riscos objetivos e mensuráveis',
-        'Recomendar 3 ações práticas priorizadas',
-        'Nao inventar dados ausentes',
-      ],
+      rules,
     },
     null,
     2
@@ -139,10 +208,10 @@ const normalizeInsightData = (data = {}) => {
   };
 };
 
-const tryGemini = async (payload, mode = 'FULL') => {
+const tryGemini = async (payload, mode = 'FULL', insightOptions = {}) => {
   const result = await generateJson({
     systemInstruction,
-    prompt: buildPrompt(payload, mode),
+    prompt: buildPrompt(payload, mode, insightOptions),
     schemaHint: SCHEMA_HINT,
     // Aumenta chance de JSON válido para relatórios maiores.
     maxOutputTokens: Math.max(parseInt(process.env.GEMINI_MAX_OUTPUT_TOKENS || '220', 10), 700),
@@ -159,12 +228,18 @@ const tryGemini = async (payload, mode = 'FULL') => {
   };
 };
 
-const generateInsight = async (payload) => {
+const generateInsight = async (payload, insightOptions = {}) => {
+  const focus = {
+    includeFinancial: insightOptions.includeFinancial !== false,
+    includeMaintenance: insightOptions.includeMaintenance !== false,
+  };
+
   console.log('[REPORT_INSIGHT] Avaliando geração de insight', {
     condominiumId: payload.condominiumId,
     reportType: payload.reportType,
+    focus,
   });
-  if (!shouldUseAi(payload)) {
+  if (!shouldUseAi(payload, insightOptions)) {
     console.log('[REPORT_INSIGHT] Insight ignorado por regra de negócio', {
       condominiumId: payload.condominiumId,
       reportType: payload.reportType,
@@ -172,7 +247,10 @@ const generateInsight = async (payload) => {
     return { enabled: false, reason: 'NOT_REQUIRED' };
   }
 
-  const hash = crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  const hash = crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ payload, focus }))
+    .digest('hex');
   const cacheKey = `ai:insight:${payload.condominiumId}:${payload.reportType}:${hash}`;
   const cached = cacheService.get(cacheKey);
   if (cached) {
@@ -190,7 +268,7 @@ const generateInsight = async (payload) => {
       reportType: payload.reportType,
       reason: quota.reason,
     });
-    const localInsight = buildLocalInsight(payload);
+    const localInsight = buildLocalInsight(payload, insightOptions);
     localInsight.reason = quota.reason;
     localInsight.data = normalizeInsightData(localInsight.data);
     cacheService.set(cacheKey, localInsight, 60 * 30);
@@ -200,7 +278,7 @@ const generateInsight = async (payload) => {
   const feature = `${payload.reportType}_REPORT_INSIGHT`;
 
   try {
-    let insight = await tryGemini(payload, 'FULL');
+    let insight = await tryGemini(payload, 'FULL', insightOptions);
 
     await logUsage({
       condominiumId: payload.condominiumId,
@@ -225,7 +303,7 @@ const generateInsight = async (payload) => {
       message: error.message,
     });
     try {
-      const retryInsight = await tryGemini(payload, 'COMPACT');
+      const retryInsight = await tryGemini(payload, 'COMPACT', insightOptions);
       await logUsage({
         condominiumId: payload.condominiumId,
         feature,
@@ -254,7 +332,7 @@ const generateInsight = async (payload) => {
         reportType: payload.reportType,
         message: retryError.message,
       });
-      const localInsight = buildLocalInsight(payload);
+      const localInsight = buildLocalInsight(payload, insightOptions);
       localInsight.data = normalizeInsightData(localInsight.data);
       cacheService.set(cacheKey, localInsight, 60 * 30);
       return localInsight;

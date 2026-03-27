@@ -30,7 +30,7 @@ const buildDailyChart = (payload) => {
       const barWidth = Math.max(2, Math.round((value / max) * (width - left - right)));
       return `
       <text x="16" y="${y + 16}" font-size="13" fill="#374151">${escapeXml(item.category)}</text>
-      <rect x="${left}" y="${y}" width="${barWidth}" height="18" rx="5" fill="#2563eb"/>
+      <rect x="${left}" y="${y}" width="${barWidth}" height="18" rx="5" fill="#22a329"/>
       <text x="${left + barWidth + 8}" y="${y + 14}" font-size="12" fill="#111827">R$ ${escapeXml(formatCurrencyCompact(value))}</text>`;
     })
     .join('\n');
@@ -75,7 +75,7 @@ const buildWeeklyChart = (payload) => {
       const h2 = Math.round((exits / max) * (chartBottom - chartTop));
       const label = String(day.date || '').slice(5);
       return `
-      <rect x="${x + 6}" y="${chartBottom - h1}" width="16" height="${h1}" rx="3" fill="#16a34a" />
+      <rect x="${x + 6}" y="${chartBottom - h1}" width="16" height="${h1}" rx="3" fill="#22a329" />
       <rect x="${x + 26}" y="${chartBottom - h2}" width="16" height="${h2}" rx="3" fill="#dc2626" />
       <text x="${x + 3}" y="${chartBottom + 18}" font-size="11" fill="#374151">${escapeXml(label)}</text>`;
     })

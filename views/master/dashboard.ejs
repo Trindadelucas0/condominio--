@@ -72,7 +72,18 @@
         <%- include('../partials/help-como-funciona-btn', { helpModalId: helpModalId }) %>
       </div>
     </div>
-    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
+    <% var footnoteResumoMaster = (helpTitle && helpModalContent) ? 'Quer o passo a passo completo? Clique em <strong>Dúvidas? Como funciona</strong> ao lado do título.' : ''; %>
+    <% var resumoIaTeaserMaster = (typeof resumo !== 'undefined' && resumo && resumo.length) ? resumo.slice(0, 2).join(' ') : ''; %>
+    <% var dicaBodyMaster = (typeof resumo !== 'undefined' && resumo && resumo.length) ? resumo.map(function (r) { return '<p>' + String(r).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>'; }).join('') : ''; %>
+    <div class="mb-6 grid grid-cols-1 lg:grid-cols-[minmax(0,40%)_minmax(0,60%)] gap-4 lg:gap-5 items-start animate-fade-in-up">
+      <div class="min-w-0 w-full lg:max-w-xl">
+        <%- include('../partials/help-resumo-rapido-card', { resumo: resumo, footnoteHtml: footnoteResumoMaster, resumoIaTeaser: resumoIaTeaserMaster }) %>
+      </div>
+      <div class="min-w-0 flex w-full">
+        <%- include('../partials/dashboard-dica-sidebar-card', { dicaSidebarTitle: 'O que você faz aqui', dicaSidebarSubtitle: 'Visão geral do sistema e atalhos para gestão.', dicaSidebarBody: dicaBodyMaster }) %>
+      </div>
+    </div>
+    <%- include('../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId, omitResumo: true }) %>
 
     <!-- Cards de Estatísticas Principais -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
