@@ -3,6 +3,7 @@
 
 const path = require('path');
 const financeiroService = require('../services/financeiroService');
+const dashboardAnalyticsService = require('../services/dashboardAnalyticsService');
 const criticalItemsService = require('../services/criticalItemsService');
 const monthlyClosureService = require('../services/monthlyClosureService');
 const reserveFundService = require('../services/reserveFundService');
@@ -56,10 +57,19 @@ const showDashboard = async (req, res) => {
 
     const reserveFund = await reserveFundService.getReserveFund(req.user.condominiumId).catch(() => null);
 
+    let analytics = null;
+    try {
+      const trend = await dashboardAnalyticsService.getTrend(req.user.condominiumId, 'balance');
+      analytics = { trend };
+    } catch (e) {
+      analytics = null;
+    }
+
     res.render('administrativo/financeiro/dashboard', {
       title: 'Dashboard Financeiro',
       user: req.user,
       stats,
+      analytics,
       kpis: dashboardData.kpis,
       consumptionAnalytics: consumptionAnalytics || null,
       billsForConsumptionFilter: billsForConsumptionFilter || [],

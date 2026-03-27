@@ -17,9 +17,11 @@ const getCriticalItemsSummary = async (condominiumId, userId, userRoles = []) =>
     const hasSindico = userRoles.includes('SINDICO') || userRoles.includes('SUBSINDICO');
     const hasFinanceiro = userRoles.includes('FINANCEIRO');
     const hasAdministrativo = userRoles.includes('ADMINISTRATIVO');
+    const hasConselho = userRoles.includes('CONSELHO');
     const canShowModal = hasSindico || hasFinanceiro || hasAdministrativo;
+    const canFetchSummary = canShowModal || hasConselho;
 
-    if (!condominiumId || !canShowModal) {
+    if (!condominiumId || !canFetchSummary) {
       return { showModal: false, hasCritical: false, summary: {}, links: {}, notifications: [] };
     }
 
@@ -146,13 +148,13 @@ const getCriticalItemsSummary = async (condominiumId, userId, userRoles = []) =>
 
     // Links somente para perfis que têm acesso à rota
     const links = {};
-    if (hasFinanceiro || hasSindico) links.contasAPagar = '/financeiro/contas-a-pagar';
-    if (hasAdministrativo) links.documentos = '/administrativo/documentos';
+    if (hasFinanceiro || hasSindico || hasConselho) links.contasAPagar = '/financeiro/contas-a-pagar';
+    if (hasAdministrativo || hasConselho) links.documentos = '/administrativo/documentos';
     if (hasSindico || hasFinanceiro) links.alertas = '/sindico/alertas';
     links.notificacoes = '/notifications';
 
     return {
-      showModal: true,
+      showModal: canShowModal,
       hasCritical: hasCritical || hasWarning,
       hasCriticalOnly: hasCritical,
       summary,

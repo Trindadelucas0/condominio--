@@ -438,6 +438,8 @@
     </div>
     <% } %>
 
+    <%- include('../../partials/dashboard-resumo-financeiro', { stats: stats, periodo: periodo, analytics: typeof analytics !== 'undefined' ? analytics : null }) %>
+
     <!-- Cards de KPIs principais - Saldo total, mês atual, mês passado + Média + Fundo de Reserva -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
       <% 

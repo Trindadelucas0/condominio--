@@ -9,6 +9,8 @@ const dashboardAnalyticsService = require('../services/dashboardAnalyticsService
 const patrimonioService = require('../services/patrimonioService');
 const cacheService = require('../services/cacheService');
 const reserveFundService = require('../services/reserveFundService');
+const financeiroService = require('../services/financeiroService');
+const criticalItemsService = require('../services/criticalItemsService');
 
 // Função para exibir dashboard do conselho
 // GET /conselho/dashboard
@@ -126,8 +128,24 @@ const showDashboard = async (req, res) => {
     );
     const condominiumName = condominiumResult.rows.length > 0 ? condominiumResult.rows[0].name : 'Condomínio';
 
-    // Buscar estatísticas financeiras (usando serviço do síndico)
-    const stats = await sindicoService.getDashboardStats(condominiumId);
+    const exclusiveEndToInclusiveYmd = (exclusiveYmd) => {
+      const parts = String(exclusiveYmd).split('-').map(Number);
+      if (parts.length !== 3) return exclusiveYmd;
+      const [y, m, d] = parts;
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() - 1);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+    };
+
+    // Estatísticas do síndico alinhadas ao filtro de período (saldo do período / período anterior)
+    const stats =
+      period === 'all'
+        ? await sindicoService.getDashboardStats(condominiumId)
+        : await sindicoService.getDashboardStats(condominiumId, {
+            dataInicio: filterDateStr,
+            dataFim: exclusiveEndToInclusiveYmd(filterDateEndStr),
+          });
 
     // Buscar estatísticas financeiras do período selecionado
     const periodEntriesResult = await query(`
@@ -603,6 +621,167 @@ const showDashboard = async (req, res) => {
       alerts.push({ type: 'warning', text: `${payableOverdueCount} conta(s) a pagar vencida(s). Valor total: R$ ${payableOverdueAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.` });
     }
 
+    // KPIs expandidos (governança e transparência)
+    let pendingApprovalsCount = 0;
+    try {
+      const _pa = await query(
+        `SELECT COUNT(*)::int AS c FROM approvals WHERE condominium_id = $1 AND status = 'PENDING'`,
+        [condominiumId]
+      );
+      pendingApprovalsCount = _pa.rows[0]?.c || 0;
+    } catch (e) {
+      /* tabela approvals pode não existir */
+    }
+
+    let criticalSummary = {};
+    try {
+      const _cs = await criticalItemsService.getCriticalItemsSummary(
+        condominiumId,
+        req.user.id,
+        req.user.roles || []
+      );
+      criticalSummary = _cs.summary || {};
+    } catch (e) {
+      /* ignore */
+    }
+
+    let payableNext7Count = 0;
+    let payableNext7Amount = 0;
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const d7 = new Date();
+      d7.setDate(d7.getDate() + 7);
+      const d7s = d7.toISOString().slice(0, 10);
+      const _pn = await query(
+        `SELECT COUNT(*)::int AS cnt, COALESCE(SUM(amount), 0) AS total
+         FROM payable_items
+         WHERE condominium_id = $1 AND status = 'PENDING' AND due_date > $2::date AND due_date <= $3::date`,
+        [condominiumId, todayStr, d7s]
+      );
+      payableNext7Count = _pn.rows[0]?.cnt || 0;
+      payableNext7Amount = parseFloat(_pn.rows[0]?.total || 0);
+    } catch (e) {
+      /* payable_items */
+    }
+
+    let occurrencesOpenOver14Days = 0;
+    try {
+      const _oo = await query(
+        `SELECT COUNT(*)::int AS c FROM occurrences
+         WHERE condominium_id = $1 AND status = 'ABERTA' AND created_at < (NOW() - INTERVAL '14 days')`,
+        [condominiumId]
+      );
+      occurrencesOpenOver14Days = _oo.rows[0]?.c || 0;
+    } catch (e) {
+      /* ignore */
+    }
+
+    let occurrencesPendingApproval = 0;
+    try {
+      const _op = await query(
+        `SELECT COUNT(*)::int AS c FROM occurrences
+         WHERE condominium_id = $1 AND requires_approval IS TRUE AND approval_status = 'PENDING'`,
+        [condominiumId]
+      );
+      occurrencesPendingApproval = _op.rows[0]?.c || 0;
+    } catch (e) {
+      /* ignore */
+    }
+
+    const asmTotal = parseInt(assembliesStats.total, 10) || 0;
+    const asmConcl = parseInt(assembliesStats.concluidas, 10) || 0;
+    const assemblyCompletionRate =
+      asmTotal > 0 ? parseFloat(((asmConcl / asmTotal) * 100).toFixed(1)) : 0;
+
+    let lastAssemblyDate = null;
+    let nextAssemblyDate = null;
+    let daysSinceLastAssembly = null;
+    try {
+      const _la = await query(
+        `SELECT MAX(date) AS d FROM assemblies WHERE condominium_id = $1 AND status = 'COMPLETED'`,
+        [condominiumId]
+      );
+      lastAssemblyDate = _la.rows[0]?.d || null;
+      const _na = await query(
+        `SELECT MIN(date) AS d FROM assemblies WHERE condominium_id = $1 AND status = 'SCHEDULED' AND date >= CURRENT_DATE`,
+        [condominiumId]
+      );
+      nextAssemblyDate = _na.rows[0]?.d || null;
+      if (lastAssemblyDate) {
+        const t0 = new Date(lastAssemblyDate);
+        if (!Number.isNaN(t0.getTime())) {
+          daysSinceLastAssembly = Math.max(
+            0,
+            Math.floor((Date.now() - t0.getTime()) / 86400000)
+          );
+        }
+      }
+    } catch (e) {
+      /* ignore */
+    }
+
+    const expensePerApartment =
+      totalApartments > 0 ? periodExits / totalApartments : 0;
+
+    const expenseOverRevenuePct =
+      periodEntries > 0
+        ? parseFloat(((periodExits / periodEntries) * 100).toFixed(1))
+        : periodExits > 0
+          ? 100
+          : 0;
+
+    let consumptionVariationPct = null;
+    let consumptionTotalAmount = null;
+    if (period !== 'all') {
+      try {
+        const dataFimInc = exclusiveEndToInclusiveYmd(filterDateEndStr);
+        const ca = await financeiroService.getConsumptionAnalytics(condominiumId, {
+          dataInicio: filterDateStr,
+          dataFim: dataFimInc,
+        });
+        if (ca) {
+          consumptionVariationPct =
+            typeof ca.variationPct === 'number' ? ca.variationPct : null;
+          consumptionTotalAmount =
+            typeof ca.totalAmount === 'number' ? ca.totalAmount : null;
+        }
+      } catch (e) {
+        /* sem consumo mensal */
+      }
+    }
+
+    const patrimonioTotalValue =
+      typeof patrimonioStats.totalCurrentValue !== 'undefined'
+        ? patrimonioStats.totalCurrentValue
+        : 0;
+    const patrimonioAssetsInMaintenance =
+      typeof patrimonioStats.assetsInMaintenance !== 'undefined'
+        ? patrimonioStats.assetsInMaintenance
+        : 0;
+
+    const conselhoExtraKpis = {
+      pendingApprovalsCount,
+      payableNext7Count,
+      payableNext7Amount,
+      documentsExpiredCount: criticalSummary.documentsExpired || 0,
+      documentsExpiring30DaysCount: criticalSummary.documentsExpiring30Days || 0,
+      criticalAlertsCount: criticalSummary.criticalAlerts || 0,
+      payableUpcoming7DaysFromCritical: criticalSummary.payableUpcoming7Days || 0,
+      occurrencesOpenOver14Days,
+      occurrencesPendingApproval,
+      assemblyCompletionRate,
+      lastAssemblyDate,
+      nextAssemblyDate,
+      daysSinceLastAssembly,
+      expensePerApartment,
+      expenseOverRevenuePct,
+      consumptionVariationPct,
+      consumptionTotalAmount,
+      patrimonioTotalValue,
+      patrimonioAssetsInMaintenance,
+      totalAssets: patrimonioStats.totalAssets || 0,
+    };
+
     res.render('conselho/dashboard', {
       title: 'Dashboard Conselho - Prestação de Contas',
       user: req.user,
@@ -659,6 +838,7 @@ const showDashboard = async (req, res) => {
       filterDateForPrint,
       executiveSummary,
       alerts,
+      conselhoExtraKpis,
     });
   } catch (error) {
     console.error('Erro ao exibir dashboard conselho:', error);
