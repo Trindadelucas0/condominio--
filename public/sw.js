@@ -41,6 +41,7 @@ self.addEventListener('activate', (event) => {
           .map((name) => caches.delete(name))
       );
     }).then(() => self.clients.claim())
+      .catch((err) => console.warn('SW activate:', err))
   );
 });
 
@@ -68,7 +69,11 @@ self.addEventListener('fetch', (event) => {
       caches.match(event.request).then((cached) => {
         return cached || fetch(event.request).then((response) => {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then((cache) =>
+            cache.put(event.request, clone).catch((e) =>
+              console.warn('SW cache.put (estático):', e)
+            )
+          );
           return response;
         });
       })
@@ -82,7 +87,11 @@ self.addEventListener('fetch', (event) => {
       fetch(event.request)
         .then((response) => {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then((cache) =>
+            cache.put(event.request, clone).catch((e) =>
+              console.warn('SW cache.put (login):', e)
+            )
+          );
           return response;
         })
         .catch(() => caches.match(event.request))

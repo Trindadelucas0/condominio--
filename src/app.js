@@ -1,6 +1,7 @@
 // Configuração principal da aplicação Express
 // Este arquivo configura o servidor, middlewares e rotas
 
+require('express-async-errors');
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');

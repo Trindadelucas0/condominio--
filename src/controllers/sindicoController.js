@@ -276,13 +276,17 @@ const showTarefas = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
+    const sort = sindicoService.normalizeTaskListSort({
+      orderBy: req.query.orderBy,
+      orderDir: req.query.orderDir,
+    });
     const filters = {
       status: req.query.status || undefined,
       search: req.query.search || undefined,
       page: req.query.page ? parseInt(req.query.page) : 1,
       perPage: req.query.perPage ? parseInt(req.query.perPage) : 20,
-      orderBy: req.query.orderBy || 'created_at',
-      orderDir: req.query.orderDir || 'DESC',
+      orderBy: sort.orderBy,
+      orderDir: sort.orderDir,
     };
 
     const result = await sindicoService.listTasks(req.user.condominiumId, filters);
@@ -372,13 +376,17 @@ const showOcorrencias = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
+    const sortOcc = sindicoService.normalizeOccurrenceListSort({
+      orderBy: req.query.orderBy,
+      orderDir: req.query.orderDir,
+    });
     const filters = {
       status: req.query.status || undefined,
       search: req.query.search || undefined,
       page: req.query.page ? parseInt(req.query.page) : 1,
       perPage: req.query.perPage ? parseInt(req.query.perPage) : 20,
-      orderBy: req.query.orderBy || 'created_at',
-      orderDir: req.query.orderDir || 'DESC',
+      orderBy: sortOcc.orderBy,
+      orderDir: sortOcc.orderDir,
     };
 
     const result = await sindicoService.listOccurrences(req.user.condominiumId, filters);

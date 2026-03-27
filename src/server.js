@@ -7,6 +7,9 @@ require('dotenv').config();
 // Porta do servidor (padrão: 3000)
 const PORT = process.env.PORT || 3000;
 
+/** Referência ao servidor HTTP para encerramento gracioso */
+let server;
+
 // Função para iniciar o servidor
 async function startServer() {
   try {
@@ -19,7 +22,7 @@ async function startServer() {
     }
     
     // Inicia o servidor
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
       console.log(`📝 Ambiente: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📅 Data/Hora: ${new Date().toLocaleString('pt-BR')}`);
@@ -56,6 +59,8 @@ async function startServer() {
 startServer();
 
 // Tratamento de erros não capturados
+// Erros em handlers async de rotas Express são encaminhados ao middleware de erro via express-async-errors (app.js).
+// Rejeições fora do ciclo request/response (jobs, listeners) ainda disparam este handler.
 process.on('unhandledRejection', (err) => {
   console.error('❌ Erro não tratado (unhandledRejection):', err);
   // Não encerra o processo em desenvolvimento
@@ -69,13 +74,29 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM recebido, encerrando servidor...');
-  process.exit(0);
-});
+const SHUTDOWN_TIMEOUT_MS = 10000;
 
-process.on('SIGINT', () => {
-  console.log('\n🛑 SIGINT recebido, encerrando servidor...');
-  process.exit(0);
-});
+function gracefulShutdown(signal) {
+  console.log(
+    signal === 'SIGINT'
+      ? '\n🛑 SIGINT recebido, encerrando servidor...'
+      : '🛑 SIGTERM recebido, encerrando servidor...'
+  );
+  if (!server) {
+    process.exit(0);
+    return;
+  }
+  const t = setTimeout(() => {
+    console.error('❌ Timeout no encerramento gracioso; forçando saída.');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  t.unref();
+  server.close(() => {
+    clearTimeout(t);
+    console.log('✅ Servidor HTTP encerrado.');
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

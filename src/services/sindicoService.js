@@ -7,6 +7,51 @@ const { logAction } = require('../utils/logger'); // Para logs de auditoria
 const cacheService = require('./cacheService'); // Service de cache
 const { resolveDashboardPeriod } = require('../utils/periodRange');
 
+const TASK_LIST_ALLOWED_ORDER_BY = [
+  'id',
+  'created_at',
+  'updated_at',
+  'status',
+  'title',
+  'priority',
+  'due_date',
+  'completed_at',
+  'task_type',
+  'assigned_to',
+  'created_by',
+];
+
+const OCCURRENCE_LIST_ALLOWED_ORDER_BY = [
+  'id',
+  'created_at',
+  'updated_at',
+  'status',
+  'title',
+  'priority',
+  'resolved_at',
+  'reported_by',
+  'assigned_to',
+  'location',
+];
+
+const normalizeTaskListSort = (filters = {}) => {
+  const orderBy = TASK_LIST_ALLOWED_ORDER_BY.includes(filters.orderBy)
+    ? filters.orderBy
+    : 'created_at';
+  const orderDir =
+    (filters.orderDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  return { orderBy, orderDir };
+};
+
+const normalizeOccurrenceListSort = (filters = {}) => {
+  const orderBy = OCCURRENCE_LIST_ALLOWED_ORDER_BY.includes(filters.orderBy)
+    ? filters.orderBy
+    : 'created_at';
+  const orderDir =
+    (filters.orderDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  return { orderBy, orderDir };
+};
+
 // Função para obter estatísticas do condomínio do síndico
 // Recebe: condominiumId, options opcional { dataInicio, dataFim }
 // Retorna: estatísticas (alertas críticos, aprovações pendentes, financeiro, etc)
@@ -1014,10 +1059,9 @@ const listTasks = async (condominiumId, filters = {}) => {
     const offset = (page - 1) * perPage;
     const totalPages = Math.ceil(totalRecords / perPage);
 
-    // Ordenação (permitir customização)
-    const orderBy = filters.orderBy || 'created_at';
-    const orderDir = filters.orderDir || 'DESC';
-    sql += ` ORDER BY t.${orderBy} ${orderDir} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    const { orderBy: orderByField, orderDir: orderDirection } =
+      normalizeTaskListSort(filters);
+    sql += ` ORDER BY t.${orderByField} ${orderDirection} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     params.push(perPage, offset);
 
     const result = await query(sql, params);
@@ -1200,10 +1244,9 @@ const listOccurrences = async (condominiumId, filters = {}) => {
     const offset = (page - 1) * perPage;
     const totalPages = Math.ceil(totalRecords / perPage);
 
-    // Ordenação (permitir customização)
-    const orderBy = filters.orderBy || 'created_at';
-    const orderDir = filters.orderDir || 'DESC';
-    sql += ` ORDER BY o.${orderBy} ${orderDir} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    const { orderBy: occOrderByField, orderDir: occOrderDir } =
+      normalizeOccurrenceListSort(filters);
+    sql += ` ORDER BY o.${occOrderByField} ${occOrderDir} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     params.push(perPage, offset);
 
     const result = await query(sql, params);
@@ -1604,4 +1647,6 @@ module.exports = {
   approveOccurrence,
   rejectOccurrence,
   listPendingOccurrencesForApproval,
+  normalizeTaskListSort,
+  normalizeOccurrenceListSort,
 };

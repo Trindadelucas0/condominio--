@@ -9,8 +9,13 @@ const { buildReportChart } = require('./reportChartService');
 const { renderReportEmailHtml } = require('./reportEmailTemplateService');
 
 const reportsDir = path.join(__dirname, '../../../uploads/reports/auto');
-if (!fs.existsSync(reportsDir)) {
-  fs.mkdirSync(reportsDir, { recursive: true });
+try {
+  if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  }
+} catch (err) {
+  console.error(`Falha ao criar diretório de relatórios (${reportsDir}):`, err.message);
+  throw err;
 }
 
 const getActiveCondominiums = async () => {

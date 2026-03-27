@@ -1,10 +1,7 @@
-<%#
-  Cartão lateral no mesmo estilo visual do "Período da análise" do síndico (cabeçalho roxo/rosa).
-  Parâmetros:
-  - dicaSidebarTitle: título opcional (default: "O que você faz aqui")
-  - dicaSidebarSubtitle: linha abaixo do título no cabeçalho (opcional)
-  - dicaSidebarBody: texto principal (plain text; use <%= no include pai se escapar HTML)
-%>
+<!--
+  Cartão lateral no mesmo estilo visual do periodo da analise do sindico (cabecalho roxo/rosa).
+  Parametros: dicaSidebarTitle, dicaSidebarSubtitle, dicaSidebarBody.
+-->
 <% var _dst = typeof dicaSidebarTitle !== 'undefined' && dicaSidebarTitle ? dicaSidebarTitle : 'O que você faz aqui'; %>
 <% var _dss = typeof dicaSidebarSubtitle !== 'undefined' && dicaSidebarSubtitle ? dicaSidebarSubtitle : 'Em uma frase: o objetivo desta área.'; %>
 <% var _dsb = typeof dicaSidebarBody !== 'undefined' ? dicaSidebarBody : ''; %>

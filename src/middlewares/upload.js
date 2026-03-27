@@ -9,14 +9,16 @@ const fs = require('fs');
 const receiptsDir = path.join(__dirname, '../../uploads/receipts');
 const paymentsDir = path.join(__dirname, '../../uploads/payments');
 const billReceiptsDir = path.join(__dirname, '../../uploads/bill-receipts');
-if (!fs.existsSync(receiptsDir)) {
-  fs.mkdirSync(receiptsDir, { recursive: true });
-}
-if (!fs.existsSync(paymentsDir)) {
-  fs.mkdirSync(paymentsDir, { recursive: true });
-}
-if (!fs.existsSync(billReceiptsDir)) {
-  fs.mkdirSync(billReceiptsDir, { recursive: true });
+
+for (const dir of [receiptsDir, paymentsDir, billReceiptsDir]) {
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.error(`Falha ao criar diretório de upload (${dir}):`, err.message);
+    throw err;
+  }
 }
 
 // Configuração do multer para armazenar PDFs de recebimento (entradas)
