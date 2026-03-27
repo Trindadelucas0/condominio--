@@ -357,7 +357,7 @@
     <% var periodo = typeof periodo !== 'undefined' && periodo ? periodo : null; %>
     <% var cq = typeof consumoQuery !== 'undefined' && consumoQuery ? consumoQuery : { consumoBillId: '', consumoBillType: '' }; %>
     <% var billsCF = typeof billsForConsumptionFilter !== 'undefined' && billsForConsumptionFilter ? billsForConsumptionFilter : []; %>
-    <details id="dash-financeiro-filtros" class="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm animate-fade-in-up group">
+    <details id="dash-financeiro-filtros" class="mb-6 p-4 bg-white rounded-xl border border-gray-300 shadow-sm animate-fade-in-up group">
       <summary class="md:hidden cursor-pointer list-none font-semibold text-gray-800 flex justify-between items-center py-1">
         <span>Período e filtros (KPIs e consumo)</span>
         <span aria-hidden="true" class="text-gray-500 text-xs">▼</span>
@@ -418,7 +418,7 @@
 
     <% if (typeof showGettingStarted !== 'undefined' && showGettingStarted) { %>
     <!-- Comece por aqui (primeira vez) -->
-    <div class="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl shadow-lg animate-fade-in-up">
+    <div class="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl shadow-lg animate-fade-in-up">
       <h2 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
         <span class="text-2xl mr-2">👋</span>
         Comece por aqui
@@ -447,7 +447,7 @@
         const saldoMesPassado = typeof stats.saldoMesPassado !== 'undefined' ? stats.saldoMesPassado : 0;
       %>
       <!-- Saldo total do condomínio -->
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= balanceValue >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up">
+      <div class="bg-white rounded-xl p-8 shadow-lg border <%= balanceValue >= 0 ? 'border-green-300 border-l-2 border-l-green-500' : 'border-red-300 border-l-2 border-l-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
@@ -476,7 +476,7 @@
       </div>
 
       <!-- Saldo do período -->
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= saldoMesAtual >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-100">
+      <div class="bg-white rounded-xl p-8 shadow-lg border <%= saldoMesAtual >= 0 ? 'border-green-300 border-l-2 border-l-green-500' : 'border-red-300 border-l-2 border-l-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-100">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
@@ -502,7 +502,7 @@
       </div>
 
       <!-- Saldo do período anterior -->
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 <%= saldoMesPassado >= 0 ? 'border-green-500' : 'border-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-200">
+      <div class="bg-white rounded-xl p-8 shadow-lg border <%= saldoMesPassado >= 0 ? 'border-green-300 border-l-2 border-l-green-500' : 'border-red-300 border-l-2 border-l-red-500' %> hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-200">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
@@ -528,7 +528,7 @@
       </div>
 
       <!-- Média Mensal - Card Melhorado -->
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-300">
+      <div class="bg-white rounded-xl p-8 shadow-lg border border-blue-300 border-l-2 border-l-blue-500 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-300">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
@@ -561,7 +561,7 @@
       </div>
 
       <!-- Fundo de Reserva -->
-      <div class="bg-white rounded-xl p-8 shadow-lg border-l-4 border-amber-500 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-300">
+      <div class="bg-white rounded-xl p-8 shadow-lg border border-amber-300 border-l-2 border-l-amber-500 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-300">
         <div class="flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div>
@@ -626,7 +626,7 @@
     <!-- Segunda linha - Cards de Status Modernos -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
       <!-- Entradas Pendentes de Análise -->
-      <a href="/sindico/entradas-pendentes" class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-100 block">
+      <a href="/sindico/entradas-pendentes" class="bg-white rounded-xl p-6 shadow-lg border border-blue-300 border-l-2 border-l-blue-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-100 block">
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <p class="text-gray-500 text-sm font-medium mb-2">Entradas Pendentes</p>
@@ -648,7 +648,7 @@
 
       <!-- Entradas Rejeitadas -->
       <% if (typeof stats !== 'undefined' && stats.rejectedEntries !== undefined && stats.rejectedEntries > 0) { %>
-      <a href="/financeiro/entradas-rejeitadas" class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-200 block">
+      <a href="/financeiro/entradas-rejeitadas" class="bg-white rounded-xl p-6 shadow-lg border border-red-300 border-l-2 border-l-red-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-200 block">
         <div class="flex items-center justify-between mb-3">
           <div class="flex-1">
             <p class="text-gray-500 text-sm font-medium mb-2">Entradas Rejeitadas</p>
@@ -673,7 +673,7 @@
 
       <!-- Orçamentos Aguardando Análise -->
       <% if (typeof stats !== 'undefined' && stats.pendingBudgetFinanceiro !== undefined && stats.pendingBudgetFinanceiro > 0) { %>
-      <a href="/financeiro/orcamentos-pendentes" class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-yellow-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-300 block">
+      <a href="/financeiro/orcamentos-pendentes" class="bg-white rounded-xl p-6 shadow-lg border border-yellow-300 border-l-2 border-l-yellow-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-300 block">
         <div class="flex items-center justify-between mb-3">
           <div class="flex-1">
             <p class="text-gray-500 text-sm font-medium mb-2">Orçamentos Aguardando</p>
@@ -698,7 +698,7 @@
 
       <!-- Orçamentos Aprovados -->
       <% if (typeof stats !== 'undefined' && stats.approvedBudgets !== undefined && stats.approvedBudgets > 0) { %>
-      <a href="/financeiro/orcamentos-aprovados" class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-400 block">
+      <a href="/financeiro/orcamentos-aprovados" class="bg-white rounded-xl p-6 shadow-lg border border-green-300 border-l-2 border-l-green-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-400 block">
         <div class="flex items-center justify-between mb-3">
           <div class="flex-1">
             <p class="text-gray-500 text-sm font-medium mb-2">Orçamentos Aprovados</p>
@@ -723,7 +723,7 @@
 
       <!-- Orçamentos Rejeitados -->
       <% if (typeof stats !== 'undefined' && stats.rejectedBudgets !== undefined && stats.rejectedBudgets > 0) { %>
-      <a href="/financeiro/orcamentos-rejeitados" class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-orange-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-400 block">
+      <a href="/financeiro/orcamentos-rejeitados" class="bg-white rounded-xl p-6 shadow-lg border border-orange-300 border-l-2 border-l-orange-500 hover:shadow-xl transition-all duration-300 animate-slide-in-right delay-400 block">
         <div class="flex items-center justify-between mb-3">
           <div class="flex-1">
             <p class="text-gray-500 text-sm font-medium mb-2">Orçamentos Rejeitados</p>
@@ -749,12 +749,12 @@
 
     <!-- Evolução financeira -->
     <div class="grid grid-cols-1 gap-6 mb-8">
-      <div class="bg-white rounded-xl p-6 shadow-lg animate-fade-in-up delay-200">
+      <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-300 animate-fade-in-up delay-200">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold text-gray-900">
             Evolução Financeira
           </h2>
-          <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">6 meses</span>
+          <span class="text-xs text-gray-500 bg-gray-100 border border-gray-300 px-3 py-1 rounded-full font-medium">6 meses</span>
         </div>
         <div class="chart-container" style="position: relative; height: 300px;">
           <canvas id="evolutionChart"></canvas>
@@ -764,7 +764,7 @@
 
     <% var ca = typeof consumptionAnalytics !== 'undefined' && consumptionAnalytics ? consumptionAnalytics : null; %>
     <!-- Análise de consumo de contas (período e filtros no topo) -->
-    <div class="bg-white rounded-xl p-6 shadow-lg mb-8 animate-fade-in-up delay-300 border border-indigo-100">
+    <div class="bg-white rounded-xl p-6 shadow-lg mb-8 animate-fade-in-up delay-300 border border-indigo-300">
       <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
         <div>
           <h2 class="text-xl font-bold text-gray-900">Consumo de contas</h2>
@@ -789,7 +789,7 @@
           <p class="text-xs font-medium text-indigo-800 uppercase tracking-wide">Total no período</p>
           <p class="text-2xl font-bold text-indigo-900 mt-1">R$ <%= ca.totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %></p>
         </div>
-        <div class="rounded-xl bg-slate-50 border border-slate-200 p-4">
+        <div class="rounded-xl bg-slate-50 border border-slate-300 p-4">
           <p class="text-xs font-medium text-slate-600 uppercase tracking-wide">Média mensal (R$)</p>
           <p class="text-2xl font-bold text-slate-900 mt-1">R$ <%= ca.avgMonthlyAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %></p>
           <p class="text-xs text-slate-500 mt-1"><%= ca.monthsInPeriod %> mês(es) no intervalo</p>
@@ -830,7 +830,7 @@
       <% } %>
 
       <h3 class="text-lg font-semibold text-gray-900 mb-3">Registros no período</h3>
-      <div class="overflow-x-auto max-h-[min(60vh,28rem)] overflow-y-auto rounded-lg border border-gray-200">
+      <div class="overflow-x-auto max-h-[min(60vh,28rem)] overflow-y-auto rounded-lg border border-gray-300">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -877,7 +877,7 @@
     </div>
 
     <!-- Ações Rápidas - Botões Limpos -->
-    <div class="bg-white rounded-xl p-6 shadow-lg animate-fade-in-up delay-500">
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-300 animate-fade-in-up delay-500">
       <h2 class="text-xl font-bold text-gray-900 mb-6">
         Ações Rápidas
       </h2>
