@@ -18,8 +18,37 @@ try {
   throw err;
 }
 
+let cachedCondominiumTable = null;
+let cachedCondominiumTableAt = 0;
+
+const resolveCondominiumTableName = async () => {
+  const now = Date.now();
+  const cacheTtlMs = 1000 * 60 * 5;
+  if (cachedCondominiumTableAt && now - cachedCondominiumTableAt < cacheTtlMs) {
+    return cachedCondominiumTable;
+  }
+
+  const result = await query(
+    `SELECT COALESCE(
+      to_regclass('public.condominiums')::text,
+      to_regclass('condominiums')::text
+    ) AS table_name`
+  );
+  cachedCondominiumTable = result.rows?.[0]?.table_name || null;
+  cachedCondominiumTableAt = now;
+  return cachedCondominiumTable;
+};
+
 const getActiveCondominiums = async () => {
-  const result = await query(`SELECT id, name FROM condominiums WHERE active = TRUE`);
+  const tableName = await resolveCondominiumTableName();
+  if (!tableName) {
+    console.warn(
+      '[REPORT_DISPATCH] Tabela de condomínios não encontrada. Rode a migration base (init.sql) para habilitar os envios automáticos.'
+    );
+    return [];
+  }
+
+  const result = await query(`SELECT id, name FROM ${tableName} WHERE active = TRUE`);
   return result.rows;
 };
 
@@ -47,6 +76,14 @@ const getRecipients = async (condominiumId) => {
 };
 
 const listCondominiumSchedules = async () => {
+  const tableName = await resolveCondominiumTableName();
+  if (!tableName) {
+    console.warn(
+      '[REPORT_DISPATCH] Tabela de condomínios não encontrada. Scheduler de relatórios será ignorado até a migration base ser aplicada.'
+    );
+    return [];
+  }
+
   const result = await query(
     `SELECT c.id AS condominium_id,
             c.name AS condominium_name,
@@ -58,7 +95,7 @@ const listCondominiumSchedules = async () => {
             p.timezone,
             p.custom_start_date,
             p.custom_end_date
-       FROM condominiums c
+       FROM ${tableName} c
        JOIN report_preferences p ON p.condominium_id = c.id
       WHERE c.active = TRUE`
   );
