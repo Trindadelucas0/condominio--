@@ -6,6 +6,33 @@ const { query } = require('../config/database');
 const { logAction } = require('../utils/logger');
 const { validateUserBelongsToCondominium } = require('../utils/queryHelper');
 
+// Garante que exista um fundo de reserva para o condomínio.
+// Se não existir, cria com valores padrão neutros.
+const ensureReserveFund = async (condominiumId, userId = null) => {
+  const existingResult = await query(
+    `SELECT * FROM reserve_fund WHERE condominium_id = $1`,
+    [condominiumId]
+  );
+
+  if (existingResult.rows.length > 0) {
+    return existingResult.rows[0];
+  }
+
+  const insertResult = await query(
+    `INSERT INTO reserve_fund (
+      condominium_id, target_balance, monthly_contribution_percent,
+      monthly_contribution_amount, contribution_method, updated_by
+    )
+    VALUES ($1, 0, 0, 0, 'PERCENT', $2)
+    ON CONFLICT (condominium_id) DO UPDATE
+      SET last_updated = CURRENT_TIMESTAMP
+    RETURNING *`,
+    [condominiumId, userId]
+  );
+
+  return insertResult.rows[0];
+};
+
 // Função para criar ou atualizar fundo de reserva
 const setupReserveFund = async (condominiumId, userId, data, ipAddress, userAgent) => {
   try {
@@ -135,16 +162,7 @@ const getReserveFund = async (condominiumId) => {
 // Função para adicionar contribuição
 const addContribution = async (condominiumId, userId, amount, ipAddress, userAgent) => {
   try {
-    const fundResult = await query(
-      `SELECT * FROM reserve_fund WHERE condominium_id = $1`,
-      [condominiumId]
-    );
-
-    if (fundResult.rows.length === 0) {
-      throw new Error('Fundo de reserva não configurado');
-    }
-
-    const fund = fundResult.rows[0];
+    const fund = await ensureReserveFund(condominiumId, userId);
     const newBalance = parseFloat(fund.current_balance) + parseFloat(amount);
 
     const updateResult = await query(
@@ -182,16 +200,7 @@ const addContribution = async (condominiumId, userId, amount, ipAddress, userAge
 // Função para debitar do fundo de reserva (ex.: despesa paga com categoria DESPESAS_FUNDO_RESERVA)
 const subtractFromReserveFund = async (condominiumId, userId, amount, ipAddress, userAgent) => {
   try {
-    const fundResult = await query(
-      `SELECT * FROM reserve_fund WHERE condominium_id = $1`,
-      [condominiumId]
-    );
-
-    if (fundResult.rows.length === 0) {
-      throw new Error('Fundo de reserva não configurado');
-    }
-
-    const fund = fundResult.rows[0];
+    const fund = await ensureReserveFund(condominiumId, userId);
     const currentBalance = parseFloat(fund.current_balance);
     const subtractAmount = parseFloat(amount);
     const newBalance = Math.max(0, currentBalance - subtractAmount);
