@@ -38,8 +38,10 @@ const showDashboard = async (req, res) => {
     );
     const condominiumName = condominiumResult.rows.length > 0 ? condominiumResult.rows[0].name : 'Condomínio';
 
-    // Busca analytics avançados (com cache)
-    const analyticsCacheKey = `dashboard:analytics:${req.user.condominiumId}`;
+    const analyticsRangeStart = req.query.dataInicio || 'default';
+    const analyticsRangeEnd = req.query.dataFim || 'default';
+    // Cache segmentado por período para não misturar cards de intervalos diferentes.
+    const analyticsCacheKey = `dashboard:analytics:${req.user.condominiumId}:${analyticsRangeStart}:${analyticsRangeEnd}`;
     let analytics = cacheService.get(analyticsCacheKey);
     
     if (!analytics) {
@@ -51,8 +53,15 @@ const showDashboard = async (req, res) => {
       };
       
       // Comparação com mês anterior
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
+      const referenceDate = req.query.dataFim
+        ? new Date(req.query.dataFim)
+        : req.query.dataInicio
+          ? new Date(req.query.dataInicio)
+          : new Date();
+      const validReferenceDate = Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+
+      const currentMonth = validReferenceDate.getMonth() + 1;
+      const currentYear = validReferenceDate.getFullYear();
       const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
       const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
 

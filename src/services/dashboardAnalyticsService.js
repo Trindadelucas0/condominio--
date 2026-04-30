@@ -3,6 +3,41 @@
 
 const { query } = require('../config/database');
 
+const getMonthBounds = (month, year) => {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+  return { start, end };
+};
+
+const getPeriodTotals = async (condominiumId, month, year) => {
+  const { start, end } = getMonthBounds(month, year);
+
+  const [entriesResult, exitsResult] = await Promise.all([
+    query(`
+      SELECT COALESCE(SUM(amount), 0) AS total
+      FROM financial_entries
+      WHERE condominium_id = $1
+        AND deleted_at IS NULL
+        AND received = TRUE
+        AND entry_date >= $2::date
+        AND entry_date < $3::date
+    `, [condominiumId, start, end]),
+    query(`
+      SELECT COALESCE(SUM(amount), 0) AS total
+      FROM financial_exits
+      WHERE condominium_id = $1
+        AND payment_status = 'PAID'
+        AND exit_date >= $2::date
+        AND exit_date < $3::date
+    `, [condominiumId, start, end]),
+  ]);
+
+  return {
+    entries: parseFloat(entriesResult.rows[0]?.total || 0),
+    exits: parseFloat(exitsResult.rows[0]?.total || 0),
+  };
+};
+
 // Função para obter dados históricos dos últimos N meses
 // Recebe: condominiumId, months (padrão: 12)
 // Retorna: Array com dados mensais (entradas, saídas, saldo)
@@ -22,18 +57,29 @@ const getHistoricalData = async (condominiumId, months = 12) => {
         TO_CHAR(m.month, 'Mon/YYYY') AS label,
         EXTRACT(MONTH FROM m.month)::integer AS month_num,
         EXTRACT(YEAR FROM m.month)::integer AS year,
-        COALESCE(SUM(CASE WHEN fe.received = TRUE THEN fe.amount ELSE 0 END), 0) AS entries,
-        COALESCE(SUM(CASE WHEN fx.payment_status = 'PAID' THEN fx.amount ELSE 0 END), 0) AS exits,
-        COALESCE(SUM(CASE WHEN fe.received = TRUE THEN fe.amount ELSE 0 END), 0) - 
-        COALESCE(SUM(CASE WHEN fx.payment_status = 'PAID' THEN fx.amount ELSE 0 END), 0) AS balance
+        COALESCE(fe.entries, 0) AS entries,
+        COALESCE(fx.exits, 0) AS exits,
+        COALESCE(fe.entries, 0) - COALESCE(fx.exits, 0) AS balance
       FROM months m
-      LEFT JOIN financial_entries fe ON 
-        date_trunc('month', fe.entry_date) = m.month 
-        AND fe.condominium_id = $1
-      LEFT JOIN financial_exits fx ON 
-        date_trunc('month', fx.exit_date) = m.month 
-        AND fx.condominium_id = $1
-      GROUP BY m.month
+      LEFT JOIN (
+        SELECT
+          date_trunc('month', entry_date)::date AS month,
+          SUM(amount) AS entries
+        FROM financial_entries
+        WHERE condominium_id = $1
+          AND received = TRUE
+          AND deleted_at IS NULL
+        GROUP BY date_trunc('month', entry_date)
+      ) fe ON fe.month = m.month
+      LEFT JOIN (
+        SELECT
+          date_trunc('month', exit_date)::date AS month,
+          SUM(amount) AS exits
+        FROM financial_exits
+        WHERE condominium_id = $1
+          AND payment_status = 'PAID'
+        GROUP BY date_trunc('month', exit_date)
+      ) fx ON fx.month = m.month
       ORDER BY m.month ASC
     `, [condominiumId]);
 
@@ -63,22 +109,24 @@ const getProjections = async (condominiumId, monthsToProject = 3) => {
     // Busca entradas e saídas recorrentes
     // Nota: financial_entries tem deleted_at, mas financial_exits não tem essa coluna
     const recurringEntries = await query(`
-      SELECT COALESCE(SUM(amount), 0) as total
+      SELECT COALESCE(AVG(amount), 0) as monthly_average
       FROM financial_entries
       WHERE condominium_id = $1 
         AND is_recurring = TRUE
+        AND received = TRUE
         AND deleted_at IS NULL
     `, [condominiumId]);
 
     const recurringExits = await query(`
-      SELECT COALESCE(SUM(amount), 0) as total
+      SELECT COALESCE(AVG(amount), 0) as monthly_average
       FROM financial_exits
       WHERE condominium_id = $1 
         AND is_recurring = TRUE
+        AND payment_status = 'PAID'
     `, [condominiumId]);
 
-    const recurringEntriesTotal = parseFloat(recurringEntries.rows[0].total || 0);
-    const recurringExitsTotal = parseFloat(recurringExits.rows[0].total || 0);
+    const recurringEntriesMonthly = parseFloat(recurringEntries.rows[0].monthly_average || 0);
+    const recurringExitsMonthly = parseFloat(recurringExits.rows[0].monthly_average || 0);
 
     // Gera previsões
     const projections = [];
@@ -89,8 +137,8 @@ const getProjections = async (condominiumId, monthsToProject = 3) => {
       const monthName = futureDate.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
       
       // Previsão = média histórica + recorrentes
-      const projectedEntries = avgEntries + recurringEntriesTotal;
-      const projectedExits = avgExits + recurringExitsTotal;
+      const projectedEntries = avgEntries + recurringEntriesMonthly;
+      const projectedExits = avgExits + recurringExitsMonthly;
       const projectedBalance = projectedEntries - projectedExits;
 
       projections.push({
@@ -121,41 +169,15 @@ const comparePeriods = async (condominiumId, period1, period2) => {
     const p2Month = parseInt(period2.month);
     const p2Year = parseInt(period2.year);
 
-    const period1Data = await query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN fe.received = TRUE THEN fe.amount ELSE 0 END), 0) AS entries,
-        COALESCE(SUM(CASE WHEN fx.payment_status = 'PAID' THEN fx.amount ELSE 0 END), 0) AS exits
-      FROM financial_entries fe
-      FULL OUTER JOIN financial_exits fx ON fx.condominium_id = fe.condominium_id
-      WHERE (fe.condominium_id = $1 OR fx.condominium_id = $1)
-        AND (
-          (EXTRACT(MONTH FROM fe.entry_date) = $2::INTEGER AND EXTRACT(YEAR FROM fe.entry_date) = $3::INTEGER)
-          OR
-          (EXTRACT(MONTH FROM fx.exit_date) = $2::INTEGER AND EXTRACT(YEAR FROM fx.exit_date) = $3::INTEGER)
-        )
-    `, [condominiumId, p1Month, p1Year]);
+    const [p1, p2] = await Promise.all([
+      getPeriodTotals(condominiumId, p1Month, p1Year),
+      getPeriodTotals(condominiumId, p2Month, p2Year),
+    ]);
 
-    const period2Data = await query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN fe.received = TRUE THEN fe.amount ELSE 0 END), 0) AS entries,
-        COALESCE(SUM(CASE WHEN fx.payment_status = 'PAID' THEN fx.amount ELSE 0 END), 0) AS exits
-      FROM financial_entries fe
-      FULL OUTER JOIN financial_exits fx ON fx.condominium_id = fe.condominium_id
-      WHERE (fe.condominium_id = $1 OR fx.condominium_id = $1)
-        AND (
-          (EXTRACT(MONTH FROM fe.entry_date) = $2::INTEGER AND EXTRACT(YEAR FROM fe.entry_date) = $3::INTEGER)
-          OR
-          (EXTRACT(MONTH FROM fx.exit_date) = $2::INTEGER AND EXTRACT(YEAR FROM fx.exit_date) = $3::INTEGER)
-        )
-    `, [condominiumId, p2Month, p2Year]);
-
-    const p1 = period1Data.rows[0] || { entries: 0, exits: 0 };
-    const p2 = period2Data.rows[0] || { entries: 0, exits: 0 };
-
-    const p1Entries = parseFloat(p1.entries || 0);
-    const p1Exits = parseFloat(p1.exits || 0);
-    const p2Entries = parseFloat(p2.entries || 0);
-    const p2Exits = parseFloat(p2.exits || 0);
+    const p1Entries = p1.entries;
+    const p1Exits = p1.exits;
+    const p2Entries = p2.entries;
+    const p2Exits = p2.exits;
 
     const entriesVariation = p1Entries > 0 ? ((p2Entries - p1Entries) / p1Entries) * 100 : 0;
     const exitsVariation = p1Exits > 0 ? ((p2Exits - p1Exits) / p1Exits) * 100 : 0;
@@ -222,6 +244,7 @@ const getDataByCategory = async (condominiumId, months = 6) => {
   try {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
+    const endDate = new Date();
 
     const entries = await query(`
       SELECT 
@@ -231,10 +254,12 @@ const getDataByCategory = async (condominiumId, months = 6) => {
       FROM financial_entries
       WHERE condominium_id = $1
         AND entry_date >= $2
+        AND entry_date <= $3
         AND received = TRUE
+        AND deleted_at IS NULL
       GROUP BY category
       ORDER BY total DESC
-    `, [condominiumId, startDate]);
+    `, [condominiumId, startDate, endDate]);
 
     const exits = await query(`
       SELECT 
@@ -244,10 +269,11 @@ const getDataByCategory = async (condominiumId, months = 6) => {
       FROM financial_exits
       WHERE condominium_id = $1
         AND exit_date >= $2
+        AND exit_date <= $3
         AND payment_status = 'PAID'
       GROUP BY category
       ORDER BY total DESC
-    `, [condominiumId, startDate]);
+    `, [condominiumId, startDate, endDate]);
 
     return {
       entries: entries.rows.map(r => ({
