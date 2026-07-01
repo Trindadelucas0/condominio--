@@ -840,19 +840,23 @@ const deleteEntry = async (req, res) => {
 
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
+    const reason = (req.body.reason && String(req.body.reason).trim())
+      ? String(req.body.reason).trim()
+      : 'Exclusão manual na listagem de receitas';
 
     await financeiroService.deleteEntry(
       req.params.id,
       req.user.condominiumId,
       req.user.id,
+      reason,
       ipAddress,
       userAgent
     );
 
-    res.redirect('/financeiro/entradas-rejeitadas?success=deleted');
+    res.redirect('/financeiro/entradas?success=deleted');
   } catch (error) {
     console.error('Erro ao excluir entrada:', error);
-    res.redirect('/financeiro/entradas-rejeitadas?error=' + encodeURIComponent(getErrorMessage(error)));
+    res.redirect('/financeiro/entradas?error=' + encodeURIComponent(getErrorMessage(error)));
   }
 };
 

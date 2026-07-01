@@ -2144,11 +2144,14 @@ const updateEntry = async (entryId, condominiumId, userId, data, ipAddress, user
 };
 
 // Função para excluir entrada financeira
-// Recebe: entryId, condominiumId, userId, ipAddress, userAgent
+// Recebe: entryId, condominiumId, userId, motivo, ipAddress, userAgent
 // Retorna: void
-const deleteEntry = async (entryId, condominiumId, userId, ipAddress, userAgent) => {
+const deleteEntry = async (entryId, condominiumId, userId, reason, ipAddress, userAgent) => {
   try {
-    // Busca entrada atual
+    if (!reason || !reason.trim()) {
+      throw new Error('Motivo para excluir a receita é obrigatório');
+    }
+
     const currentResult = await query(
       `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
       [entryId, condominiumId]
@@ -2160,26 +2163,39 @@ const deleteEntry = async (entryId, condominiumId, userId, ipAddress, userAgent)
 
     const current = currentResult.rows[0];
 
-    // Valida que usuário pertence ao condomínio
     const userBelongs = await validateUserBelongsToCondominium(userId, condominiumId);
     if (!userBelongs) {
       throw new Error('Usuário não pertence a este condomínio');
     }
 
-    // Verifica se já foi deletada (soft delete)
     if (current.deleted_at) {
       throw new Error('Entrada já foi excluída');
     }
 
-    // Só pode excluir se estiver rejeitada ou pendente
-    if (current.review_status === 'APPROVED' && current.received) {
-      throw new Error('Não é possível excluir uma entrada já aprovada e recebida');
+    const monthlyClosureService = require('./monthlyClosureService');
+    const referenceDate = current.received
+      ? (current.received_at || current.entry_date)
+      : current.entry_date;
+    const isClosed = await monthlyClosureService.isMonthClosed(condominiumId, referenceDate);
+    if (isClosed) {
+      const d = new Date(referenceDate);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      throw new Error(`Não é possível excluir a receita. O mês ${m}/${y} está fechado.`);
     }
 
-    // Soft delete: marca deleted_at, deleted_by
-    const deleteReason = current.review_status === 'REJECTED' 
-      ? 'Entrada rejeitada excluída' 
-      : 'Entrada pendente excluída';
+    if (current.received) {
+      await unmarkEntryAsReceived(
+        entryId,
+        condominiumId,
+        userId,
+        `Exclusão da receita: ${reason.trim()}`,
+        ipAddress,
+        userAgent
+      );
+    }
+
+    const deleteReason = reason.trim();
 
     await query(
       `UPDATE financial_entries 
@@ -2188,14 +2204,30 @@ const deleteEntry = async (entryId, condominiumId, userId, ipAddress, userAgent)
       [userId, deleteReason, entryId, condominiumId]
     );
 
-    // Busca entrada atualizada para log
+    if (current.linked_to_type === 'MONTHLY_FEE') {
+      if (current.linked_to_id) {
+        await query(
+          `UPDATE monthly_fees
+           SET paid = FALSE, paid_at = NULL, financial_entry_id = NULL, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [current.linked_to_id]
+        );
+      } else {
+        await query(
+          `UPDATE monthly_fees
+           SET paid = FALSE, paid_at = NULL, financial_entry_id = NULL, updated_at = CURRENT_TIMESTAMP
+           WHERE financial_entry_id = $1`,
+          [entryId]
+        );
+      }
+    }
+
     const updatedResult = await query(
       `SELECT * FROM financial_entries WHERE id = $1 AND condominium_id = $2`,
       [entryId, condominiumId]
     );
     const updated = updatedResult.rows[0];
 
-    // Registra no log
     await logAction({
       userId: userId,
       condominiumId: condominiumId,
@@ -2208,6 +2240,10 @@ const deleteEntry = async (entryId, condominiumId, userId, ipAddress, userAgent)
       ipAddress: ipAddress,
       userAgent: userAgent,
     });
+
+    const cacheService = require('./cacheService');
+    cacheService.deletePattern(`dashboard:stats:${condominiumId}`);
+    cacheService.deletePattern(`dashboard:analytics:${condominiumId}`);
 
     return true;
   } catch (error) {
