@@ -71,8 +71,9 @@
   <div class="container mx-auto px-4 py-8">
     <% var helpModalId = 'modalComoFunciona'; %>
     <% var helpTitle = 'Como funcionam as Despesas'; %>
-    <% var resumo = ['A lista mostra as despesas do mês escolhido, pela data da despesa (não pela data em que cadastrou).', 'Use o seletor de mês e ano para conferir meses anteriores (ex.: agosto).', 'Se a mesma descrição e o mesmo valor aparecerem mais de uma vez, o sistema avisa — isso não apaga nada; evite lançar de novo.', 'Quando pagar de fato, use "Pagar" na linha. Para boletos do mesmo mês, use o link "Ver boletos deste mês".']; %>
-    <% var helpModalContent = '<p><strong>O que são Despesas?</strong> São todos os valores que saem do caixa: pagamento a fornecedores, contas de luz/água, manutenção, etc.</p><p><strong>Conferir por mês:</strong> Escolha mês e ano e clique em "Ver este mês". A lista usa a <strong>data da despesa</strong>, não a data do cadastro.</p><p><strong>Repetições:</strong> Se a mesma descrição e o mesmo valor existirem mais de uma vez no mês, aparece um aviso com as datas de cadastro. O total do mês soma todas as linhas; o aviso não exclui automaticamente.</p><p><strong>Fluxo:</strong> Cadastre com "Nova despesa". Após aprovação quando necessário, use "Pagar" e anexe o comprovante se desejar.</p>'; %>
+    <% var resumo = ['A lista mostra as despesas do mês escolhido, pela data da despesa (não pela data em que cadastrou).', 'Use o seletor de mês e ano para conferir meses anteriores (ex.: agosto).', 'Repetições: a original é o cadastro mais antigo; use "Excluir cópia" ou o atalho do aviso para remover só as duplicatas.', 'Quando pagar de fato, use "Pagar" na linha. Para boletos do mesmo mês, use o link "Ver boletos deste mês".']; %>
+    <% var helpModalContent = '<p><strong>O que são Despesas?</strong> São todos os valores que saem do caixa: pagamento a fornecedores, contas de luz/água, manutenção, etc.</p><p><strong>Conferir por mês:</strong> Escolha mês e ano e clique em "Ver este mês". A lista usa a <strong>data da despesa</strong>, não a data do cadastro.</p><p><strong>Repetições:</strong> Mesma descrição e valor no mês geram aviso. A <strong>original</strong> é sempre o lançamento cadastrado primeiro; você pode excluir só as cópias (na tabela ou no aviso amarelo). Mês fechado continua bloqueando exclusão.</p><p><strong>Fluxo:</strong> Cadastre com "Nova despesa". Após aprovação quando necessário, use "Pagar" e anexe o comprovante se desejar.</p>'; %>
+    <% var duplicateCopyReason = 'Remoção de lançamento duplicado (cópia)'; %>
     <% 
       var mp = (typeof monthPeriod !== 'undefined' && monthPeriod) ? monthPeriod : null;
       var selMes = mp ? mp.mes : (new Date().getMonth() + 1);
@@ -142,14 +143,47 @@
       <% if (dupGroups.length > 0) { %>
         <div class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 md:p-5">
           <h2 class="text-base font-bold text-amber-900 mb-1">Repetições neste mês</h2>
-          <p class="text-sm text-amber-800 mb-3"><%= dupGroups.length %> descrição(ões) aparece(m) mais de uma vez com o mesmo valor. O valor total acima soma todas as linhas, inclusive cópias. O aviso não apaga nada — confira antes de lançar de novo.</p>
-          <ul class="space-y-2 text-sm text-amber-900">
+          <p class="text-sm text-amber-800 mb-3"><%= dupGroups.length %> descrição(ões) aparece(m) mais de uma vez com o mesmo valor. A <strong>original</strong> é o cadastro mais antigo; você pode excluir só as cópias abaixo. O total do mês soma todas as linhas até você remover as duplicatas.</p>
+          <ul class="space-y-4 text-sm text-amber-900">
             <% dupGroups.forEach(function(g) { %>
-              <li class="border-l-4 border-amber-400 pl-3">
-                <span class="font-semibold"><%= g.description %></span>
-                — R$ <%= parseFloat(g.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %>
-                <span class="text-amber-700">(<%= g.count %>×)</span>
-                <div class="text-xs text-amber-800 mt-0.5">Cadastrada em: <%= g.createdAtLabels.join(', ') %></div>
+              <li class="border-l-4 border-amber-400 pl-3 pb-2">
+                <div>
+                  <span class="font-semibold"><%= g.description %></span>
+                  — R$ <%= parseFloat(g.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %>
+                  <span class="text-amber-700">(<%= g.count %>×)</span>
+                </div>
+                <% if (g.keeper) { %>
+                  <div class="text-xs text-amber-900 mt-1">
+                    <strong>Original (mantida):</strong> cadastrada em <%= g.keeper.createdAtLabel %> · data da despesa <%= g.keeper.exitDateLabel %> · <%= g.keeper.paymentStatusLabel %>
+                  </div>
+                <% } %>
+                <% if (g.copies && g.copies.length) { %>
+                  <div class="text-xs text-amber-900 mt-2 font-semibold">Cópias:</div>
+                  <ul class="mt-1 space-y-1.5">
+                    <% g.copies.forEach(function(copy) { %>
+                      <li class="flex flex-wrap items-center gap-2">
+                        <span>· cad. <%= copy.createdAtLabel %> · <%= copy.paymentStatusLabel %> · despesa <%= copy.exitDateLabel %></span>
+                        <form method="POST" action="/financeiro/saidas/<%= copy.id %>/excluir" class="inline" onsubmit="return confirm('Excluir esta cópia e manter a original? Esta ação não pode ser desfeita.');">
+                          <input type="hidden" name="duplicateCleanup" value="1">
+                          <input type="hidden" name="mes" value="<%= selMes %>">
+                          <input type="hidden" name="ano" value="<%= selAno %>">
+                          <input type="hidden" name="reason" value="<%= duplicateCopyReason %>">
+                          <button type="submit" class="inline-flex items-center px-2 py-1 rounded border border-amber-600 text-amber-900 bg-amber-100 hover:bg-amber-200 text-xs font-semibold transition-colors">
+                            Excluir cópia
+                          </button>
+                        </form>
+                      </li>
+                    <% }); %>
+                  </ul>
+                  <form method="POST" action="/financeiro/saidas/excluir-copias-duplicadas" class="mt-2" onsubmit="return confirm('Excluir <%= g.copyCount %> cópia(s) e manter a original cadastrada em <%= g.keeper ? g.keeper.createdAtLabel : '' %>? Despesas pagas terão o pagamento desfeito antes da exclusão.');">
+                    <input type="hidden" name="keeperExitId" value="<%= g.keeperExitId %>">
+                    <input type="hidden" name="mes" value="<%= selMes %>">
+                    <input type="hidden" name="ano" value="<%= selAno %>">
+                    <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-amber-700 text-amber-950 bg-amber-200 hover:bg-amber-300 text-xs font-bold transition-colors">
+                      Excluir <%= g.copyCount %> cópia(s) e manter a original
+                    </button>
+                  </form>
+                <% } %>
               </li>
             <% }); %>
           </ul>
@@ -258,6 +292,21 @@
             <div>
               <p class="font-semibold text-red-800">Despesa excluída com sucesso!</p>
               <p class="text-sm text-red-600">A despesa foi removida e o saldo foi recalculado.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+      <% if (typeof query !== 'undefined' && query.success === 'duplicates_removed') { %>
+        <div class="mb-6 animate-slide-in">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 shadow-md flex items-center space-x-3">
+            <div class="bg-green-500 rounded-full p-2">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-green-800">Cópias duplicadas removidas!</p>
+              <p class="text-sm text-green-600"><%= query.removed ? parseInt(query.removed, 10) : 0 %> cópia(s) excluída(s); a original do grupo foi mantida.</p>
             </div>
           </div>
         </div>
@@ -381,7 +430,9 @@
                           <% if (rowDup && rowDup.isDuplicate) { %>
                             <div class="mt-1">
                               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-200">Repetida</span>
-                              <% if (rowDup.otherCreatedAtLabels && rowDup.otherCreatedAtLabels.length) { %>
+                              <% if (rowDup.isKeeper) { %>
+                                <span class="text-xs text-amber-800 ml-1 font-medium">Original deste grupo</span>
+                              <% } else if (rowDup.otherCreatedAtLabels && rowDup.otherCreatedAtLabels.length) { %>
                                 <span class="text-xs text-amber-800 ml-1">Também cadastrada em <%= rowDup.otherCreatedAtLabels.join(' e ') %></span>
                               <% } %>
                             </div>
@@ -442,6 +493,8 @@
                             Editar
                           </a>
                           <form method="POST" action="/financeiro/saidas/<%= exit.id %>/excluir" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.');">
+                            <input type="hidden" name="mes" value="<%= selMes %>">
+                            <input type="hidden" name="ano" value="<%= selAno %>">
                             <input type="hidden" name="reason" value="Exclusão manual na listagem de despesas">
                             <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-semibold transition-colors">
                               Excluir
@@ -461,6 +514,8 @@
                             Marcar como Paga
                           </a>
                           <form method="POST" action="/financeiro/saidas/<%= exit.id %>/excluir" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa aprovada? Esta ação não pode ser desfeita.');">
+                            <input type="hidden" name="mes" value="<%= selMes %>">
+                            <input type="hidden" name="ano" value="<%= selAno %>">
                             <input type="hidden" name="reason" value="Exclusão manual de despesa aprovada na listagem">
                             <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-semibold transition-colors">
                               Excluir
@@ -496,12 +551,31 @@
                             </button>
                           </form>
                           <form method="POST" action="/financeiro/saidas/<%= exit.id %>/excluir" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa paga? O pagamento será desfeito antes da exclusão.');">
+                            <input type="hidden" name="mes" value="<%= selMes %>">
+                            <input type="hidden" name="ano" value="<%= selAno %>">
                             <input type="hidden" name="reason" value="Exclusão manual de despesa paga na listagem">
                             <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-semibold transition-colors">
                               Excluir
                             </button>
                           </form>
                         </div>
+                      <% } %>
+                      <% if (rowDup && rowDup.isDuplicate && rowDup.isKeeper) { %>
+                        <p class="text-xs text-amber-800 mt-1 font-medium">Original deste grupo</p>
+                      <% } else if (rowDup && rowDup.isDuplicate && !rowDup.isKeeper) {
+                        var copyDeleteConfirm = exit.payment_status === 'PAID'
+                          ? 'Excluir esta cópia e manter a original? O pagamento será desfeito antes da exclusão.'
+                          : 'Excluir esta cópia e manter a original? Esta ação não pode ser desfeita.';
+                      %>
+                        <form method="POST" action="/financeiro/saidas/<%= exit.id %>/excluir" class="mt-1" onsubmit="return confirm('<%= copyDeleteConfirm.replace(/'/g, "\\'") %>');">
+                          <input type="hidden" name="duplicateCleanup" value="1">
+                          <input type="hidden" name="mes" value="<%= selMes %>">
+                          <input type="hidden" name="ano" value="<%= selAno %>">
+                          <input type="hidden" name="reason" value="<%= duplicateCopyReason %>">
+                          <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg border border-amber-600 text-amber-900 bg-amber-50 hover:bg-amber-100 text-xs font-semibold transition-colors">
+                            Excluir cópia
+                          </button>
+                        </form>
                       <% } %>
                     </td>
                   </tr>

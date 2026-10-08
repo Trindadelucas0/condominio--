@@ -242,6 +242,7 @@ router.get('/entradas', financeiroController.listEntries);
 
 // Saídas
 router.get('/saidas/nova', financeiroController.showCreateExit);
+router.post('/saidas/excluir-copias-duplicadas', financeiroController.deleteDuplicateCopiesInGroup);
 router.post('/saidas', (req, res, next) => {
   uploadExitPaymentAttachments(req, res, async (err) => {
     try {

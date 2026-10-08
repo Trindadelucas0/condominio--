@@ -34,6 +34,31 @@ function formatExitCreatedAtBR(createdAt) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function formatExitDateBR(exitDate) {
+  if (!exitDate) return '-';
+  const d = new Date(exitDate);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function exitPaymentStatusLabel(status) {
+  if (status === 'PAID') return 'Paga';
+  if (status === 'APPROVED') return 'Aprovada';
+  return 'Pendente';
+}
+
+function mapExitCopyRow(row) {
+  return {
+    id: row.id,
+    exit_date: row.exit_date,
+    created_at: row.created_at,
+    payment_status: row.payment_status,
+    exitDateLabel: formatExitDateBR(row.exit_date),
+    createdAtLabel: formatExitCreatedAtBR(row.created_at),
+    paymentStatusLabel: exitPaymentStatusLabel(row.payment_status),
+  };
+}
+
 function buildExitDuplicateMeta(exits) {
   const byKey = new Map();
   for (const exit of exits) {
@@ -46,11 +71,17 @@ function buildExitDuplicateMeta(exits) {
   for (const rows of byKey.values()) {
     if (rows.length <= 1) continue;
     const sorted = rows.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const keeperExitId = sorted[0].id;
+    const copies = sorted.slice(1).map(mapExitCopyRow);
     const createdAtLabels = sorted.map((r) => formatExitCreatedAtBR(r.created_at));
     duplicateGroups.push({
       description: rows[0].description,
       amount: rows[0].amount,
       count: rows.length,
+      keeperExitId,
+      copyCount: copies.length,
+      keeper: mapExitCopyRow(sorted[0]),
+      copies,
       createdAtLabels,
     });
     for (const row of rows) {
@@ -59,6 +90,8 @@ function buildExitDuplicateMeta(exits) {
         .map((r) => formatExitCreatedAtBR(r.created_at));
       perExit[row.id] = {
         isDuplicate: true,
+        isKeeper: row.id === keeperExitId,
+        keeperExitId,
         otherCreatedAtLabels: [...new Set(others)],
       };
     }
@@ -66,6 +99,49 @@ function buildExitDuplicateMeta(exits) {
   duplicateGroups.sort((a, b) => String(a.description).localeCompare(String(b.description), 'pt-BR'));
   return { duplicateGroups, exitDuplicateMeta: perExit };
 }
+
+async function loadExitsForListMonth(condominiumId, mes, ano) {
+  const monthPeriod = resolveListMonthFromQuery(mes, ano);
+  if (!monthPeriod) {
+    throw new Error('Mês ou ano inválido para a listagem de despesas.');
+  }
+  return financeiroService.listExits(condominiumId, {
+    startDate: monthPeriod.dataInicio,
+    endDate: monthPeriod.dataFim,
+    limit: 1000,
+    sortByExitDate: true,
+  });
+}
+
+function assertExitIsDuplicateCopy(exitId, exits) {
+  const id = parseInt(exitId, 10);
+  const { exitDuplicateMeta } = buildExitDuplicateMeta(exits);
+  const meta = exitDuplicateMeta[id];
+  if (!meta || !meta.isDuplicate) {
+    throw new Error('Este lançamento não faz parte de um grupo de repetições neste mês.');
+  }
+  if (meta.isKeeper) {
+    throw new Error('Esta é a original do grupo; exclua só as cópias.');
+  }
+}
+
+function saidasListRedirectPath(mes, ano, extraQuery = {}) {
+  const monthPeriod = resolveListMonthFromQuery(mes, ano);
+  const qs = new URLSearchParams();
+  if (monthPeriod) {
+    qs.set('mes', String(monthPeriod.mes));
+    qs.set('ano', String(monthPeriod.ano));
+  }
+  for (const [key, value] of Object.entries(extraQuery)) {
+    if (value != null && value !== '') {
+      qs.set(key, String(value));
+    }
+  }
+  const query = qs.toString();
+  return query ? `/financeiro/saidas?${query}` : '/financeiro/saidas';
+}
+
+const DUPLICATE_COPY_DELETE_REASON = 'Remoção de lançamento duplicado (cópia)';
 
 // Função para exibir dashboard financeiro
 // GET /financeiro/dashboard
@@ -316,12 +392,7 @@ const listExits = async (req, res) => {
       return res.redirect(`/financeiro/saidas?${qs.toString()}`);
     }
 
-    const exits = await financeiroService.listExits(req.user.condominiumId, {
-      startDate: monthPeriod.dataInicio,
-      endDate: monthPeriod.dataFim,
-      limit: 1000,
-      sortByExitDate: true,
-    });
+    const exits = await loadExitsForListMonth(req.user.condominiumId, monthPeriod.mes, monthPeriod.ano);
 
     const { duplicateGroups, exitDuplicateMeta } = buildExitDuplicateMeta(exits);
 
@@ -1197,9 +1268,16 @@ const unpayExit = async (req, res) => {
 // Função para excluir saída financeira
 // POST /financeiro/saidas/:id/excluir
 const deleteExit = async (req, res) => {
+  const mes = req.body.mes;
+  const ano = req.body.ano;
   try {
     if (!req.user.condominiumId) {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    if (req.body.duplicateCleanup === '1') {
+      const exits = await loadExitsForListMonth(req.user.condominiumId, mes, ano);
+      assertExitIsDuplicateCopy(req.params.id, exits);
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -1217,10 +1295,71 @@ const deleteExit = async (req, res) => {
       userAgent
     );
 
-    res.redirect('/financeiro/saidas?success=deleted');
+    res.redirect(saidasListRedirectPath(mes, ano, { success: 'deleted' }));
   } catch (error) {
     console.error('Erro ao excluir saída:', error);
-    res.redirect('/financeiro/saidas?error=' + encodeURIComponent(getErrorMessage(error)));
+    res.redirect(saidasListRedirectPath(mes, ano, {
+      error: getErrorMessage(error),
+    }));
+  }
+};
+
+// POST /financeiro/saidas/excluir-copias-duplicadas
+const deleteDuplicateCopiesInGroup = async (req, res) => {
+  const { mes, ano } = req.body;
+  try {
+    if (!req.user.condominiumId) {
+      return renderError(res, 400, 'Usuário não está associado a um condomínio');
+    }
+
+    const keeperExitId = parseInt(req.body.keeperExitId, 10);
+    if (Number.isNaN(keeperExitId)) {
+      throw new Error('Grupo de repetições inválido.');
+    }
+
+    const exits = await loadExitsForListMonth(req.user.condominiumId, mes, ano);
+    const { duplicateGroups } = buildExitDuplicateMeta(exits);
+    const group = duplicateGroups.find((g) => g.keeperExitId === keeperExitId);
+    if (!group || !group.copies || group.copies.length === 0) {
+      throw new Error('Não há cópias para excluir neste grupo neste mês.');
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent');
+    let removed = 0;
+    const failures = [];
+
+    for (const copy of group.copies) {
+      if (copy.id === keeperExitId) continue;
+      try {
+        await financeiroService.deleteExit(
+          copy.id,
+          req.user.condominiumId,
+          req.user.id,
+          DUPLICATE_COPY_DELETE_REASON,
+          ipAddress,
+          userAgent
+        );
+        removed += 1;
+      } catch (err) {
+        failures.push(getErrorMessage(err));
+      }
+    }
+
+    if (removed === 0) {
+      throw new Error(failures.join('; ') || 'Não foi possível excluir as cópias.');
+    }
+
+    const extra = { success: 'duplicates_removed', removed: String(removed) };
+    if (failures.length > 0) {
+      extra.error = `${removed} cópia(s) removida(s). Falha(s): ${failures.join('; ')}`;
+    }
+    res.redirect(saidasListRedirectPath(mes, ano, extra));
+  } catch (error) {
+    console.error('Erro ao excluir cópias duplicadas:', error);
+    res.redirect(saidasListRedirectPath(mes, ano, {
+      error: getErrorMessage(error),
+    }));
   }
 };
 
@@ -1358,6 +1497,7 @@ module.exports = {
   showUnpayExit,
   unpayExit,
   deleteExit,
+  deleteDuplicateCopiesInGroup,
   showCreateAccount,
   createAccount,
   listAccounts,
