@@ -18,6 +18,54 @@ const {
   normalizeReceitaCategoryForForm,
   normalizeDespesaCategoryForForm,
 } = require('../constants/financialCategories');
+const { resolveListMonthFromQuery, currentMonthQuery } = require('../utils/periodRange');
+
+function exitDuplicateKey(exit) {
+  const desc = (exit.description || '').trim().toLowerCase();
+  const amount = parseFloat(exit.amount);
+  const amountStr = Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
+  return `${desc}|${amountStr}`;
+}
+
+function formatExitCreatedAtBR(createdAt) {
+  if (!createdAt) return '-';
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function buildExitDuplicateMeta(exits) {
+  const byKey = new Map();
+  for (const exit of exits) {
+    const key = exitDuplicateKey(exit);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(exit);
+  }
+  const duplicateGroups = [];
+  const perExit = {};
+  for (const rows of byKey.values()) {
+    if (rows.length <= 1) continue;
+    const sorted = rows.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const createdAtLabels = sorted.map((r) => formatExitCreatedAtBR(r.created_at));
+    duplicateGroups.push({
+      description: rows[0].description,
+      amount: rows[0].amount,
+      count: rows.length,
+      createdAtLabels,
+    });
+    for (const row of rows) {
+      const others = sorted
+        .filter((r) => r.id !== row.id)
+        .map((r) => formatExitCreatedAtBR(r.created_at));
+      perExit[row.id] = {
+        isDuplicate: true,
+        otherCreatedAtLabels: [...new Set(others)],
+      };
+    }
+  }
+  duplicateGroups.sort((a, b) => String(a.description).localeCompare(String(b.description), 'pt-BR'));
+  return { duplicateGroups, exitDuplicateMeta: perExit };
+}
 
 // Função para exibir dashboard financeiro
 // GET /financeiro/dashboard
@@ -259,7 +307,23 @@ const listExits = async (req, res) => {
       return renderError(res, 400, 'Usuário não está associado a um condomínio');
     }
 
-    const exits = await financeiroService.listExits(req.user.condominiumId);
+    const monthPeriod = resolveListMonthFromQuery(req.query.mes, req.query.ano);
+    if (!monthPeriod) {
+      const cur = currentMonthQuery();
+      const qs = new URLSearchParams({ mes: String(cur.mes), ano: String(cur.ano) });
+      if (req.query.success) qs.set('success', req.query.success);
+      if (req.query.error) qs.set('error', req.query.error);
+      return res.redirect(`/financeiro/saidas?${qs.toString()}`);
+    }
+
+    const exits = await financeiroService.listExits(req.user.condominiumId, {
+      startDate: monthPeriod.dataInicio,
+      endDate: monthPeriod.dataFim,
+      limit: 1000,
+      sortByExitDate: true,
+    });
+
+    const { duplicateGroups, exitDuplicateMeta } = buildExitDuplicateMeta(exits);
 
     res.render('administrativo/financeiro/saidas/list', {
       title: 'Saídas Financeiras',
@@ -267,6 +331,9 @@ const listExits = async (req, res) => {
       exits,
       categoryLabels: ALL_CATEGORY_LABELS,
       query: req.query,
+      monthPeriod,
+      duplicateGroups,
+      exitDuplicateMeta,
     });
   } catch (error) {
     console.error('Erro ao listar saídas:', error);

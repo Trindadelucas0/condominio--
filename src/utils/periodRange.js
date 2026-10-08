@@ -111,10 +111,41 @@ function formatPeriodLabelBR(inicio, fim) {
   return `${di.toLocaleDateString('pt-BR', opt)} — ${df.toLocaleDateString('pt-BR', opt)}`;
 }
 
+/**
+ * Mês calendário a partir de query mes (1–12) e ano.
+ * @returns {{ mes: number, ano: number, dataInicio: string, dataFim: string, monthLabel: string } | null}
+ */
+function resolveListMonthFromQuery(mesStr, anoStr) {
+  if (mesStr == null || mesStr === '' || anoStr == null || anoStr === '') return null;
+  const mes = parseInt(String(mesStr).trim(), 10);
+  const ano = parseInt(String(anoStr).trim(), 10);
+  if (Number.isNaN(mes) || Number.isNaN(ano) || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
+    return null;
+  }
+  const start = new Date(ano, mes - 1, 1);
+  const end = new Date(ano, mes, 0);
+  return {
+    mes,
+    ano,
+    dataInicio: toISODateLocal(start),
+    dataFim: toISODateLocal(end),
+    monthLabel: start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+  };
+}
+
+/** @returns {{ mes: number, ano: number }} */
+function currentMonthQuery() {
+  const def = defaultCurrentMonthRange();
+  const d = parseLocalDate(def.dataInicio);
+  return { mes: d.getMonth() + 1, ano: d.getFullYear() };
+}
+
 module.exports = {
   resolveDashboardPeriod,
   formatPeriodLabelBR,
   daysInclusive,
   MAX_RANGE_DAYS,
   toISODateLocal,
+  resolveListMonthFromQuery,
+  currentMonthQuery,
 };

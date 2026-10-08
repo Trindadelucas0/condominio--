@@ -1130,16 +1130,19 @@ const listExits = async (condominiumId, filters = {}) => {
     }
 
     if (filters.startDate) {
-      sql += ` AND fe.exit_date >= $${paramCount++}`;
+      sql += ` AND fe.exit_date::date >= $${paramCount++}::date`;
       params.push(filters.startDate);
     }
 
     if (filters.endDate) {
-      sql += ` AND fe.exit_date <= $${paramCount++}`;
+      sql += ` AND fe.exit_date::date <= $${paramCount++}::date`;
       params.push(filters.endDate);
     }
 
-    sql += ` ORDER BY fe.created_at DESC LIMIT $${paramCount}`;
+    const orderClause = filters.sortByExitDate
+      ? ' ORDER BY fe.exit_date ASC, fe.id ASC'
+      : ' ORDER BY fe.created_at DESC';
+    sql += `${orderClause} LIMIT $${paramCount}`;
     params.push(filters.limit || 100);
 
     const result = await query(sql, params);

@@ -33,11 +33,11 @@ const listPayableItems = async (condominiumId, filters = {}) => {
     params.push(filters.billId);
   }
   if (filters.startDate) {
-    sql += ` AND pi.due_date >= $${n++}`;
+    sql += ` AND pi.due_date::date >= $${n++}::date`;
     params.push(filters.startDate);
   }
   if (filters.endDate) {
-    sql += ` AND pi.due_date <= $${n++}`;
+    sql += ` AND pi.due_date::date <= $${n++}::date`;
     params.push(filters.endDate);
   }
 

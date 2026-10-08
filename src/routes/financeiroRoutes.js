@@ -756,10 +756,30 @@ router.post('/contas-a-pagar/gerar-vencimentos', async (req, res) => {
 });
 router.get('/contas-a-pagar', async (req, res) => {
   try {
+    const { resolveListMonthFromQuery, currentMonthQuery } = require('../utils/periodRange');
+    const monthPeriod = resolveListMonthFromQuery(req.query.mes, req.query.ano);
+    if (!monthPeriod) {
+      const cur = currentMonthQuery();
+      const qs = new URLSearchParams({ mes: String(cur.mes), ano: String(cur.ano) });
+      if (req.query.success) qs.set('success', req.query.success);
+      if (req.query.error) qs.set('error', req.query.error);
+      if (req.query.success === 'created_as_copy' && req.query.copyLabel) {
+        qs.set('success', 'created_as_copy');
+        qs.set('copyLabel', req.query.copyLabel);
+      }
+      if (req.query.success === 'generated' && req.query.count) {
+        qs.set('success', 'generated');
+        qs.set('count', req.query.count);
+      }
+      return res.redirect(`/financeiro/contas-a-pagar?${qs.toString()}`);
+    }
+
     await payableService.checkAndNotifyOverduePayables(req.user.condominiumId);
     const filters = {
       status: req.query.status || undefined,
-      limit: 200,
+      startDate: monthPeriod.dataInicio,
+      endDate: monthPeriod.dataFim,
+      limit: 500,
     };
     const items = await payableService.listPayableItems(req.user.condominiumId, filters);
     res.render('administrativo/financeiro/contas-a-pagar/list', {
@@ -767,6 +787,7 @@ router.get('/contas-a-pagar', async (req, res) => {
       user: req.user,
       items,
       query: req.query,
+      monthPeriod,
       req: req,
     });
   } catch (e) {

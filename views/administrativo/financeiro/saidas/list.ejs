@@ -71,8 +71,16 @@
   <div class="container mx-auto px-4 py-8">
     <% var helpModalId = 'modalComoFunciona'; %>
     <% var helpTitle = 'Como funcionam as Despesas'; %>
-    <% var resumo = ['Despesas são os pagamentos que o condomínio faz: fornecedores, manutenção, água, luz, etc.', 'Use "Nova despesa" para lançar. Se houver regra de valor, pode precisar de aprovação do síndico (Aprovações).', 'Quando pagar de fato, use "Pagar" na linha e anexe o comprovante se tiver; o status passa a Pago.', 'Para desfazer um pagamento já registrado, use a ação "Desfazer pagamento" na lista.']; %>
-    <% var helpModalContent = '<p><strong>O que são Despesas?</strong> São todos os valores que saem do caixa: pagamento a fornecedores, contas de luz/água, manutenção, etc.</p><p><strong>Fluxo:</strong> (1) Cadastre com "Nova despesa" (valor, descrição, conta/fornecedor, centro de custo). (2) Se o valor exigir aprovação, a despesa vai para Aprovações. (3) Após aprovação, quando pagar de fato use "Pagar" na lista e anexe o comprovante se desejar. O valor então sai do saldo.</p><p><strong>Status:</strong> Pendente = ainda não pago; Pago = valor já saiu e consta como despesa. "Desfazer pagamento" reverte o último pagamento (use com cuidado).</p><p><strong>Dica:</strong> Use Contas (fornecedores) e Centros de Custo para organizar e depois analisar relatórios.</p>'; %>
+    <% var resumo = ['A lista mostra as despesas do mês escolhido, pela data da despesa (não pela data em que cadastrou).', 'Use o seletor de mês e ano para conferir meses anteriores (ex.: agosto).', 'Se a mesma descrição e o mesmo valor aparecerem mais de uma vez, o sistema avisa — isso não apaga nada; evite lançar de novo.', 'Quando pagar de fato, use "Pagar" na linha. Para boletos do mesmo mês, use o link "Ver boletos deste mês".']; %>
+    <% var helpModalContent = '<p><strong>O que são Despesas?</strong> São todos os valores que saem do caixa: pagamento a fornecedores, contas de luz/água, manutenção, etc.</p><p><strong>Conferir por mês:</strong> Escolha mês e ano e clique em "Ver este mês". A lista usa a <strong>data da despesa</strong>, não a data do cadastro.</p><p><strong>Repetições:</strong> Se a mesma descrição e o mesmo valor existirem mais de uma vez no mês, aparece um aviso com as datas de cadastro. O total do mês soma todas as linhas; o aviso não exclui automaticamente.</p><p><strong>Fluxo:</strong> Cadastre com "Nova despesa". Após aprovação quando necessário, use "Pagar" e anexe o comprovante se desejar.</p>'; %>
+    <% 
+      var mp = (typeof monthPeriod !== 'undefined' && monthPeriod) ? monthPeriod : null;
+      var selMes = mp ? mp.mes : (new Date().getMonth() + 1);
+      var selAno = mp ? mp.ano : new Date().getFullYear();
+      var dupGroups = (typeof duplicateGroups !== 'undefined' && duplicateGroups) ? duplicateGroups : [];
+      var dupMeta = (typeof exitDuplicateMeta !== 'undefined' && exitDuplicateMeta) ? exitDuplicateMeta : {};
+      var monthShortLabel = mp ? (mp.mes + '/' + mp.ano) : '';
+    %>
     <!-- Cabeçalho Moderno -->
     <div class="mb-8 animate-slide-in">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -101,6 +109,52 @@
         </a>
       </div>
       <%- include('../../../partials/help-como-funciona', { helpTitle: helpTitle, resumo: resumo, helpModalContent: helpModalContent, helpModalId: helpModalId }) %>
+
+      <div class="mb-6 bg-white rounded-xl shadow-md border border-gray-100 p-4 md:p-5">
+        <form method="GET" action="/financeiro/saidas" class="flex flex-col sm:flex-row flex-wrap items-end gap-3">
+          <div>
+            <label for="filtro-mes" class="block text-xs font-semibold text-gray-600 mb-1">Mês</label>
+            <select id="filtro-mes" name="mes" class="min-h-[44px] border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-red-500/30">
+              <% var monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']; %>
+              <% for (var mi = 1; mi <= 12; mi++) { %>
+                <option value="<%= mi %>" <%= selMes === mi ? 'selected' : '' %>><%= monthNames[mi - 1] %></option>
+              <% } %>
+            </select>
+          </div>
+          <div>
+            <label for="filtro-ano" class="block text-xs font-semibold text-gray-600 mb-1">Ano</label>
+            <select id="filtro-ano" name="ano" class="min-h-[44px] border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-red-500/30">
+              <% for (var ay = selAno + 1; ay >= selAno - 5; ay--) { %>
+                <option value="<%= ay %>" <%= selAno === ay ? 'selected' : '' %>><%= ay %></option>
+              <% } %>
+            </select>
+          </div>
+          <button type="submit" class="min-h-[44px] px-5 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors">Ver este mês</button>
+          <% if (mp) { %>
+            <a href="/financeiro/contas-a-pagar?mes=<%= mp.mes %>&amp;ano=<%= mp.ano %>" class="min-h-[44px] inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline">Ver boletos deste mês</a>
+          <% } %>
+        </form>
+        <% if (mp && mp.monthLabel) { %>
+          <p class="text-sm text-gray-500 mt-3">Exibindo despesas com data em <strong class="text-gray-800"><%= mp.monthLabel %></strong>.</p>
+        <% } %>
+      </div>
+
+      <% if (dupGroups.length > 0) { %>
+        <div class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 md:p-5">
+          <h2 class="text-base font-bold text-amber-900 mb-1">Repetições neste mês</h2>
+          <p class="text-sm text-amber-800 mb-3"><%= dupGroups.length %> descrição(ões) aparece(m) mais de uma vez com o mesmo valor. O valor total acima soma todas as linhas, inclusive cópias. O aviso não apaga nada — confira antes de lançar de novo.</p>
+          <ul class="space-y-2 text-sm text-amber-900">
+            <% dupGroups.forEach(function(g) { %>
+              <li class="border-l-4 border-amber-400 pl-3">
+                <span class="font-semibold"><%= g.description %></span>
+                — R$ <%= parseFloat(g.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) %>
+                <span class="text-amber-700">(<%= g.count %>×)</span>
+                <div class="text-xs text-amber-800 mt-0.5">Cadastrada em: <%= g.createdAtLabels.join(', ') %></div>
+              </li>
+            <% }); %>
+          </ul>
+        </div>
+      <% } %>
 
       <!-- Mensagens Modernas -->
       <% if (typeof query !== 'undefined' && query.success === 'created') { %>
@@ -221,7 +275,7 @@
         <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500 card-hover-effect">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-gray-500 text-sm font-medium mb-1">Total de Saídas</p>
+              <p class="text-gray-500 text-sm font-medium mb-1"><%= mp ? ('Despesas em ' + monthShortLabel) : 'Total de Saídas' %></p>
               <p class="text-3xl font-bold text-gray-900"><%= totalExits %></p>
             </div>
             <div class="bg-red-100 rounded-lg p-3">
@@ -290,9 +344,9 @@
         
         <% if (exits.length === 0) { %>
           <%- include('../../../partials/empty-state', {
-            title: 'Nada aqui ainda',
-            description: 'O primeiro passo é cadastrar uma despesa (saída). Ex.: pagamento de água, limpeza, manutenção.',
-            buttonText: 'Cadastrar primeira despesa',
+            title: mp ? ('Nenhuma despesa em ' + monthShortLabel) : 'Nada aqui ainda',
+            description: mp ? 'Não há despesas com data neste mês. Troque o mês no filtro acima ou cadastre uma nova despesa com a data correta.' : 'O primeiro passo é cadastrar uma despesa (saída). Ex.: pagamento de água, limpeza, manutenção.',
+            buttonText: 'Nova despesa',
             buttonHref: '/financeiro/saidas/nova',
             icon: 'currency'
           }) %>
@@ -323,7 +377,16 @@
                         </div>
                         <div>
                           <div class="text-sm font-bold text-gray-900"><%= exit.description %></div>
-                          <div class="text-xs text-gray-500 mt-0.5 flex items-center space-x-2">
+                          <% var rowDup = dupMeta[exit.id]; %>
+                          <% if (rowDup && rowDup.isDuplicate) { %>
+                            <div class="mt-1">
+                              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-200">Repetida</span>
+                              <% if (rowDup.otherCreatedAtLabels && rowDup.otherCreatedAtLabels.length) { %>
+                                <span class="text-xs text-amber-800 ml-1">Também cadastrada em <%= rowDup.otherCreatedAtLabels.join(' e ') %></span>
+                              <% } %>
+                            </div>
+                          <% } %>
+                          <div class="text-xs text-gray-500 mt-0.5 flex items-center space-x-2 flex-wrap">
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
                               <%= (typeof categoryLabels !== 'undefined' && categoryLabels[exit.category]) ? categoryLabels[exit.category] : exit.category %>
                             </span>
